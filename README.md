@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # cutplan_agent — 도면 → 자재목록 → 전개·분할 → 네스팅 → POR 를 수행하는 VLM skill 에이전트
 
 KDM 발표자료(`주차별_슬라이드/KDMTECH_발표자료_통합.pptx`, 2026-08-03)의 4계층 구분을 skill 분류의 뼈대로 썼다.
@@ -74,3 +75,7 @@ py -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022
 3. 곡선 맞물림 네스팅 (NFP: SVGnest/Deepnest 포트 또는 shapely 기반).
 4. 헤드 블랭크 계수·쉘 중립축 규약을 part_tags.csv 로 확정.
 5. 평가: scorecard 성공 워크오더 30건에 run_eval → 판 수·중량 비율 분포 → verifier 를 reward 로 Phase 2.
+=======
+# PBL
+PBL 2026
+>>>>>>> 68206f203b128427c894e5041c797c01d495e3df
