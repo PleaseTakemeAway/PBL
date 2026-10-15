@@ -4,8 +4,13 @@ import os
 import shutil
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")             # API 키·머신별 값 (git 제외). 이미 설정된 환경변수가 우선
+
 # 데이터·툴킷·결과가 놓이는 작업 루트. CUTPLAN_ROOT 로 덮어쓸 수 있다.
-ROOT = Path(os.environ.get("CUTPLAN_ROOT") or Path(__file__).resolve().parents[1])
+ROOT = Path(os.environ.get("CUTPLAN_ROOT") or PROJECT_ROOT)
 DATASET = ROOT / "Data" / "dataset"
 TEST_DATA = ROOT / "test_data"
 TOOLKIT = ROOT / "tools" / "dwg2png"           # 이전 세션 툴킷 (libredwg, unfold 엔진, cp_extract)

@@ -35,7 +35,7 @@ KDM 발표자료(`주차별_슬라이드/KDMTECH_발표자료_통합.pptx`, 2026
 
 ```
 pyproject.toml, uv.lock  uv 의존성
-.envrc, .env.example   PYTHONPATH(공개) / 비밀키 템플릿
+.env.example           .env (API 키·머신별 값, git 제외) 템플릿
 cutplan_agent/
   config.py            경로, 모델(claude-opus-5-5), 커팅여유 20(가스), 운반상한 12000x3050, 표준폭, 전개판정 키워드
   state.py             JobState(도면·BOM·PartSpec·조각·판·POR·HITL) + Trajectory(skill 호출 로그 = RL 데이터) + @logged
@@ -49,21 +49,45 @@ runs/<job>/            state.json, trajectory.json, <job>_CP.dxf, por.csv, final
 
 ## 3. 실행
 
-의존성은 uv 로 관리한다 (`pyproject.toml`, `uv.lock`). 명령은 모두 project root 에서 `PYTHONPATH=<project root>` 로 실행한다.
+필요한 도구는 [uv](https://docs.astral.sh/uv/) 하나다. Python 설치·가상환경·패키지 설치를 uv 가 모두 맡는다.
+
+### 3.1 처음 한 번
+
+1. uv 설치 (설치 후 터미널을 새로 연다)
+   - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+   - Linux / macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+2. 프로젝트 폴더에서 `uv sync` — `.venv` 를 만들고 의존성과 `cutplan_agent` 를 설치한다. 의존성이 바뀌어 `git pull` 한 뒤에도 다시 실행한다.
+3. `.env.example` 을 `.env` 로 복사하고 값을 채운다 (Windows: `copy .env.example .env`, Linux: `cp .env.example .env`).
+   - `ANTHROPIC_API_KEY`: VLM 단계(L1·L2, orchestrator)에 필요. smoke test 만 돌릴 땐 비워도 된다.
+   - `CUTPLAN_ROOT`: 데이터가 project root 가 아닌 곳에 있을 때만.
+   - `.env` 는 실행 시 자동으로 읽히고 git 에 올라가지 않는다.
+
+### 3.2 실행
+
+프로젝트 폴더에서 `uv run python -m ...` 로 실행한다.
 
 ```bash
-uv sync                                  # .venv 생성 (처음 한 번)
-cp .env.example .env                     # ANTHROPIC_API_KEY 등 비밀값 채우기 (git 에 올리지 않음)
-direnv allow                             # .envrc: PYTHONPATH=project root + .env 로드
-
 uv run python -m cutplan_agent.eval.smoke_kd25038                       # API 불필요
 uv run python -m cutplan_agent.agent.orchestrator --job KD23002 --eval  # dataset/KDM/2023/KD23002/input/drawings 사용
 uv run python -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022
 ```
 
-- `.envrc` (커밋): 공개 설정만. `.env` (gitignore): API 키·머신별 경로. direnv 를 안 쓰면 `export PYTHONPATH=$PWD` 후 `uv run --env-file .env python -m ...`.
-- 데이터·툴킷·결과는 기본으로 project root 의 `Data/dataset`, `tools/dwg2png`, `test_data`, `runs` 를 쓴다. 다른 곳에 있으면 `.env` 에 `CUTPLAN_ROOT` 를 둔다.
-- DWG 변환: `tools/dwg2png/libredwg/dwg2dxf` 가 없으면 PATH 의 `dwg2dxf` 를 쓴다 (Ubuntu: `sudo apt install libredwg-tools`).
+VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고르면 실행·디버그도 같은 환경을 쓴다.
+
+### 3.3 데이터·외부 도구
+
+- 데이터·툴킷·결과는 기본으로 project root 의 `Data/dataset`, `tools/dwg2png`, `test_data`, `runs` 를 쓴다 (git 제외).
+- DWG 변환: `tools/dwg2png/libredwg/dwg2dxf(.exe)` 가 없으면 PATH 의 `dwg2dxf` 를 쓴다 (Ubuntu: `sudo apt install libredwg-tools`).
+
+### 3.4 자주 나는 문제
+
+| 증상 | 해결 |
+|---|---|
+| `uv: command not found` / `'uv' 은(는) ... 아닙니다` | uv 설치 후 터미널을 새로 연다 |
+| `ModuleNotFoundError: No module named 'cutplan_agent'` (또는 `dotenv` 등) | `uv sync` 를 다시 실행하고, `python` 대신 `uv run python` 으로 실행했는지 확인 |
+| `Could not resolve authentication method` / API 키 오류 | `.env` 의 `ANTHROPIC_API_KEY` 확인 (파일 이름이 `.env.txt` 가 아닌지도) |
+| `This API key is not scoped to a workspace` | `.env` 에 `ANTHROPIC_WORKSPACE_ID` 추가 (`cutplan_agent/client.py` 참조) |
+| `dwg2dxf 실패` | 3.3 의 dwg2dxf 설치 확인 |
 
 ## 4. Smoke test 결과 (KD25038, 발표자료 검증 사례, 2026-10-01)
 
