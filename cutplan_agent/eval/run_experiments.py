@@ -18,11 +18,10 @@ test_data 전체 실험 하네스. 도메인별로 task 를 나눈다.
 사용:  uv run python -m cutplan_agent.eval.run_experiments [--only E1,E2] [--wo KD23002,...] [--skip-big]
 """
 from __future__ import annotations
-import argparse, csv, json, math, os, statistics, sys, time
+import argparse, csv, json, math, os, statistics, time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import DENSITY_STEEL, RUNS_DIR, TEST_DATA
 from cutplan_agent.state import JobState, Piece, Trajectory, set_context
 from cutplan_agent.skills import l3_rules as L3, l4_verify as L4

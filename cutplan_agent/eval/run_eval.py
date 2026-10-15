@@ -7,9 +7,7 @@ dataset 워크오더에 대해 에이전트를 평가 모드로 돌리고 사람
 결과: runs/<job>/state.json, trajectory.json, final.md, runs/_eval_summary.csv
 ANTHROPIC_API_KEY 필요.
 """
-import argparse, csv, sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import argparse, csv
 
 from cutplan_agent.config import RUNS_DIR
 from cutplan_agent.agent.orchestrator import run, job_inputs

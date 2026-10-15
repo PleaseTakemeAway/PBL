@@ -3,3 +3,9 @@ __pycache__/
 .venv/
 .ruff_cache/
 .env
+
+# 작업 루트 데이터 (config.ROOT 기본값 = project root)
+/Data/
+/tools/
+/test_data/
+/runs/

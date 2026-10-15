@@ -13,9 +13,8 @@
   unfold/*.dxf                     state.json 의 전개 결과를 부품별 DXF 로 (없을 때 생성)
 """
 from __future__ import annotations
-import argparse, csv, json, math, re, sys
+import argparse, csv, json, math, re
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import DENSITY_STEEL, HANGUL_FONT_FAMILIES, HANGUL_FONT_FILE, TEST_DATA
 from cutplan_agent.state import JobState, PartSpec
 

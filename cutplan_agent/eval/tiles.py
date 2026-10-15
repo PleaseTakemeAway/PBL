@@ -8,9 +8,8 @@
 벡터(DXF)는 ezdxf 로 px 해상도로 다시 렌더, 래스터(PDF)는 300dpi 로 렌더.
 """
 from __future__ import annotations
-import argparse, json, re, sys
+import argparse, json, re
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import RUNS_DIR
 from cutplan_agent.skills.l1_perception import _render_dxf
 

@@ -18,9 +18,8 @@ spec.json 형식:
 }
 """
 from __future__ import annotations
-import argparse, csv, json, re, sys
+import argparse, csv, json, re
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from cutplan_agent.config import RUNS_DIR, DATASET, DENSITY_STEEL, TEST_DATA
 from cutplan_agent.state import JobState, Trajectory, set_context, get_state

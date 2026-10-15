@@ -11,9 +11,8 @@
 사람이 이 시트를 보고 spec.json 을 쓴다.
 """
 from __future__ import annotations
-import argparse, json, re, sys
+import argparse, json, re
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import RUNS_DIR, UNFOLD_CLASS
 
 PLATE_MAT = re.compile(r"^(SA|A)\s?(516|283|285|240|387|36|204|537)|^SS\s?400|^S(S|US)\s?3\d{2}|^B168|^SPCC|^SPHC|^St\s?37|^SB\s?\d", re.I)

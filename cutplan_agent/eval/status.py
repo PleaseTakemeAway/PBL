@@ -7,10 +7,8 @@
 
 읽는 것: runs/<job>/state.json (매 턴 저장), trajectory.json (skill 호출 로그), pages/ (렌더된 도면), final.md (끝났을 때)
 """
-import argparse, json, os, sys, time
+import argparse, json, os, time
 from datetime import datetime
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import RUNS_DIR
 
 

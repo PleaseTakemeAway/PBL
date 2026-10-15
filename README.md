@@ -34,6 +34,8 @@ KDM 발표자료(`주차별_슬라이드/KDMTECH_발표자료_통합.pptx`, 2026
 ## 2. 구조
 
 ```
+pyproject.toml, uv.lock  uv 의존성
+.envrc, .env.example   PYTHONPATH(공개) / 비밀키 템플릿
 cutplan_agent/
   config.py            경로, 모델(claude-opus-5-5), 커팅여유 20(가스), 운반상한 12000x3050, 표준폭, 전개판정 키워드
   state.py             JobState(도면·BOM·PartSpec·조각·판·POR·HITL) + Trajectory(skill 호출 로그 = RL 데이터) + @logged
@@ -47,15 +49,21 @@ runs/<job>/            state.json, trajectory.json, <job>_CP.dxf, por.csv, final
 
 ## 3. 실행
 
-의존성은 uv 로 관리한다 (`pyproject.toml`, `uv.lock`). 처음 한 번 `uv sync` 로 `.venv` 를 만든다.
+의존성은 uv 로 관리한다 (`pyproject.toml`, `uv.lock`). 명령은 모두 project root 에서 `PYTHONPATH=<project root>` 로 실행한다.
 
-```powershell
-cd D:\노바투스2026
-uv run python cutplan_agent\eval\smoke_kd25038.py                         # API 불필요
-$env:ANTHROPIC_API_KEY = "..."
+```bash
+uv sync                                  # .venv 생성 (처음 한 번)
+cp .env.example .env                     # ANTHROPIC_API_KEY 등 비밀값 채우기 (git 에 올리지 않음)
+direnv allow                             # .envrc: PYTHONPATH=project root + .env 로드
+
+uv run python -m cutplan_agent.eval.smoke_kd25038                       # API 불필요
 uv run python -m cutplan_agent.agent.orchestrator --job KD23002 --eval  # dataset/KDM/2023/KD23002/input/drawings 사용
 uv run python -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022
 ```
+
+- `.envrc` (커밋): 공개 설정만. `.env` (gitignore): API 키·머신별 경로. direnv 를 안 쓰면 `export PYTHONPATH=$PWD` 후 `uv run --env-file .env python -m ...`.
+- 데이터·툴킷·결과는 기본으로 project root 의 `Data/dataset`, `tools/dwg2png`, `test_data`, `runs` 를 쓴다. 다른 곳에 있으면 `.env` 에 `CUTPLAN_ROOT` 를 둔다.
+- DWG 변환: `tools/dwg2png/libredwg/dwg2dxf` 가 없으면 PATH 의 `dwg2dxf` 를 쓴다 (Ubuntu: `sudo apt install libredwg-tools`).
 
 ## 4. Smoke test 결과 (KD25038, 발표자료 검증 사례, 2026-10-01)
 

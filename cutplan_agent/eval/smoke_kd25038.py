@@ -11,9 +11,7 @@ API 없이 L3/L4 만 돌리는 smoke test — KDM 발표자료의 검증 사례 
 
 콘·패드·러그의 상세 치수는 발표자료에 없어 가정값이다 (주석 참조). 목적은 코드 경로 검증이지 수치 재현이 아니다.
 """
-import json, sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import json
 
 from cutplan_agent.state import JobState, Trajectory, set_context
 from cutplan_agent.skills import l2_relation as L2, l3_rules as L3, l4_verify as L4, knowledge as K

@@ -5,9 +5,8 @@
     uv run python -m cutplan_agent.eval.aggregate_manual --runs KD23002_manual,KD23022_manual,... [--out runs/experiments/E7_manual_5samples.md]
 각 run 의 compare/cp_compare.csv, unfold_compare.csv 를 읽어 kg 비율·판 수·부품 일치율을 집계.
 """
-import argparse, csv, json, statistics, sys
+import argparse, csv, json, statistics
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from cutplan_agent.config import RUNS_DIR
 
 
