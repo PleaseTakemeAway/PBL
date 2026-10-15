@@ -1,0 +1,15 @@
+[project]
+name = "cutplan_agent"
+version = "0.1.0"
+description = "도면 → 자재목록 → 전개·분할 → 네스팅 → POR 를 수행하는 VLM skill 에이전트"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.14.0",
+    "ezdxf>=1.4.4",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pillow>=12.3.0",
+    "pydantic>=2.14.1",
+    "pymupdf>=1.28.2",
+]

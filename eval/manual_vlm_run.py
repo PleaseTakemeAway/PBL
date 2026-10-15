@@ -5,8 +5,8 @@ VLM 자리를 사람(또는 Claude 세션)이 대신하는 수동 파이프라�
   1) ingest : 입력 도면을 PNG(+DXF 텍스트 덤프)로 만든다 → 사람이 도면을 보고 spec.json 을 쓴다
   2) run    : spec.json(부품 3D 파라미터) → 전개 → 분할 → 네스팅 → 검증 → POR → DXF/PNG → 정답 비교
 
-    py -m cutplan_agent.eval.manual_vlm_run ingest --job KD23002
-    py -m cutplan_agent.eval.manual_vlm_run run --job KD23002 --spec runs/KD23002/spec.json
+    uv run python -m cutplan_agent.eval.manual_vlm_run ingest --job KD23002
+    uv run python -m cutplan_agent.eval.manual_vlm_run run --job KD23002 --spec runs/KD23002/spec.json
 
 spec.json 형식:
 {

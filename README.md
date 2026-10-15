@@ -47,12 +47,14 @@ runs/<job>/            state.json, trajectory.json, <job>_CP.dxf, por.csv, final
 
 ## 3. 실행
 
+의존성은 uv 로 관리한다 (`pyproject.toml`, `uv.lock`). 처음 한 번 `uv sync` 로 `.venv` 를 만든다.
+
 ```powershell
 cd D:\노바투스2026
-py cutplan_agent\eval\smoke_kd25038.py                          # API 불필요
+uv run python cutplan_agent\eval\smoke_kd25038.py                         # API 불필요
 $env:ANTHROPIC_API_KEY = "..."
-py -m cutplan_agent.agent.orchestrator --job KD23002 --eval     # dataset/KDM/2023/KD23002/input/drawings 사용
-py -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022
+uv run python -m cutplan_agent.agent.orchestrator --job KD23002 --eval  # dataset/KDM/2023/KD23002/input/drawings 사용
+uv run python -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022
 ```
 
 ## 4. Smoke test 결과 (KD25038, 발표자료 검증 사례, 2026-10-01)

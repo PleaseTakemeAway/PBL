@@ -2,7 +2,7 @@
 """
 수동 판독용 '판독 시트' 생성: ingest 로 만든 DXF 텍스트 덤프에서 BOM 행(판재만)과 치수 후보를 자동으로 뽑아 markdown 으로.
 
-    py -m cutplan_agent.eval.reading_sheet --job KD23022_manual
+    uv run python -m cutplan_agent.eval.reading_sheet --job KD23022_manual
 
 출력: runs/<job>/reading_sheet.md
   - 도면별: 세트 수 문구, BOM 판재 행 (품번 | 품명 | 재질 | 수량 | 단위 | SIZE), 전개 판정(키워드)

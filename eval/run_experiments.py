@@ -15,7 +15,7 @@ test_data 전체 실험 하네스. 도메인별로 task 를 나눈다.
     metrics.json                  판 수·gross 중량·활용률 비율 (커팅플랜 기준 metric)
     runs/experiments/summary.csv, REPORT.md
 
-사용:  py -m cutplan_agent.eval.run_experiments [--only E1,E2] [--wo KD23002,...] [--skip-big]
+사용:  uv run python -m cutplan_agent.eval.run_experiments [--only E1,E2] [--wo KD23002,...] [--skip-big]
 """
 from __future__ import annotations
 import argparse, csv, json, math, os, statistics, sys, time

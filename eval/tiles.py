@@ -2,7 +2,7 @@
 """
 도면 페이지를 고해상도 타일로 잘라 사람이 읽을 수 있게 한다.
 
-    py -m cutplan_agent.eval.tiles --job KD23022_manual [--only "GENERAL,BELLOWS"] [--rows 2 --cols 3] [--px 6000]
+    uv run python -m cutplan_agent.eval.tiles --job KD23022_manual [--only "GENERAL,BELLOWS"] [--rows 2 --cols 3] [--px 6000]
 
 출력: runs/<job>/tiles/<도면stem>_r{i}c{j}.png, <stem>_bom.png (우측 BOM 영역), <stem>_full.png (고해상 전체)
 벡터(DXF)는 ezdxf 로 px 해상도로 다시 렌더, 래스터(PDF)는 300dpi 로 렌더.
