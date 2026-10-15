@@ -22,12 +22,10 @@ import argparse, csv, json, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from cutplan_agent.config import RUNS_DIR, DATASET, DENSITY_STEEL
+from cutplan_agent.config import RUNS_DIR, DATASET, DENSITY_STEEL, TEST_DATA
 from cutplan_agent.state import JobState, Trajectory, set_context, get_state
 from cutplan_agent.skills import l1_perception as L1, l2_relation as L2, l3_rules as L3, l4_verify as L4
 from cutplan_agent.agent.orchestrator import job_inputs
-
-TEST = Path(r"D:\노바투스2026\test_data")
 
 
 def ingest(job: str, inputs: list[str]):
@@ -153,7 +151,7 @@ if __name__ == "__main__":
     a = ap.parse_args()
     if a.mode == "ingest":
         wo = a.job.split("_")[0]
-        ins = job_inputs(wo) if a.domain == "KDM" else [str(TEST / "HCE_76K3-40022" / "input_drawings" / "76K3-40022.pdf")]
+        ins = job_inputs(wo) if a.domain == "KDM" else [str(TEST_DATA / "HCE_76K3-40022" / "input_drawings" / "76K3-40022.pdf")]
         print(f"{a.job}: {len(ins)} inputs"); ingest(a.job, ins)
     else:
         run(a.job, a.spec or str(RUNS_DIR / a.job / "spec.json"), a.domain)

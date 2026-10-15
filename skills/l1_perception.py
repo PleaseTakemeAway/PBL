@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from ..config import DWG2DXF, MODEL, MAX_TOKENS, VLM_MAX_PX, UNFOLD_CLASS
+from ..config import DWG2DXF, HANGUL_FONT_FILE, MODEL, MAX_TOKENS, VLM_MAX_PX, UNFOLD_CLASS
 from ..state import BomItem, get_state, logged
 
 
@@ -49,7 +49,7 @@ def _render_dxf(dxf: Path, png: Path, target_px: int = VLM_MAX_PX) -> int:
 
     doc = ezdxf.readfile(str(dxf))
     if "KO_MALGUN" not in doc.styles:
-        doc.styles.add("KO_MALGUN", font="malgun.ttf")
+        doc.styles.add("KO_MALGUN", font=HANGUL_FONT_FILE)
     hangul = re.compile(r"[가-힣]")
     for e in doc.entitydb.values():
         t = e.dxftype()

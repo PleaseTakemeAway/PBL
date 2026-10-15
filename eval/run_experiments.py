@@ -23,12 +23,11 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from cutplan_agent.config import DENSITY_STEEL, RUNS_DIR
+from cutplan_agent.config import DENSITY_STEEL, RUNS_DIR, TEST_DATA
 from cutplan_agent.state import JobState, Piece, Trajectory, set_context
 from cutplan_agent.skills import l3_rules as L3, l4_verify as L4
 from cutplan_agent.skills.l1_perception import _render_dxf
 
-TEST = Path(r"D:\노바투스2026\test_data")
 EXP = RUNS_DIR / "experiments"
 KERF_CUT = "plasma"          # 조각 간격 10mm (사람 CP 의 간격에 가까움). 가스 20 은 더 보수적
 BIG_LIMIT = 1500             # 조각 수가 이보다 많으면 --skip-big 때 건너뜀
@@ -147,7 +146,7 @@ def clean_sheet_parts(rows: List[dict], mat: str, t: float, q: int, sid: str) ->
 
 
 def e1_kdm(wo: str, skip_big: bool) -> dict:
-    d = TEST / wo
+    d = TEST_DATA / wo
     out = EXP / "E1_kdm_oracle" / wo
     sheets = {r["sheet_id"]: r for r in gt_sheets(d)}
     parts = [p for p in read_csv(d / "output_cutting_plan" / "parts.csv") if p["sheet_id"] in sheets]
@@ -199,7 +198,7 @@ def e1_kdm(wo: str, skip_big: bool) -> dict:
 
 # ----------------------------------------------------------------------------- E2 HCE oracle
 def e2_hce() -> dict:
-    wo = "HCE_76K3-40022"; d = TEST / wo; out = EXP / "E2_hce_oracle" / wo
+    wo = "HCE_76K3-40022"; d = TEST_DATA / wo; out = EXP / "E2_hce_oracle" / wo
     t0 = time.time()
     parts = read_csv(d / "output_cutting_plan" / "parts.csv")
     sheet = read_csv(d / "output_cutting_plan" / "sheets.csv")[0]
@@ -235,7 +234,7 @@ def e34_vlm(wo: str, domain: str) -> dict:
         return {"wo": wo, "exp": exp[:2], "status": "blocked", "domain": domain,
                 "reason": "ANTHROPIC_API_KEY / 프로필 없음 — 도면→VLM→전개도 경로 실행 불가"}
     from cutplan_agent.agent.orchestrator import run, job_inputs
-    inputs = job_inputs(wo) if domain == "KDM" else [str(TEST / wo / "input_drawings" / "76K3-40022.pdf")]
+    inputs = job_inputs(wo) if domain == "KDM" else [str(TEST_DATA / wo / "input_drawings" / "76K3-40022.pdf")]
     st = run(wo, inputs, eval_mode=True, max_steps=80)
     gt = st.verify.get("gt", {})
     return {"wo": wo, "exp": exp[:2], "status": "ok", "domain": domain, "parts": len(st.parts), "pieces": len(st.pieces),
@@ -339,7 +338,7 @@ def main():
     ap.add_argument("--skip-big", action="store_true")
     a = ap.parse_args()
     only = set(a.only.split(","))
-    idx = [r for r in read_csv(TEST / "index.csv") if r["included"] == "yes"]
+    idx = [r for r in read_csv(TEST_DATA / "index.csv") if r["included"] == "yes"]
     kdm = [r["workorder"] for r in idx if not r["workorder"].startswith("HCE")]
     if a.wo:
         kdm = [w for w in kdm if w in a.wo.split(",")]

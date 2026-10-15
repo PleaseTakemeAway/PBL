@@ -16,10 +16,8 @@ from __future__ import annotations
 import argparse, csv, json, math, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from cutplan_agent.config import DENSITY_STEEL
+from cutplan_agent.config import DENSITY_STEEL, HANGUL_FONT_FAMILIES, HANGUL_FONT_FILE, TEST_DATA
 from cutplan_agent.state import JobState, PartSpec
-
-TEST = Path(r"D:\노바투스2026\test_data")
 
 
 # ----------------------------------------------------------------------------- 공통
@@ -194,7 +192,7 @@ def unfold_compare_png(rows, parts, flats, gt_dir: Path, out: Path, max_n: int =
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams["font.family"] = ["Malgun Gothic", "DejaVu Sans"]     # 한글 글리프 (그림 만들기 전에 설정)
+    plt.rcParams["font.family"] = HANGUL_FONT_FAMILIES     # 한글 글리프 (그림 만들기 전에 설정)
     plt.rcParams["axes.unicode_minus"] = False
     idx = read_csv(gt_dir / "index.csv")
     pid = {p.part_id: p for p in parts}
@@ -242,7 +240,7 @@ def unfold_compare_png(rows, parts, flats, gt_dir: Path, out: Path, max_n: int =
         axo.set_title(f"우리: {p.part_name}  {r['our_size']} ×{q}  오차 {r['dim_err_pct']}%  ({p.confidence})", fontsize=9)
         for ax in (axg, axo):
             ax.set_aspect("equal"); ax.autoscale(); ax.margins(0.08); ax.tick_params(labelsize=7)
-    plt.rcParams["font.family"] = ["Malgun Gothic", "DejaVu Sans"]
+    plt.rcParams["font.family"] = HANGUL_FONT_FAMILIES
     for ax_row in axes:
         for ax in ax_row:
             for t in ax.get_xticklabels() + ax.get_yticklabels():
@@ -261,7 +259,7 @@ def cp_compare_png(gt_png: Path, our_png: Path, out: Path):
     H = a.height + b.height + 90
     im = Image.new("RGB", (W, H), "white"); d = ImageDraw.Draw(im)
     try:
-        font = ImageFont.truetype("malgun.ttf", 26)
+        font = ImageFont.truetype(HANGUL_FONT_FILE, 26)
     except Exception:
         font = ImageFont.load_default()
     d.text((20, 10), "사람 커팅플랜 (정답, test_data/output_cutting_plan)", fill="#b85042", font=font)
@@ -277,7 +275,7 @@ def main():
     ap.add_argument("--job", required=True)
     ap.add_argument("--run", required=True)
     a = ap.parse_args()
-    run = Path(a.run); gt = TEST / a.job
+    run = Path(a.run); gt = TEST_DATA / a.job
     out = run / "compare"; out.mkdir(parents=True, exist_ok=True)
     st = JobState.model_validate_json((run / "state.json").read_text(encoding="utf8"))
     parts, flats = st.parts, st.flats

@@ -1,13 +1,32 @@
 # -*- coding: utf-8 -*-
 """경로·모델·현장 기본값. KDM 배치툴(발표자료 08 슬라이드)의 설정값을 기본으로 둔다."""
+import os
+import shutil
 from pathlib import Path
 
-ROOT = Path(r"D:\노바투스2026")
+# 데이터·툴킷·결과가 놓이는 작업 루트. CUTPLAN_ROOT 로 덮어쓸 수 있다.
+ROOT = Path(os.environ.get("CUTPLAN_ROOT") or Path(__file__).resolve().parents[1])
 DATASET = ROOT / "Data" / "dataset"
+TEST_DATA = ROOT / "test_data"
 TOOLKIT = ROOT / "tools" / "dwg2png"           # 이전 세션 툴킷 (libredwg, unfold 엔진, cp_extract)
-DWG2DXF = TOOLKIT / "libredwg" / "dwg2dxf.exe"
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 RUNS_DIR = ROOT / "runs"
+
+
+def _find_dwg2dxf() -> Path:
+    """툴킷 동봉 libredwg 를 우선 쓰고, 없으면 PATH 의 dwg2dxf (Linux: libredwg-tools)."""
+    bundled = TOOLKIT / "libredwg" / ("dwg2dxf.exe" if os.name == "nt" else "dwg2dxf")
+    if bundled.exists():
+        return bundled
+    found = shutil.which("dwg2dxf")
+    return Path(found) if found else bundled
+
+
+DWG2DXF = _find_dwg2dxf()
+
+# 한글 글리프 폰트 (OS 별로 설치된 것 중 앞에서부터 사용)
+HANGUL_FONT_FILE = "malgun.ttf" if os.name == "nt" else "NotoSansCJK-Regular.ttc"
+HANGUL_FONT_FAMILIES = ["Malgun Gothic", "Noto Sans CJK KR", "NanumGothic", "DejaVu Sans"]
 
 # ---- Claude API ----
 MODEL = "claude-opus-5-5"
