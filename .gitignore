@@ -1,0 +1,8 @@
+__pycache__/
+output/
+*.pyc
+output*/
+__pycache__/
+*_analysis/
+_to_delete*/
+_dbg/
