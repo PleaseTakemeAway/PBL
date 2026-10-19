@@ -1,0 +1,12 @@
+# Optional for DXF entity input (a pure-Python reader is used when missing).
+ezdxf>=1.4,<2
+# VLM calls (OpenAI-compatible or Anthropic endpoints).
+requests>=2.28
+# Sheet renders / candidate comparison images.
+matplotlib>=3.5
+# Vision path: geometry extraction and region detection.
+opencv-python>=4.8
+numpy>=1.24
+# OCR fallback when no OCR VLM is configured (needs the tesseract binary).
+pytesseract>=0.3
+# PDF pages (needs poppler pdftoppm on PATH).
