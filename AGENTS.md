@@ -30,7 +30,7 @@
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
 - `cutplan_agent_v3/` 는 패키지가 아니다. `python cutplan_agent_v3/main.py` 처럼 파일로 실행한다. 한 단계 위의 `skills/` 와 `data_v3/` 를 읽으므로, 레포 루트가 동료 서버의 `PBL_2026/` 폴더 역할을 한다.
-- `scripts/` 는 아직 `D:\노바투스2026` 경로와 `manifest.csv` 의 역슬래시 경로를 가정한다. Linux 에서 그대로 실행하면 현재 폴더에 Windows 경로 이름의 폴더를 만들고 실패한다.
+- `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. Windows 와 Linux 모두 `uv run python scripts/<이름>.py` 로 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
 
 ## 4. git 제외 데이터 (레포 루트 기준)
 
@@ -43,6 +43,7 @@
 | `cutplan_agent_v3/output/`, `cutplan_agent_v3/data_v3_claude_batch_10141611/` | 70M | zip | 동료 실행 결과, 비교 기준 |
 | `tools/dwg2png/` | 65M | 동료에게 받은 툴킷 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 | `skills/04_reading_records/` | 44K | zip | 코드가 읽지 않는다 |
+| `Data/drive/8. Data/` | | Google Drive 원본을 푸는 위치. 아직 없다 | `scripts/ingest_drive_inputs.py` |
 | `runs/` | | 실행 산출물 | |
 
 ## 5. 실행 환경
@@ -61,4 +62,4 @@
 - smoke test 의 t10 중량이 README 4절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 README 기준으로 한 번도 실행된 적이 없다.
-- 할 일: scripts 경로 리팩터링(별도 브랜치), v3·scripts 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.
+- 할 일: v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.

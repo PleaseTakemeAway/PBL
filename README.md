@@ -47,7 +47,7 @@ cutplan_agent/
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
 cutplan_agent_v3/      v3 정투영 복원 파이프라인 (step1~6, OCR·추론 VLM). 자체 README.md, code_v3.md 참조
-scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (아직 D:\노바투스2026 경로 하드코딩)
+scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (프로젝트 루트 기준 경로, OS 무관)
 skills/                v3 와 cutplan_agent 가 읽는 도메인 문서·프롬프트 (04_reading_records 는 git 제외)
 
 # 아래는 git 제외
@@ -88,7 +88,10 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고르�
 ### 3.3 데이터·외부 도구
 
 - 데이터·결과는 기본으로 project root 의 `Data/`, `test_data/`, `data_v3/synthetic/`, `runs/` 를 쓴다 (git 제외). `Data/` 는 팀 공유 압축본(노바투스2026)의 `Data/` 를 그대로 둔다.
-- `test_data/` 는 `scripts/build_test_data.py` 가 `Data/dataset` 에서 만든다. 스크립트가 아직 `D:\노바투스2026` 경로와 `manifest.csv` 의 역슬래시 경로를 가정하므로, Linux 에서는 두 가지를 고쳐서 실행한다.
+- `test_data/` 는 `uv run python scripts/build_test_data.py` 로 `Data/dataset` 에서 만든다. 보통은 압축본의 `Data/` 를 그대로 두고 이것만 실행하면 된다.
+- `Data/` 를 처음부터 다시 만들 때는 아래 순서로 실행한다. Windows 와 Linux 에서 명령이 같고, 경로는 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다.
+  `build_dataset.py` → `extract_part_unfolds.py` → `ingest_drive_inputs.py` → `build_part_class_dataset.py` → `build_test_data.py` → `build_test_data_html.py`
+  Drive 원본은 `Data/drive/8. Data/` 에 푼다. 원본 없이 `manifest.csv` 만 갱신하려면 빈 `Data/drive/8. Data/` 폴더를 만들고 `ingest_drive_inputs.py` 를 실행한다.
 - DWG 변환: Windows 는 `tools/dwg2png/libredwg/dwg2dxf.exe` 를, 그 밖에는 PATH 의 `dwg2dxf` 를 쓴다. Ubuntu 24.04 apt 에는 libredwg 패키지가 없으므로 GNU LibreDWG 를 소스에서 빌드해 설치한다.
 - v3 테스트: `cd cutplan_agent_v3 && uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
