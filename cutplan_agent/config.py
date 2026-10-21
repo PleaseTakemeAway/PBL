@@ -13,8 +13,9 @@ load_dotenv(PROJECT_ROOT / ".env")             # API 키·머신별 값 (git 제
 ROOT = Path(os.environ.get("CUTPLAN_ROOT") or PROJECT_ROOT)
 DATASET = ROOT / "Data" / "dataset"
 TEST_DATA = ROOT / "test_data"
-TOOLKIT = ROOT / "tools" / "dwg2png"           # 이전 세션 툴킷 (libredwg, unfold 엔진, cp_extract)
+TOOLKIT = ROOT / "tools" / "dwg2png"           # 이전 세션 툴킷. 코드는 Windows 용 libredwg 동봉본만 쓴다
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
+SKILLS_DIR = PROJECT_ROOT / "skills"           # v3 와 같이 쓰는 도메인 문서·프롬프트
 RUNS_DIR = ROOT / "runs"
 
 

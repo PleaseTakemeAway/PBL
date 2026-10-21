@@ -14,7 +14,9 @@
     KDM TECH 의 실제 도면 태그 44건을 역산한 결과, 원통 전개길이는
         L = pi x (ID + t)
     즉 중립축을 평균지름에 두고 있다 (K-factor = 0.5).
-    unfold.py --validate 로 그 44건을 재검증할 수 있다.
+    python -m cutplan_agent.unfold --validate 로 그 44건을 재검증할 수 있다.
+
+원본: tools/dwg2png/vlm/unfold.py (이전 세션 툴킷). l3_rules.unfold_part 가 절곡·평판에 쓴다.
 """
 from __future__ import annotations
 
@@ -339,7 +341,8 @@ def validate(tags_csv: str) -> None:
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "--validate":
+        from cutplan_agent.config import ROOT
         validate(sys.argv[2] if len(sys.argv) > 2
-                 else r"D:/노바투스2026/Data/_dataset/part_tags.csv")
+                 else str(ROOT / "Data" / "_dataset" / "part_tags.csv"))
     else:
         print(__doc__)

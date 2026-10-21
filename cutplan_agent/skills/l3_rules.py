@@ -2,7 +2,7 @@
 """
 L3 계산·로직(Rule engine) — 결정적. LLM 은 파라미터만 넘긴다.
 
-  unfold_part            PartSpec → 전개 블랭크 (툴킷 vlm/unfold.py 재사용: 원통·원뿔·절곡·평판 + 헤드 블랭크·패드 링)
+  unfold_part            PartSpec → 전개 블랭크 (원통·원뿔·헤드 블랭크·패드 링은 이 파일, 절곡·평판은 cutplan_agent/unfold.py)
   split_to_pieces        판 폭/길이·용접선 기준으로 조각 분할 + 커팅여유 → state.pieces
   nest_group / nest_all  (재질, 두께) 그룹별 shelf 배치, 멀티규격·맞춤 판재 → state.sheets
   write_cutting_plan_dxf 커팅플랜 DXF (기존 CP 도면 형식의 라벨)
@@ -11,19 +11,14 @@ L3 계산·로직(Rule engine) — 결정적. LLM 은 파라미터만 넘긴다.
 KD25038 검증값: 쉘 ID2600 t10 → 코스 8168~8199 x 1700/2400, 헤드 Ø3240, 판 2438x9150 → 1,751 kg.
 """
 from __future__ import annotations
-import csv, math, sys
+import csv, math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..config import (TOOLKIT, DENSITY_STEEL, KERF_MARGIN, DEFAULT_CUT, TRANSPORT_MAX, EDGE_MARGIN,
+from ..config import (DENSITY_STEEL, KERF_MARGIN, DEFAULT_CUT, TRANSPORT_MAX, EDGE_MARGIN,
                       STD_WIDTHS, STD_LENGTHS)
 from ..state import Piece, Placement, Sheet, get_state, logged
-
-sys.path.insert(0, str(TOOLKIT / "vlm"))
-try:
-    from unfold import PartModel as TkPartModel, unfold as tk_unfold          # 툴킷 전개 엔진 (검증됨)
-except Exception:                                                               # 툴킷이 없으면 아래 최소 구현
-    TkPartModel = None
+from ..unfold import PartModel as EnginePartModel, unfold as engine_unfold   # 절곡·평판 전개 엔진 (툴킷에서 이전)
 
 HEAD_BLANK_FACTOR = 1.25     # 2:1 ellip. 블랭크 ≈ 1.25 x ID (KD23002 Ø1296/1027, KD25038 Ø3240/2600 역산). TODO: part_tags HEAD 14건으로 보정
 LENGTH_SNAP = 10.0           # 맞춤 판재 길이 반올림 (실제 POR: 9150, 10270, 8870)
@@ -105,11 +100,11 @@ def unfold_part(part_index: int) -> dict:
             if p.pad_od <= 0:
                 return {"error": "pad_od 가 비어 있음 (resolve_missing_spec 또는 HITL)", "part_id": p.part_id}
             flat = _pad(p.pad_od, p.pad_id)
-        elif p.part_type in ("bent_sheet", "flat") and TkPartModel is not None:
-            m = TkPartModel(part_type=p.part_type, part_name=p.part_name, drawing_no="", material=p.material, thickness=t,
+        elif p.part_type in ("bent_sheet", "flat"):
+            m = EnginePartModel(part_type=p.part_type, part_name=p.part_name, drawing_no="", material=p.material, thickness=t,
                             quantity=p.quantity, width=p.width, segments=p.segments, bend_angles=p.bend_angles,
                             bend_radii=p.bend_radii, outline=p.outline)
-            fp = tk_unfold(m)
+            fp = engine_unfold(m)
             if not fp.outline:
                 return {"error": "; ".join(fp.warnings), "part_id": p.part_id}
             flat = {"type": p.part_type, "blank_w": round(fp.blank_w, 1), "blank_h": round(fp.blank_h, 1),

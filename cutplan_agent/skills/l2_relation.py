@@ -14,7 +14,7 @@ import re
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from ..config import TOOLKIT
+from ..config import SKILLS_DIR
 from ..state import PartSpec, get_state, logged
 from .l1_perception import vlm_parse
 
@@ -84,7 +84,7 @@ class PartModelOut(BaseModel):
 
 
 def _unfold_prompt() -> str:
-    p = TOOLKIT / "vlm" / "prompts" / "unfold_extract.md"
+    p = SKILLS_DIR / "02_prompts" / "unfold_extract.md"
     return p.read_text(encoding="utf8") if p.exists() else ""
 
 
