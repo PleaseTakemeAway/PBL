@@ -7,18 +7,18 @@ KDM 발표자료(`주차별_슬라이드/KDMTECH_발표자료_통합.pptx`, 2026
 
 | 계층 | KDM 정의 | skill | 구현 | 비고 |
 |---|---|---|---|---|
-| **L1 인식** | OCR: 문자·위치·표 구조 → JSON | `ingest_drawing` DWG→DXF→PNG / PDF→PNG | ✅ 동작 | libredwg(툴킷) + ezdxf 렌더 + PyMuPDF |
+| **L1 인식** | OCR: 문자·위치·표 구조 → JSON | `ingest_drawing` DWG→DXF→PNG / PDF→PNG | ✅ 동작 | libredwg `dwg2dxf` + ezdxf 렌더 + PyMuPDF |
 | | | `dxf_read_text` 벡터 텍스트·치수 좌표 추출 | ✅ 동작 | 정확한 숫자의 1차 출처. VLM 판독값과 교차검증 |
 | | | `vlm_read_page(what=title_block/bom/design_data/dims/notes)` | 🔑 API 필요 | Claude structured output (pydantic 스키마) |
 | | | `normalize_bom` 재질·두께·수량·단위·전개판정 | ✅ 동작 | 정규식 + 전개구분표 키워드 |
 | **L2 관계·의미** | 심볼·연결관계·의미 매핑 (VLM 추론의 본체) | `classify_drawing` GA/BODY/NOZZLE/SADDLE/… | 🔑 | |
 | | | `extract_design_data` GA 설계조건·재질표·노즐표 | 🔑 | 패드 치수 계산의 출처 (발표자료 10쪽 결론) |
-| | | `extract_part_model` BOM 항목 → 3D 파라미터(PartSpec) | 🔑 | 툴킷 `unfold_extract.md` 프롬프트 재사용. "따라 그리지 말고 형상을 읽어라" |
+| | | `extract_part_model` BOM 항목 → 3D 파라미터(PartSpec) | 🔑 | `skills/02_prompts/unfold_extract.md` 프롬프트. "따라 그리지 말고 형상을 읽어라" |
 | | | `set_part_spec` 파라미터 직접 입력 | ✅ | KDM 접근 B(조각+스펙 입력) / HITL 경로 |
 | | | `detect_split_lines` 용접선 배치도 → 코스·롱심 (RQ1) | 🔑 | |
 | | | `resolve_missing_spec` 두께만 있는 패드 → 노즐표/관례 | ✅ | 추정값은 confidence=estimated → H2 |
 | | | `load_domain_prompt(topic)` 도메인 지식 7종 | ✅ | `knowledge/*.md`. 언제 불러오는지도 정책의 일부 |
-| **L3 계산·로직** | 규칙엔진 (검증 완료) | `unfold_part` 원통·원뿔·절곡·평판·헤드·패드 | ✅ | 툴킷 `vlm/unfold.py` 재사용 (원통 44건 역산 검증) + 헤드 블랭크·패드 링 추가 |
+| **L3 계산·로직** | 규칙엔진 (검증 완료) | `unfold_part` 원통·원뿔·절곡·평판·헤드·패드 | ✅ | 절곡·평판은 `cutplan_agent/unfold.py` (툴킷에서 이전, 원통 공식 44건 역산 검증) + 헤드 블랭크·패드 링 추가 |
 | | | `split_to_pieces` 판폭/길이·용접선 기준 분할 + 여유 | ✅ | 쉘 롱심/원주분할, 헤드 현 분할(오프셋), 콘 부채꼴 n 분할 |
 | | | `nest_group` / `nest_all` shelf 배치, 멀티규격·맞춤 길이 | ✅ | bbox 기반. 목적함수 4종 비교 후 `pieces` 기본 |
 | | | `write_cutting_plan_dxf` 기존 CP 도면 형식 | ✅ | 라벨 `A516-70 t10 x 2438 x 9150 - 1 SH'T` |
@@ -39,11 +39,22 @@ pyproject.toml, uv.lock  uv 의존성
 cutplan_agent/
   config.py            경로, 모델(claude-opus-5-5), 커팅여유 20(가스), 운반상한 12000x3050, 표준폭, 전개판정 키워드
   state.py             JobState(도면·BOM·PartSpec·조각·판·POR·HITL) + Trajectory(skill 호출 로그 = RL 데이터) + @logged
+  unfold.py            절곡·평판 전개 엔진 (tools/dwg2png/vlm/unfold.py 에서 이전). --validate 로 원통 공식 재검증
   skills/l1_perception.py  l2_relation.py  l3_rules.py  l4_verify.py  knowledge.py
   knowledge/*.md       drawing_conventions_kr, unfold_rules, split_and_margin, material_mapping, nesting_rules, design_data_ga, por_format
   agent/orchestrator.py  Claude tool_runner. agent/system.md = 절차 ①~⑥ + 원칙
   eval/smoke_kd25038.py  API 없이 L2(B경로)→L3→L4 전체 경로 실행
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
+  eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
+cutplan_agent_v3/      v3 정투영 복원 파이프라인 (step1~6, OCR·추론 VLM). 자체 README.md, code_v3.md 참조
+scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (아직 D:\노바투스2026 경로 하드코딩)
+skills/                v3 와 cutplan_agent 가 읽는 도메인 문서·프롬프트 (04_reading_records 는 git 제외)
+
+# 아래는 git 제외
+Data/                  원본·정제 데이터 (dataset, _dataset, part_class_dataset, 연도별 cutting plan)
+test_data/             scripts/build_test_data.py 가 Data/dataset 에서 만든 평가 세트
+data_v3/synthetic/     v3 입력: 합성 DXF + label.json 30개
+tools/dwg2png/         이전 세션 툴킷 (Windows 용 libredwg, cp_extract 등). 코드는 Windows 의 dwg2dxf.exe 만 쓴다
 runs/<job>/            state.json, trajectory.json, <job>_CP.dxf, por.csv, final.md
 ```
 
@@ -76,8 +87,10 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고르�
 
 ### 3.3 데이터·외부 도구
 
-- 데이터·툴킷·결과는 기본으로 project root 의 `Data/dataset`, `tools/dwg2png`, `test_data`, `runs` 를 쓴다 (git 제외).
-- DWG 변환: `tools/dwg2png/libredwg/dwg2dxf(.exe)` 가 없으면 PATH 의 `dwg2dxf` 를 쓴다 (Ubuntu: `sudo apt install libredwg-tools`).
+- 데이터·결과는 기본으로 project root 의 `Data/`, `test_data/`, `data_v3/synthetic/`, `runs/` 를 쓴다 (git 제외). `Data/` 는 팀 공유 압축본(노바투스2026)의 `Data/` 를 그대로 둔다.
+- `test_data/` 는 `scripts/build_test_data.py` 가 `Data/dataset` 에서 만든다. 스크립트가 아직 `D:\노바투스2026` 경로와 `manifest.csv` 의 역슬래시 경로를 가정하므로, Linux 에서는 두 가지를 고쳐서 실행한다.
+- DWG 변환: Windows 는 `tools/dwg2png/libredwg/dwg2dxf.exe` 를, 그 밖에는 PATH 의 `dwg2dxf` 를 쓴다. Ubuntu 24.04 apt 에는 libredwg 패키지가 없으므로 GNU LibreDWG 를 소스에서 빌드해 설치한다.
+- v3 테스트: `cd cutplan_agent_v3 && uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
 ### 3.4 자주 나는 문제
 
