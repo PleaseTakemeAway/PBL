@@ -11,7 +11,9 @@ load_dotenv(PROJECT_ROOT / ".env")             # API 키·머신별 값 (git 제
 
 # 데이터·툴킷·결과가 놓이는 작업 루트. CUTPLAN_ROOT 로 덮어쓸 수 있다.
 ROOT = Path(os.environ.get("CUTPLAN_ROOT") or PROJECT_ROOT)
-DATASET = ROOT / "Data" / "dataset"
+DATA_DIR = ROOT / "Data"                       # 원본·정제 데이터 (git 제외). scripts/ 가 만들고 읽는다
+DATASET = DATA_DIR / "dataset"
+DRIVE_STAGING = DATA_DIR / "drive" / "8. Data"  # Google Drive '8. Data' 압축을 푸는 위치 (ingest_drive_inputs.py 입력)
 TEST_DATA = ROOT / "test_data"
 TOOLKIT = ROOT / "tools" / "dwg2png"           # 이전 세션 툴킷. 코드는 Windows 용 libredwg 동봉본만 쓴다
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"

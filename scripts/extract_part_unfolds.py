@@ -20,8 +20,10 @@ import ezdxf
 from ezdxf import bbox
 from ezdxf.math import Vec3
 
-BASE = r"D:\노바투스2026\Data"
-OUT = os.path.join(BASE, "dataset")
+from cutplan_agent.config import DATA_DIR, DATASET
+
+BASE = DATA_DIR
+OUT = DATASET
 YEAR_DIR = {"23": "2023년 cutting plan", "24": "2024년 cutting plan", "25": "2025년 cutting plan"}
 GEOM = {"LINE", "ARC", "CIRCLE", "LWPOLYLINE", "POLYLINE", "ELLIPSE", "SPLINE"}
 EXCLUDE_LAYERS = {"부재번호"}   # 부재번호 풍선 원 등 주석용 레이어 (레이어 census 로 확인)

@@ -11,13 +11,15 @@ part_tags.csv 의 part_name 을 정규화해 형상 class 라벨을 붙이고,
   README.md
 
 실행:
-  py scripts/build_part_class_dataset.py --dry      # 분류만, 이미지 없음
-  py scripts/build_part_class_dataset.py            # 전체
-  py scripts/build_part_class_dataset.py --only-ok  # match=ok 만 렌더
+  uv run python scripts/build_part_class_dataset.py --dry      # 분류만, 이미지 없음
+  uv run python scripts/build_part_class_dataset.py            # 전체
+  uv run python scripts/build_part_class_dataset.py --only-ok  # match=ok 만 렌더
 """
 import os, re, csv, sys, glob, json, random, argparse, collections
 
-BASE = r"D:\노바투스2026"
+from cutplan_agent.config import ROOT
+
+BASE = ROOT                                    # 기록하는 경로(unfold_dxf, geom_dxf)는 이 루트 기준 상대 경로
 TAGS_CSV = os.path.join(BASE, "Data", "_dataset", "part_tags.csv")
 UNFOLD_GLOB = os.path.join(BASE, "Data", "dataset", "KDM", "*", "*", "unfold", "index.csv")
 OUT = os.path.join(BASE, "Data", "part_class_dataset")

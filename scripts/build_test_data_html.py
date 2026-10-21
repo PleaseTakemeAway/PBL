@@ -2,7 +2,7 @@
 """
 test_data/README.html 생성 — 단일 파일(썸네일 base64 내장), 브라우저에서 바로 열림.
 
-    py scripts/build_test_data_html.py
+    uv run python scripts/build_test_data_html.py
 
 내용: KPI 타일 → 파이프라인 → 연도·등급 분포 → 워크오더 표(정렬·필터·행 펼침: 도면/커팅플랜 썸네일, 도면 목록, 판재 그룹)
       → 폴더 구조 → 사용법 → 제외 목록
@@ -11,7 +11,9 @@ test_data/README.html 생성 — 단일 파일(썸네일 base64 내장), 브라�
 import base64, csv, io, json, os, re, collections
 from pathlib import Path
 
-ROOT = Path(r"D:\노바투스2026\test_data")
+from cutplan_agent.config import TEST_DATA
+
+ROOT = TEST_DATA
 OUT = ROOT / "README.html"
 THUMB_LONG = 640
 DENSITY = 7.85e-6
@@ -106,7 +108,7 @@ def main():
             "n_pdf": sum(1 for f in dfiles if f.suffix.lower() == ".pdf"),
             "n_unfold": int(r["unfold_dxf"] or 0), "n_ok": int(r["unfold_match_ok"] or 0) if r["unfold_match_ok"] else None,
             "gt_sheets": int(float(r["gt_sheets"] or 0)), "gt_ok": int(float(r["gt_sheets_ok"] or 0)), "kg": kg,
-            "groups": groups, "drawings": [str(p.relative_to(d / "input_drawings")) for p in dfiles][:60],
+            "groups": groups, "drawings": [p.relative_to(d / "input_drawings").as_posix() for p in dfiles][:60],
             "dthumb": dthumb, "cthumb": cthumb, "dname": dpick.name if dpick else "", "cname": cps[0].name if cps else "",
         })
     tot = {"wo": len(data), "dwg": sum(x["n_dwg"] for x in data), "unfold": sum(x["n_unfold"] for x in data),
@@ -356,7 +358,7 @@ footer{color:var(--fg-3);font-size:12.5px}
   <div class="card">
     <h2>사용법과 주의</h2>
     <ul class="notes">
-      <li><b>다시 만들기</b>: Drive zip 나머지 파트를 <code>Dataset\8. Data\</code> 에 풀고 <code>py scripts\ingest_drive_inputs.py</code> → <code>py scripts\build_test_data.py</code> → <code>py scripts\build_test_data_html.py</code>.</li>
+      <li><b>다시 만들기</b>: Drive zip 나머지 파트를 <code>Data/drive/8. Data/</code> 에 풀고 <code>uv run python scripts/ingest_drive_inputs.py</code> → <code>uv run python scripts/build_test_data.py</code> → <code>uv run python scripts/build_test_data_html.py</code>.</li>
       <li><b>원본</b>은 <code>Data\dataset\</code>. 여기는 그 중 3종이 모두 있는 워크오더의 복사본이다. 강도계산서·POR PDF 는 원본의 <code>input/calculation</code>, <code>input/por</code> 에 있다.</li>
       <li><b>전개 공식</b>: 쉘 L = π(ID+t) (KDM 태그 44건 역산). 헤드 블랭크 ≈ 1.25×ID 는 경험계수. 콘은 중립면 기준 부채꼴.</li>
       <li><b>정답의 한계</b>: parts.csv 의 부품 bbox 는 곡선을 꼭짓점 기준으로 근사해 ARC 가 큰 부품은 작게 잡혀 있다. 풍선 원(부재번호)이 부품으로 잡힌 행은 none 으로 자동 제외됨.</li>

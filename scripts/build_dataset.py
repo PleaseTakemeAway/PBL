@@ -22,8 +22,10 @@ Data/dataset/ 구축 스크립트.
 import csv, json, os, re, shutil, sys, collections
 import openpyxl
 
-BASE = r"D:\노바투스2026\Data"
-OUT = os.path.join(BASE, "dataset")
+from cutplan_agent.config import DATA_DIR, DATASET
+
+BASE = DATA_DIR
+OUT = DATASET
 YEAR_DIR = {"2023": "2023년 cutting plan", "2024": "2024년 cutting plan", "2025": "2025년 cutting plan"}
 WO_RE = re.compile(r"(KD\d{5})")
 
@@ -97,7 +99,7 @@ def build_kdm():
             "n_tags": len(gt_tags), "grade": "/".join(grades),
             "input_drawings": len([f for f in os.listdir(os.path.join(root, "input")) if not f.startswith(".")]),
             "unfold_files": len(os.listdir(os.path.join(root, "unfold"))),
-            "path": os.path.relpath(root, OUT),
+            "path": os.path.relpath(root, OUT).replace(os.sep, "/"),   # OS 와 무관하게 슬래시로 기록
         })
     return manifest
 
@@ -129,7 +131,7 @@ def build_hce():
         "source": "HCE", "year": "2022", "workorder": "76K3-40022",
         "cp_files": 1, "cp_names": "76K3_40022_4T_2.TAF",
         "n_sheets": 1, "n_sheets_ok": 1, "n_parts": len(parts), "n_tags": 22, "grade": "성공",
-        "input_drawings": 2, "unfold_files": n_cust, "path": os.path.relpath(root, OUT),
+        "input_drawings": 2, "unfold_files": n_cust, "path": os.path.relpath(root, OUT).replace(os.sep, "/"),
     }]
 
 
@@ -156,7 +158,7 @@ manifest.csv                워크오더별 파일 수·품질 요약. input_dra
 _third_party_index.csv      구매부/타사 POR 자료 (타사 프로젝트의 05. 도면 / 07. PR, MPS). 복사하지 않고 목록만
 ```
 
-Drive 원본은 `D:/노바투스2026/Dataset/8. Data/` (zip 파트 007·008 해제분). 나머지 파트를 풀면 ingest 스크립트를 다시 실행.
+Drive 원본은 `Data/drive/8. Data/` 에 푼다 (2026-10-01 기준 zip 파트 007·008 만 해제). 나머지 파트를 풀면 ingest 스크립트를 다시 실행.
 
 ## Drive 원본(8. Data) 폴더별 의미와 파이프라인에서의 역할 (2026-10-01 샘플 확인)
 | 폴더 | 내용 | 역할 |

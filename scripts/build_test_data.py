@@ -11,13 +11,15 @@ test_data/ 구축: 워크오더마다 (입력 도면, 출력 전개도, 출력 �
         output_cutting_plan/         *_CP.dwg + png + dxf  +  sheets.csv / parts.csv / part_tags.csv (판재·배치·부품표 정답)
       HCE_76K3-40022/                현대건설기계 판금 샘플 (정답 완비)
 
-사용:  py scripts/build_test_data.py [--link]    --link 이면 복사 대신 하드링크(같은 드라이브, 용량 절약)
+사용:  uv run python scripts/build_test_data.py [--link]    --link 이면 복사 대신 하드링크(같은 드라이브, 용량 절약)
 원본(Data/dataset)은 건드리지 않는다.
 """
 import csv, os, shutil, sys
 
-BASE = r"D:\노바투스2026\Data\dataset"
-OUT = r"D:\노바투스2026\test_data"
+from cutplan_agent.config import DATASET, TEST_DATA
+
+BASE = DATASET
+OUT = TEST_DATA
 LINK = "--link" in sys.argv
 
 
@@ -58,7 +60,7 @@ def main():
     manifest = list(csv.DictReader(open(os.path.join(BASE, "manifest.csv"), encoding="utf-8-sig")))
     rows = []
     for r in manifest:
-        src = os.path.join(BASE, r["path"])
+        src = os.path.join(BASE, *r["path"].replace("\\", "/").split("/"))   # Windows 에서 만든 manifest 는 역슬래시 경로
         wo = r["workorder"]
         if r["source"] == "HCE":
             dst = os.path.join(OUT, "HCE_" + wo)

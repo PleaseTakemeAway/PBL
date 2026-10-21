@@ -2,7 +2,7 @@
 """
 Google Drive 공유폴더('8. Data') 내려받은 것을 워크오더별 input/ 폴더로 분류.
 
-사용:  py scripts/ingest_drive_inputs.py [스테이징폴더]   (기본 D:/노바투스2026/Dataset/8. Data)
+사용:  uv run python scripts/ingest_drive_inputs.py [스테이징폴더]   (기본 Data/drive/8. Data)
        여러 번 실행해도 안전 (이미 복사된 파일은 건너뜀). zip 파트를 추가로 풀 때마다 다시 실행.
 
 Drive 구조 (2026-10-01 확인):
@@ -21,9 +21,10 @@ Drive 구조 (2026-10-01 확인):
 """
 import csv, os, re, shutil, sys, collections
 
-BASE = r"D:\노바투스2026\Data"
-OUT = os.path.join(BASE, "dataset")
-DEFAULT_STAGING = r"D:\노바투스2026\Dataset\8. Data"
+from cutplan_agent.config import DATASET, DRIVE_STAGING
+
+OUT = DATASET
+DEFAULT_STAGING = DRIVE_STAGING
 WO_RE = re.compile(r"KD(\d{2})(\d{3})(?:-\d)?", re.I)
 POR_RE = re.compile(r"#(\d{2})(\d{3})")
 
@@ -153,7 +154,7 @@ def refresh_manifest(new_wo=()):
                             "cp_files": 0, "grade": "도면만", "path": f"KDM/{ydir}/{wo}"})
                 known.add(wo)
     for r in rows:
-        root = os.path.join(OUT, r["path"])
+        root = os.path.join(OUT, *r["path"].replace("\\", "/").split("/"))   # Windows 에서 만든 manifest 는 역슬래시 경로
         inp = os.path.join(root, "input")
         cnt = lambda sub: sum(len(fs) for _, _, fs in os.walk(os.path.join(inp, sub))) if os.path.isdir(os.path.join(inp, sub)) else 0
         r["input_drawings"], r["input_calc"], r["input_por"] = cnt("drawings"), cnt("calculation"), cnt("por")
