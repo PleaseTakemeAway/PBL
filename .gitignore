@@ -9,3 +9,8 @@ __pycache__/
 /tools/
 /test_data/
 /runs/
+
+# v3 입력 (cutplan_agent_v3/experiments*.sh 기본값 = <repo>/data_v3/synthetic)
+/data_v3*/
+# 실제 고객 도면 판독 기록. public 레포에 올리지 않는다
+/skills/04_reading_records/
