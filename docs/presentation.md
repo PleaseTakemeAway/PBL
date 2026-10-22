@@ -47,6 +47,13 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 0.1초, 선 1,243, 글자 330 | 같은 DXF 를 `ezdxf.readfile` 로 읽고 modelspace 를 센 시간 0.13초, LINE 1,243, TEXT·MTEXT 330 |
 | 요소 66개, 치수 150, SPCC · 두께 4, "원뿔", 정면 · 평면 · 우측면 | cone_0019 판독 실행(orchestrator 시연): 01 `read` 엔티티 66개, 02 `title_regex`, 08 `document`, 06 `view_labels` (part_class=cone) |
 | 전개도 (반지름 405.65 / 252.87, 68.33°) | 같은 실행의 10 `develop`. 그림은 이 값으로 그린 부채꼴. 작은 지름을 모델이 92 로 읽었다 (정답 100). 발표자 노트에 적었다 |
-| 536장 중 87장 실패 (빈 파일 77, 못 엶 10) | [AGENTS.md](../AGENTS.md) 6절 (2026-10-22). 2026-10-23 에 11장을 다시 바꿔 R2007 2장이 7,463 바이트 빈 DXF 인 것을 확인 |
+| 536장 중 87장 실패 (빈 파일 77, 못 엶 10) | [AGENTS.md](../AGENTS.md) 6절 (2026-10-22). 2026-10-23 에 같은 스크립트로 다시 돌려 같은 숫자를 얻었다: `uv run python scripts/render_drawings.py Data/dataset/KDM/*/*/input -o runs/render_drawings/kdm_input --format png -j 16` → 도면 572개(DWG 536, DXF 36) 중 485개 성공. 실패 87개는 모두 DWG 이고, 빈 DXF 77개의 버전은 R2007 76 · R2004 1 이다 (AGENTS.md 는 77개 모두 R2007 이라고 적었다). 47개는 같은 이름의 PDF 가 있다 |
+
+### 실패한 도면 목록과 부록
+
+- `runs/render_drawings/kdm_input/render_failures.txt`: 위 명령이 쓴 원본 (`DWG 절대경로 <탭> 오류`).
+- `runs/render_drawings/kdm_input/render_failures_summary.tsv`: 워크오더, 파일, 실패 종류, DWG 버전, 같은 이름 PDF, 레포 루트 기준 경로. 엑셀에서 열린다 (UTF-8 BOM). `render_failures.txt` 에서 만들었다.
+- 덱은 빌드할 때 이 TSV 를 읽어 9번 슬라이드의 발표자 노트에 87개 경로를 넣고, 끝에 숨긴 부록 슬라이드 A1–A6 을 붙인다. 슬라이드쇼에서는 건너뛰고, 질문이 나오면 그 슬라이드로 간다. TSV 가 없으면 부록 없이 빌드된다.
+- 도면 파일 이름은 고객 정보라서 스크립트에는 적지 않고 빌드할 때만 읽는다. 그래서 만든 pptx 에는 파일 이름이 들어 있으니 밖으로 공유하지 않는다. 발표용 worktree 에서는 `runs/render_drawings` 를 원래 clone 의 같은 폴더로 링크해 쓴다.
 
 변환한 DWG·DXF 는 세션 임시 폴더에만 두었고 레포에는 없다. 회사 도면은 크기, 줄 수, 개수, 시간만 썼다.

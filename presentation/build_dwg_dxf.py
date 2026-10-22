@@ -17,6 +17,7 @@ from pathlib import Path
 
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Inches
 
 from presentation.slides import (
     CODE_BG,
@@ -39,6 +40,7 @@ from presentation.slides import (
     circle,
     doughnut_chart,
     picture,
+    rgb,
     shape,
     text,
     write,
@@ -55,6 +57,10 @@ FRAME = (20.0, 20.0, 820.0, 574.0)  # cone_0019 drawing frame in DXF units
 # The cone_0019 flat pattern from the reader run of 2026-10-23 (stage 10 develop)
 FLAT = {"outer": 405.65, "inner": 252.87, "angle": 68.33}
 CHECK, CROSS = "✓", "✕"
+# Written by scripts/render_drawings.py on Data/dataset/KDM/*/*/input (see
+# docs/presentation.md 4절). Customer file names: read at build time, never committed.
+FAILURES = Path("runs/render_drawings/kdm_input/render_failures_summary.tsv")
+APPENDIX_ROWS = 16
 
 # cone_0019.dxf saved as DWG with LibreDWG 0.14 dxf2dwg (6,346 bytes) and shown the way a
 # text editor shows it: bytes as Latin-1, control characters as □. Bytes 0-169 and
@@ -140,6 +146,15 @@ def render_flat() -> Path:
     fig.savefig(FLAT_PNG, dpi=200, facecolor="white")
     plt.close(fig)
     return FLAT_PNG
+
+
+def load_failures() -> list[dict]:
+    """Rows of FAILURES (워크오더, 파일, 실패 종류, DWG 버전, 같은 이름 PDF, 경로), or []."""
+    if not FAILURES.is_file():
+        return []
+    lines = FAILURES.read_text(encoding="utf-8-sig").splitlines()
+    header = lines[0].split("\t")
+    return [dict(zip(header, line.split("\t"))) for line in lines[1:] if line]
 
 
 # ---------------------------------------------------------------------- local shapes
@@ -677,14 +692,25 @@ def convert_slide(d: Deck):
     )
 
 
-def limits_slide(d: Deck):
+def limits_slide(d: Deck, failures: list[dict]):
+    listing = "\n".join(
+        f"{r['경로']}  [{r['실패 종류']}]"
+        + ("  [PDF 있음]" if r["같은 이름 PDF"] else "")
+        for r in failures
+    )
     s = d.content(
         "변환이 늘 되는 건 아니다",
         "회사 도면 536장 중 87장은 제대로 바뀌지 않았다",
         "물론 변환이 늘 되는 건 아닙니다. 회사 도면 536장을 바꿔 보니 87장은 제대로 안 바뀌었습니다. "
         "그중 77장은 더 고약합니다. 변환 도구가 '성공했다'고 끝내 놓고 내용이 빈 파일을 만들었습니다. "
         "그래서 '성공'이라는 말을 믿지 않고, 결과 파일에 선이 실제로 들어 있는지 확인합니다. 실패한 "
-        "도면은 다른 변환 도구로 다시 시도하거나, PDF 가 있으면 그림으로 읽는 길로 보냅니다.",
+        "도면은 다른 변환 도구로 다시 시도하거나, PDF 가 있으면 그림으로 읽는 길로 보냅니다."
+        + (
+            f"\n\n실패한 도면 {len(failures)}장 (레포 루트 {FAILURES.resolve().parents[3]} 기준. 숨긴 부록 "
+            f"슬라이드에도 있다):\n{listing}"
+            if failures
+            else f"\n\n실패 목록 파일이 없다: {FAILURES}"
+        ),
     )
     doughnut_chart(
         s,
@@ -725,6 +751,68 @@ def limits_slide(d: Deck):
         align=PP_ALIGN.CENTER,
     )
     verdict(s, x + 0.1, 4.75, w, CHECK, TEAL, "결과를 직접 확인", "선이 들어 있나")
+    pages = -(-len(failures) // APPENDIX_ROWS)
+    where = (
+        f"실패한 {len(failures)}장의 경로: 부록 A1–A{pages} (숨긴 슬라이드)"
+        if failures
+        else "실패 목록 없음"
+    )
+    chip(s, x, 5.85, w, 0.42, where, fill=LIGHT, size=13, bold=True)
+    text(s, x, 6.3, w, 0.35, [str(FAILURES)], size=11, color=GRAY, font=MONO)
+
+
+def appendix_slides(d: Deck, failures: list[dict]):
+    """The failed drawings, APPENDIX_ROWS per slide, hidden in the slide show."""
+    total = len(failures)
+    for n, start in enumerate(range(0, total, APPENDIX_ROWS), 1):
+        rows = failures[start : start + APPENDIX_ROWS]
+        s = d.content(
+            f"부록 A{n}. 변환에 실패한 도면 ({start + 1}–{start + len(rows)} / {total})",
+            "경로: Data/dataset/KDM/<연도>/<워크오더>/<하위 폴더>/<파일> (레포 루트 기준)",
+            f"숨긴 슬라이드. 9번 '변환이 늘 되는 건 아니다'에서 보여 달라고 하면 연다. 목록: {FAILURES}",
+        )
+        s._element.set("show", "0")  # hidden: skipped in the slide show
+        header = ["워크오더", "하위 폴더", "파일", "실패", "PDF"]
+        widths = [1.25, 1.9, 6.6, 1.55, 0.833]
+        table = s.shapes.add_table(
+            len(rows) + 1,
+            len(header),
+            Inches(X0),
+            Inches(1.7),
+            Inches(CW),
+            Inches(0.24 * (len(rows) + 1)),
+        ).table
+        for c, w in enumerate(widths):
+            table.columns[c].width = Inches(w)
+        for r, row in enumerate([None, *rows]):
+            table.rows[r].height = Inches(0.24)
+            if row is None:
+                values = header
+            else:
+                parts = Path(row["경로"]).parts  # Data/dataset/KDM/연도/워크오더/...
+                values = [
+                    row["워크오더"],
+                    "/".join(parts[5:-1]),
+                    row["파일"],
+                    "빈 DXF" if row["실패 종류"].startswith("빈") else "못 엶",
+                    "있음" if row["같은 이름 PDF"] else "",
+                ]
+            for c, value in enumerate(values):
+                cell = table.cell(r, c)
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = rgb(
+                    INK if r == 0 else (LIGHT if r % 2 else WHITE)
+                )
+                cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+                write(
+                    cell.text_frame,
+                    [value],
+                    size=10,
+                    bold=r == 0,
+                    color=WHITE if r == 0 else INK,
+                    after=0,
+                    margin=0.04,
+                )
 
 
 def closing_slide(d: Deck):
@@ -769,8 +857,10 @@ def main() -> None:
     strengths_slide(d)
     together_slide(d, cone, flat)
     convert_slide(d)
-    limits_slide(d)
+    failures = load_failures()
+    limits_slide(d, failures)
     closing_slide(d)
+    appendix_slides(d, failures)
     print(f"{d.count} slides -> {d.save()}")
 
 
