@@ -16,7 +16,7 @@
 | `Data/dataset/` | 워크오더 단위로 모은 데이터셋. 구조는 [dataset_structure.md](dataset_structure.md) | 스크립트 ①②③ | v2 `orchestrator.py` (`input/drawings`), `compare_with_gt` (`gt/sheets.csv`), `build_test_data.py` |
 | `Data/part_class_dataset/` | 부품 전개 이미지(512px PNG 1,789장) ↔ 형상 class 5종. 규칙은 [part_class_rules.md](part_class_rules.md) | 스크립트 ④ | 코드에서 읽는 곳은 아직 없다 (분류 학습·평가용) |
 | `test_data/` | 입력 도면·전개도·커팅플랜이 모두 있는 워크오더 39개 (KDM 38, HCE 1). `index.csv` 에 제외된 32개와 사유도 있다 | 스크립트 ⑤⑥ | v2 `eval/run_experiments.py`, `eval/compare_outputs.py`, `eval/manual_vlm_run.py` |
-| `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍) | 동료 서버에서 rsync. 생성기는 레포에 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
+| `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 생성기는 레포에 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
 | `tests/fixtures/` | reader 단위 테스트 입력: `box.json`, `KD23041_CP.dxf`, HCE 스캔 `hce_*.png`. 고객 도면이 들어 있다 | 압축본 | `tests/` |
 | `runs/` | 실행 결과. v2 는 `runs/<job>/`, v3 는 `runs/reader/` (동료의 기준 결과 `deepseek_ocr_qwen_reasoning_skills` 등 포함) | 실행 | `eval/status.py`, `eval/compare_outputs.py`, 기준선 비교 |
 | `tools/dwg2png/` | 이전 세션 툴킷. 이 서버에는 없다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |

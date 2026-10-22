@@ -73,7 +73,9 @@
 - v3 기준값: 동료의 2026-10-18 실행 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.
 - 이미지 입력의 `--no-vlm` 과 OCR 폴백 테스트는 tesseract 바이너리가 필요하다. DXF 입력의 `--no-vlm` 배치는 tesseract 없이 돈다.
-- DWG 입력을 읽으려면 `dwg2dxf` 가 필요하다. Ubuntu 24.04 apt 에는 없으므로 GNU LibreDWG 를 소스에서 빌드한다.
+- DWG 입력을 읽으려면 `dwg2dxf` 가 필요하다. Ubuntu 22.04·24.04 apt 에는 없으므로 `scripts/install_libredwg.sh` 로 GNU LibreDWG 0.14 를 `~/.local` 에 빌드한다. 이 서버에는 2026-10-22 에 설치했다. 동료 툴킷의 Windows `dwg2dxf.exe` 도 0.14 다.
+- 사람이 볼 도면 PDF·PNG 는 `scripts/render_drawings.py` 로 만든다. 에이전트 코드를 import 하지 않는 독립 스크립트다.
+- LibreDWG 0.14 의 한계 (2026-10-22, `Data/dataset/KDM` 기준): 커팅플랜 DWG 67개는 모두 읽고, 동료가 Windows 에서 만든 DXF 와 헤더 날짜·정수 부호 표기만 다르다. 입력 도면 DWG 536개 중 87개는 읽지 못한다. 77개는 R2007 DWG 에서 오류를 내고도 종료 코드 0 으로 빈 DXF 를 쓰고, 10개는 ezdxf 가 열지 못하는 DXF 를 쓴다. 87개 중 47개는 같은 이름의 PDF 가 옆에 있다. 일부 도면은 글자 뒤에 실행마다 다른 쓰레기 바이트를 붙여 DXF 가 실행마다 조금씩 다르다. v2 의 `ingest_drawing` 도 같은 dwg2dxf 를 쓰므로 이 도면들에서 같은 문제를 겪는다.
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
