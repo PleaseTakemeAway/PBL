@@ -8,7 +8,7 @@
 | 상수 | 값 | 단위 | 쓰임 |
 |---|---|---|---|
 | DENSITY_STEEL | 7.85e-6 | kg/mm³ | 탄소강. POR 중량 = t × W × L × 밀도. 검증: KD25038 `10 × 2438 × 9150` → 1,751 kg (실제 POR 일치) |
-| DENSITY_SUS | 7.93e-6 | kg/mm³ | 스테인리스 (재질이 SA240, A240, SUS, STS, 304, 316 으로 시작). 회사 담당자 계산 문서 6절 (`shell_cone_head_unfold.md`) |
+| DENSITY_SUS | 7.93e-6 | kg/mm³ | 스테인리스 (재질이 SA240, A240, SUS, STS, 304, 316 으로 시작). 회사 담당자 계산 문서 5절 (`shell_cone_head_unfold.md`) |
 | HEAD_TRIM | 30 | mm | 헤드 원판에 더하는 트림 여유. 계산 문서: 제작사마다 다르며 보통 20~50, 예시 30 |
 
 ## 2. 커팅 여유·판 가장자리

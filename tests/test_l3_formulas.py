@@ -16,11 +16,11 @@ from cutplan_agent.skills.l3_rules import (
 
 
 class DocumentExamplesTest(unittest.TestCase):
-    def test_shell_3_1(self):
+    def test_shell_2_4(self):
         # ID 1,500, t 12 -> Dm 1,512, L = pi x 1,512 ≈ 4,750
         self.assertAlmostEqual(_cyl(1500, 12, 3000)["blank_w"], 4750.1, delta=0.1)
 
-    def test_concentric_cone_4_1(self):
+    def test_concentric_cone_3_1(self):
         # D1 2,000, D2 1,000, H 800 -> R1 ≈ 1,887, R2 ≈ 943, theta ≈ 190.8°
         c = _cone(2000, 1000, 800, 0)
         self.assertAlmostEqual(c["R1"], 1886.8, delta=0.5)
@@ -36,7 +36,7 @@ class DocumentExamplesTest(unittest.TestCase):
         self.assertAlmostEqual(dims[1], 2791, delta=2)
         self.assertAlmostEqual(dims[0], 1252, delta=2)
 
-    def test_eccentric_cone_4_2_table(self):
+    def test_eccentric_cone_3_2_table(self):
         # D1 2,000, D2 1,000, H 800, 수직면 편심 (e = 500), 12 등분
         c = _ecc_cone(2000, 1000, 800, 0, 0, n=12)
         self.assertAlmostEqual(c["apex_height"], 1600, places=6)
@@ -65,7 +65,7 @@ class DocumentExamplesTest(unittest.TestCase):
         two = [_ecc_piece(c["_gens"], 0, 6), _ecc_piece(c["_gens"], 6, 12)]
         self.assertAlmostEqual(sum(p["area"] for p in two), c["area"], delta=1.0)
 
-    def test_head_2_4(self):
+    def test_head_4_6(self):
         # OD 1,000, t 10, SF 50, 트림 30 -> Dm 990, 1.2 x 990 + 100 + 30 = 1,318 -> 약 1,320
         h = _head_blank(1000 - 2 * 10, 10, 50, "2:1 ellipsoidal", trim=30)
         self.assertEqual(h["blank_dia"], 1320.0)

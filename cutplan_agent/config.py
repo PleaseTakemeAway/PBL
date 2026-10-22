@@ -54,10 +54,10 @@ VLM_MAX_PX = 2576  # 이 이상은 서버가 축소하므로 dpi 를 역산해 �
 
 # ---- 현장 규칙 (KDM 배치툴 기본값) ----
 DENSITY_STEEL = 7.85e-6  # kg/mm^3  (POR 중량 = t x W x L x 밀도, KD25038: 10x2438x9150 -> 1,751kg 확인)
-# 스테인리스 비중 7.93 (회사 담당자 계산 문서 6절, skills/01_core_knowledge/shell_cone_head_unfold.md)
+# 스테인리스 비중 7.93 (회사 담당자 계산 문서 5절, skills/01_core_knowledge/shell_cone_head_unfold.md)
 DENSITY_SUS = 7.93e-6
 STAINLESS_PREFIXES = ("SA240", "A240", "SUS", "STS", "304", "316")
-# 헤드 원판 트림 여유 (mm). 계산 문서 2.5절: 제작사마다 다르며 보통 20~50, 예시 30.
+# 헤드 원판 트림 여유 (mm). 계산 문서 4.2·4.6절: 제작사마다 다르며 보통 20~50, 예시 30.
 # 받은 커팅플랜의 헤드 3개에서 역산하면 14~46 (docs/data/cutplan_cases.md 6절)
 HEAD_TRIM = 30.0
 

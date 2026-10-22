@@ -37,7 +37,7 @@ from cutplan_agent.state import Piece, Placement, Sheet, get_state, logged
 from cutplan_agent.unfold import PartModel as EnginePartModel
 from cutplan_agent.unfold import unfold as engine_unfold
 
-ECC_DIVISIONS = 36  # 편심 콘 원주 분할 수. 계산 문서 4.3절: 수작업은 24~36 등분 권장
+ECC_DIVISIONS = 36  # 편심 콘 원주 분할 수. 계산 문서 3.3절: 수작업은 24~36 등분 권장
 LENGTH_SNAP = 10.0  # 맞춤 판재 길이 반올림 (실제 POR: 9150, 10270, 8870)
 
 
@@ -95,7 +95,7 @@ def _sector_bbox(R1: float, R2: float, a0: float, a1: float) -> Dict[str, float]
 def _ecc_cone(
     ID1: float, ID2: float, h: float, t: float, e: float = 0.0, n: int = ECC_DIVISIONS
 ) -> Dict[str, Any]:
-    """편심 콘 (사원추) 전개. 계산 문서 4.2절의 삼각분할법.
+    """편심 콘 (사원추) 전개. 계산 문서 3.2절의 삼각분할법.
     D1, D2 = ID + t (평균지름). e 는 두 원 중심 거리, 0 이면 한쪽 면이 수직이라 e = (D1 - D2) / 2.
     가상 꼭짓점 높이 Ha = H D1 / (D1 - D2), 수평 위치 Xa = e D1 / (D1 - D2).
     대경 원주를 n 등분한 점마다 모선 L1(phi), L2 = L1 D2 / D1 을 구하고, 이웃 모선 사이 전개각
@@ -191,7 +191,7 @@ def _head_blank(
     ikr: float = 0.0,
     trim: float = HEAD_TRIM,
 ) -> Dict[str, Any]:
-    """헤드 원판 지름. 계산 문서 2.2·3.3절의 형식별 약산식에 트림 여유를 더하고 10 mm 로 반올림한다.
+    """헤드 원판 지름. 계산 문서 4.2절의 형식별 약산식에 트림 여유를 더하고 10 mm 로 반올림한다.
     Dm = ID + t (평균지름), OD = ID + 2t.
       2:1 반타원형   1.2 x Dm + 2 SF
       반구형         1.414 x Dm + 2 SF
