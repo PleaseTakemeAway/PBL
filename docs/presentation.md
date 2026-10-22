@@ -62,7 +62,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 
 ## 5. v2 → v3 → 실제 도면 파트의 숫자 출처 (2026-10-23, `mlic`)
 
-이야기 순서: 전체 지도 → v2 는 Claude 에게 전부 맡겼다 → skill 이란 (메뉴판과 주방) → Claude 가 skill 을 부르는 반복 → 잘 안 됐다 → 왜 옮겼나 → v3 는 로컬 AI 로 도면 읽기에 집중 → 서버와 두 모델 → 13단계 중 AI 5곳 → 연습(합성) 도면부터 → 27/30 → 실제 도면 5장의 단계별 결과 → 정답과 비교 (22종 중 1개) → 잘 된 것 → 실패 1 (t8 → 18) → 실패 2 (프로그램 규칙) → 실제 도면이 드러낸 것.
+이야기 순서: 전체 지도 → v2 는 Claude 에게 전부 맡겼다 → skill 이란 (메뉴판과 주방) → Claude 가 skill 을 부르는 반복 → 잘 안 됐다 → 왜 옮겼나 → v3 는 로컬 AI 로 도면 읽기에 집중 → 서버와 두 모델 → 13단계 중 AI 5곳 → 연습(합성) 도면부터 → 27/30 → 실제 도면 5장의 단계별 결과 → 정답과 비교 (22종 중 1개) → 잘 된 것 → 실패 1 (t8 → 18) → 실패 2 (프로그램 규칙, 검사가 맞는 답을 버림) → 실제 도면이 드러낸 것.
 
 | 슬라이드의 내용 | 출처 |
 |---|---|
@@ -78,9 +78,9 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 합성: 부품 1, 뷰 3, 선 · 글자 66 / 실제: 뷰 후보 최대 13, 선 · 글자 2,000–5,900 | `runs/reader/check/cone_0019` 와 `runs/reader/real_drawings/` 의 `01_read.json` `entity_counts` 합, `05_views.json` 의 `views` 수. 실제는 S-2120 4장과 KD23009 1장: 요소 2,074–5,876, 뷰 후보 0–13 |
 | 합성 30장 = 5모양 × 6장 | `data_v3/synthetic` 폴더 이름 |
 | 27/30, 모양별 6 · 6 · 6 · 5 · 4 | `runs/reader/deepseek_ocr_qwen_reasoning_skills/accuracy.md` (동료, 2026-10-18) |
-| 실제 도면 5장의 단계별 결과 (13장) | 2026-10-23 05:00 에 떠 있던 서버(DeepSeek-OCR-2 + Qwen3.6-27B)로 `scripts/reader/run_stages.py <작업 폴더> --dxf <도면>` 을 S-2120 의 DWG-001~004 와 KD23009 의 E-31230-002 에 돌렸다. DXF 는 `runs/reader/real_drawings/*/dxf/` (다른 세션이 dwg2dxf 로 만든 것). 실행 스크립트·로그·단계 파일은 `runs/reader/real_drawings_vlm/` (`run.sh`, `run.log`, `<도면>/stages/NN_*.json`, git 제외). 단계 파일 안의 그림 경로는 처음 돌린 세션 임시 폴더를 가리킨다. 칸 색은 각 단계 파일의 `status` (done · skipped · failed) 이고, "끝까지 돌았다" 는 맞았다는 뜻이 아니다 |
+| 실제 도면 5장의 단계별 결과 (13장) | 두 번 돌렸다. ① 2026-10-23 05:00, 머지 전 코드, `runs/reader/real_drawings/*/dxf/` 의 DXF 로 01–13 (`runs/reader/real_drawings_vlm/<도면>/`, `run.sh`, `run.log`) ② 06:41, `integrate` 브랜치(main 6c1fe33 + reader-agent)의 코드로 DWG 에서 00–13 (`runs/reader/real_drawings_vlm/merged/<도면>/`, `rerun_merged.sh`, `rerun_merged.log`). 서버는 둘 다 DeepSeek-OCR-2 + Qwen3.6-27B. 다섯 장 모두 단계별 status 가 같고, 09 의 전개 파라미터와 06 의 형상도 같다. 다른 곳은 DWG-001 의 04 (①은 추론 서버 응답 120초 시간 초과로 비었고 ②는 도면 번호 · 이름을 읽었다)와 06 의 뷰 라벨 하나(other → table)다. 슬라이드는 ②를 기준으로 한다. 단계 파일 안의 그림 경로는 처음 돌린 세션 임시 폴더를 가리킨다. 칸 색은 각 단계 파일의 `status` (done · skipped · failed) 이고, "끝까지 돌았다" 는 맞았다는 뜻이 아니다 |
 | 정답 22종, 상세도별 13 · 4 · 5, v3 가 낸 부품 1개 | `test_data/cases/S-2120/output_cutting_plan/parts.csv` 의 (도면 번호, 아이템) 쌍: 도면 2 에 13, 3 에 4, 4 에 5 (행은 51개). 도면 1(조립도)을 가리키는 정답 부품은 없다. v3 가 전개까지 간 것은 조립도의 원통 하나다 |
-| 잘 된 것: 도면 번호 · 이름 3장 | `04_title_fields.json` 의 `fields`: DWG-002·003·004 에서 `drawing_no` 가 파일 이름의 도면 번호와 같고 `part_name` 이 도면 제목이다 (DWG-002 는 제목 끝이 잘렸다). DWG-001 과 KD23009 는 `fields` 가 비었다 (실패 2 의 표제란 위치) |
+| 잘 된 것: 도면 번호 · 이름 S-2120 4장 | ② 의 `04_title_fields.json` `fields`: DWG-001~004 의 `drawing_no` 가 파일 이름의 도면 번호와 같고 `part_name` 이 도면 제목이다 (DWG-002 는 제목 끝이 잘렸다). KD23009 는 아래 '04 답 검사' 때문에 비었다 |
 | 잘 된 것: 노즐 상세도 판단 | DWG-004 `06_view_labels.json`: `part_class` other, `reconstructable_from_views` false, review 의 notes "contains multiple detail views of different nozzles … and a BOM table. It does not show a single part …". 정답에서도 이 도면에 부품 5종이 있다 |
 | 잘 된 것: 원통 · 안지름 1500 | DWG-001 `09_unfold_params.json`: part_class cylinder, inner_dia 1500. 정답 SHELL 외곽 4738 = π(1500 + 8) |
 | 잘 된 것: OCR 이 't8' 을 받아씀 | KD23009 `03_title_ocr.json` 의 `text` 에 "SHELL / A240-304 / t8" (표제란 대신 부품표가 잘려 왔다) |
@@ -90,7 +90,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 펼친 크기: S-2120 4,769 (정답 4,738), KD23009 1,910 × 2,300 (정답 조각 1,500 + 620 × 1,880) | `10_develop.json`. KD23009 정답은 `test_data/KD23009/output_cutting_plan/parts.csv` 의 `SHELL t8x1500x1880`, `SHELL t8x620x1880` (판 폭 때문에 둘로 나뉜 몸통) |
 | 실패 2: 05 뷰 0개 | DWG-002 `05_views.json`: `views` [], `table_clusters` 가 도면 틀 전체를 덮는다 |
 | 실패 2: 08 멈춤 | DWG-002·004 `08_document.json` 의 오류 `Drawing must have views with unique IDs`. 실제 원인은 정면 · 평면 · 측면 라벨이 붙은 뷰가 하나도 없어 뷰 목록이 비는 것이다 (`dxf_adapter.build_document` 는 `ORIENTATIONS` 밖의 라벨을 버리고, `reconstruct/models.py` 는 빈 목록에 이 오류를 낸다). DWG-004 의 AI 라벨은 detail 5 · table 1 |
-| 실패 2: 02 표제란 위치 | DWG-001 의 `03_title_ocr.json` `text` 는 설계 조건 · 노즐 목록 표, KD23009 는 부품표다 |
+| 실패 2: 04 답 검사 (KD23009) | ①② 모두 `04_title_fields.json` 의 `trace.reason[0]`: `ok` false, 오류 `title_block.scale must be a positive ratio string or null`. 버려진 원문(`raw`)에는 `drawing_no` VP-E-31230-002, `material` A240-304, `thickness_mm` 8, `scale` "NONE" 이 있다 (`vlm_output.py` 의 검증이 칸 하나의 오류로 응답 전체를 거부한다). 처음 판에 적었던 "표제란 대신 다른 표를 잘라 왔다" 는 틀렸다: 03 의 OCR 원문에 두 도면 모두 도면 번호가 들어 있다 |
 | 실패 2: 11 3D 후보 | DWG-001·003 `13_export.json` 의 `outcome` no_valid_candidate (후보 0개), KD23009 `11_reconstruct.json` 오류 "requires at least two distinct orthographic views" |
 
 ## 6. 다음 단계 파트의 숫자 출처
