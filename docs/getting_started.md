@@ -47,6 +47,31 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
 - DWG 변환: Windows 는 `tools/dwg2png/libredwg/dwg2dxf.exe` 를, 그 밖에는 PATH 의 `dwg2dxf` 를 쓴다. Ubuntu 24.04 apt 에는 libredwg 패키지가 없으므로 GNU LibreDWG 를 소스에서 빌드해 설치한다.
 - reader·reconstruct 테스트: `PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
+### 로컬 모델 (vLLM)
+
+`experiments/experiments.sh` 는 vLLM 서버를 직접 띄운다. vLLM 은 레포의 `.venv` 와 따로 가상환경을 만든다. 아래는 RTX A5000 24GB 4장, NVIDIA 드라이버 535(CUDA 12.2)인 서버에서 실제로 쓴 명령이다.
+
+```bash
+uv venv --python 3.12 ~/venvs/vllm-0.31
+uv pip install --python ~/venvs/vllm-0.31/bin/python --torch-backend cu129 \
+  "vllm @ https://github.com/vllm-project/vllm/releases/download/v0.31.0/vllm-0.31.0+cu129-cp38-abi3-manylinux_2_28_x86_64.whl" \
+  -r experiments/requirements.txt
+uv pip install --python ~/venvs/vllm-0.31/bin/python \
+  --index-url https://download.pytorch.org/whl/cpu "torchcodec==0.17.0+cpu"
+
+# 모델 weight 는 ~/.cache/huggingface/hub 에 저장된다 (DeepSeek-OCR-2 6.8GB, Qwen3.6-27B 55.6GB)
+HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download deepseek-ai/DeepSeek-OCR-2
+HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download Qwen/Qwen3.6-27B
+
+./experiments/experiments.sh --python ~/venvs/vllm-0.31/bin/python \
+  --vllm-bin ~/venvs/vllm-0.31/bin/vllm --output-dir runs/reader/<새 폴더>
+```
+
+- PyPI 기본 `vllm`·`torch` 는 CUDA 13 용이라 드라이버 580 이상이 필요하다. `+cu129` wheel 은 CUDA 12 의 minor version 호환으로 드라이버 535 에서 돈다. 드라이버가 580 이상이면 `uv pip install vllm==0.31.0 --torch-backend=auto` 로 충분하다.
+- `torchcodec` 은 cu129 인덱스에 0.17 이 없어 PyPI 의 CUDA 13 판이 깔린다. 그대로 두면 vLLM 이 시작할 때 `libnvrtc.so.13` 을 못 찾고 죽으므로 CPU 판으로 바꾼다. vLLM 은 이것을 오디오·영상 디코딩에만 쓴다.
+- `HF_HUB_DISABLE_XET=1` 은 일반 HTTP 로 받게 한다. 이 서버에서는 xet 프로토콜이 초당 5MB 안팎으로 HTTP 보다 몇 배 느렸다.
+- 스크립트 기본값은 GPU 0 에 OCR, GPU 1,2,3 에 Qwen3.6-27B 를 pipeline parallel 로 올린다 ([reader/README.md](reader/README.md)). GPU 가 다르면 `--ocr-gpu`, `--reason-gpu`, `--reason-parallel` 로 바꾼다.
+
 ## 4. 자주 나는 문제
 
 | 증상 | 해결 |
@@ -57,3 +82,6 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
 | `Could not resolve authentication method` / API 키 오류 | `.env` 의 `ANTHROPIC_API_KEY` 확인 (파일 이름이 `.env.txt` 가 아닌지도) |
 | `This API key is not scoped to a workspace` | `.env` 에 `ANTHROPIC_WORKSPACE_ID` 추가 (`cutplan_agent/client.py` 참조) |
 | `dwg2dxf 실패` | 3절의 dwg2dxf 설치 확인 |
+| vLLM 이 `libnvrtc.so.13: cannot open shared object file` 로 죽음 | `torchcodec` 을 CPU 판으로 바꾼다 (3절 로컬 모델) |
+| vLLM 이 `No such file or directory: 'ninja'` 로 죽음 | FlashInfer sampler 의 JIT 컴파일이다. `VLLM_USE_FLASHINFER_SAMPLER=0` 으로 끈다. `experiments.sh` 는 기본으로 끈다 |
+| vLLM 이 `No available memory for the cache blocks` 로 죽음 | 모델 weight 가 GPU 메모리 비율을 거의 다 쓴 것이다. GPU 를 더 주거나 `--reason-vllm-arg=--gpu-memory-utilization=…` 를 올린다 |

@@ -120,9 +120,15 @@ python main.py part.dxf --analyze-only --output-dir output
 엔드포인트를 사용합니다. API 키는 셸 명령에 직접 쓰지 말고 환경변수로 전달합니다.
 
 파일 상단의 `ocr`, `reason` 설정 블록을 수정하면 인자 없이 `bash experiments.sh`로 실행할 수
-있습니다. 기본값은 OCR `deepseek-ai/DeepSeek-OCR-2`/GPU 0, Reasoning `Qwen/Qwen3.6-27B`/GPU 1이며,
+있습니다. 기본값은 OCR `deepseek-ai/DeepSeek-OCR-2`/GPU 0, Reasoning `Qwen/Qwen3.6-27B`/GPU 1,2,3이며,
 입력은 `../data_v3/synthetic`, 출력은 `output/deepseek_ocr_qwen_reasoning_batch`입니다.
 설정 우선순위는 명령행 > 환경변수 > 파일 기본값입니다.
+
+GPU 목록의 개수가 vLLM 병렬 크기가 됩니다. `--ocr-parallel`·`--reason-parallel`이 `tensor`면
+tensor parallel, `pipeline`이면 pipeline parallel로 나눕니다. 기본값은 OCR `tensor`, Reasoning
+`pipeline`입니다. Qwen3.6-27B는 bf16 weight가 55.6GB라 24GB GPU 2장에 들어가지 않고, KV head가
+4개라 tensor parallel은 1·2·4장만 됩니다. 그래서 RTX A5000 4장에서는 OCR에 1장, Reasoning에
+3장을 pipeline parallel로 씁니다.
 
 ```bash
 # 서버를 띄우거나 API를 호출하지 않고 실제 적용할 설정 확인
@@ -132,7 +138,7 @@ bash experiments.sh --dry-run
 bash experiments.sh
 ```
 
-실행에 필요한 설정은 두 역할의 mode/model/GPU/port/provider/base_url/output_format과 공통 출력·실행
+실행에 필요한 설정은 두 역할의 mode/model/GPU/parallel/port/provider/base_url/output_format과 공통 출력·실행
 설정으로 모았습니다. 출력 포맷 옵션은 스크립트가 처리해 환경변수로 전달하므로 `main.py`에는
 `--ocr-output-format`/`--reason-output-format`을 직접 붙이지 않습니다.
 Local vLLM 기본값은 OCR 문맥 8,192·동시 sequence 16·메모리 비율 0.20,

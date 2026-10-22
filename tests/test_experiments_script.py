@@ -97,8 +97,8 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
     ):
         result = self.run_script("--dry-run")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("GPUs=0", result.stdout)
-        self.assertIn("GPUs=1", result.stdout)
+        self.assertIn("GPUs=0 parallel=tensor", result.stdout)
+        self.assertIn("GPUs=1,2,3 parallel=pipeline", result.stdout)
         self.assertIn("Qwen/Qwen3.6-27B", result.stdout)
         self.assertFalse((self.directory / "main.json").exists())
         self.assertFalse((self.directory / "output").exists())
@@ -106,9 +106,13 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
     def test_default_local_servers_receive_limits_and_stop_on_exit(self):
         result = self.run_script("sample.dxf")
         self.assertEqual(result.returncode, 0, result.stderr)
-        for port, gpu in (("8000", "0"), ("8001", "1")):
+        for port, gpu, parallel, size in (
+            ("8000", "0", "--tensor-parallel-size", "1"),
+            ("8001", "1,2,3", "--pipeline-parallel-size", "3"),
+        ):
             record = json.loads((self.directory / f"{port}.json").read_text())
             self.assertEqual(record["gpu"], gpu)
+            self.assertEqual(record["argv"][record["argv"].index(parallel) + 1], size)
             self.assertEqual(record["timeout"], "10")
             self.assertIn("--max-num-seqs=16", record["argv"])
             if port == "8001":
@@ -212,6 +216,7 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
             "--ocr-base-url=https://ocr.example/v1",
             "--reason-gpu",
             "4,5",
+            "--reason-parallel=tensor",
             "--reason-vllm-arg=--max-num-seqs=8",
             "sample.dxf",
         )
@@ -221,6 +226,7 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
         self.assertEqual(
             record["argv"][record["argv"].index("--tensor-parallel-size") + 1], "2"
         )
+        self.assertNotIn("--pipeline-parallel-size", record["argv"])
         self.assertEqual(record["argv"][-1], "--max-num-seqs=8")
         self.assertTrue((self.directory / "8001.stopped").exists())
         self.assertFalse((self.directory / "8000.json").exists())
@@ -232,6 +238,7 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
             ("----reason-vllm-arg=--max-model-len=16384",),
             ("--reason-gpu",),
             ("--reason-gpu", "4,4,"),
+            ("--reason-parallel", "data"),
         ):
             with self.subTest(args=args):
                 result = self.run_script(*args)

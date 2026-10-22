@@ -69,7 +69,8 @@
 
 - 2026-10-21 부터 작업은 GPU 가 있는 원격 서버에서 한다. 그 전 정리는 로컬 `/home/unist/developer/pbl` 에서 했다.
 - cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
-- v3 (reader): `experiments/requirements.txt` 와 vllm 이 깔린 파이썬으로 레포 루트에서 `./experiments/experiments.sh --python <파이썬>`. 기본값은 DeepSeek-OCR-2 (GPU 4, 포트 8000) 와 Qwen3.6-27B (GPU 5, 포트 8001) 이다.
+- 작업 서버(호스트 `mlic`)는 RTX A5000 24GB 4장(GPU 0–3)이고 NVIDIA 드라이버는 535(CUDA 12.2)다. PyPI 기본 vLLM·torch 는 CUDA 13 용이라 이 드라이버에서 돌지 않는다. vLLM 0.31.0+cu129 환경을 `~/venvs/vllm-0.31` 에 만들어 두었고, 만드는 법은 `docs/getting_started.md` 3절에 있다.
+- v3 (reader): `experiments/requirements.txt` 와 vllm 이 깔린 파이썬으로 레포 루트에서 `./experiments/experiments.sh --python <파이썬> --vllm-bin <vllm>`. 기본값은 DeepSeek-OCR-2 (GPU 0, 포트 8000) 와 Qwen3.6-27B (GPU 1,2,3 pipeline parallel, 포트 8001) 로, 작업 서버에 맞춘 것이다. 동료는 90GB 급 GPU 한 장씩(GPU 4, 5)을 썼다.
 - v3 기준값: 동료의 2026-10-18 실행 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.
 - 이미지 입력의 `--no-vlm` 과 OCR 폴백 테스트는 tesseract 바이너리가 필요하다. DXF 입력의 `--no-vlm` 배치는 tesseract 없이 돈다.
@@ -77,7 +78,7 @@
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
-- v3 단위 테스트 83건 중 13건이 실패한다. 동료가 올린 상태 그대로다. tesseract 미설치 7건, 실험 스크립트 GPU 기본값과 어긋난 테스트 2건, 원인 미확인 4건이다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
+- v3 단위 테스트 83건 중 11건이 실패한다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 가 없으면 8건이 더 실패한다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.

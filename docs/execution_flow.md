@@ -119,7 +119,7 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 
 | 파일 | 하는 일 |
 |---|---|
-| [`experiments/experiments.sh`](../experiments/experiments.sh) | 동료가 27/30 을 낸 실험. vLLM 서버 두 개를 띄우고 (OCR DeepSeek-OCR-2: GPU 4, 포트 8000 / 추론 Qwen3.6-27B: GPU 5, 포트 8001) `reader/main.py --batch --input-mode dxf` 로 `data_v3/synthetic` 30장을 돈 뒤 서버를 끈다. 변형: `experiments_local.sh` (GPU 0/1), `experiments_claude.sh` (Anthropic) |
+| [`experiments/experiments.sh`](../experiments/experiments.sh) | 동료가 27/30 을 낸 실험. vLLM 서버 두 개를 띄우고 (OCR DeepSeek-OCR-2: GPU 0, 포트 8000 / 추론 Qwen3.6-27B: GPU 1,2,3 pipeline parallel, 포트 8001. 동료는 GPU 4, 5 를 썼다) `reader/main.py --batch --input-mode dxf` 로 `data_v3/synthetic` 30장을 돈 뒤 서버를 끈다. 변형: `experiments_local.sh` (GPU 0/1), `experiments_claude.sh` (Anthropic) |
 | [`cutplan_agent/reader/main.py`](../cutplan_agent/reader/main.py) | CLI. 아래 세 모드 |
 | `tests/` | 단위 테스트. `PYTHONPATH=. python -m unittest discover -s tests` |
 
