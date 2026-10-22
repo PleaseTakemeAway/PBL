@@ -23,7 +23,8 @@ def list_topics() -> List[Dict[str, str]]:
 @logged
 def load_domain_prompt(topic: str) -> dict:
     """도메인 지식 문서를 불러온다. topic: drawing_conventions_kr | unfold_rules | split_and_margin |
-    material_mapping | nesting_rules | design_data_ga | por_format"""
+    material_mapping | nesting_rules | design_data_ga | por_format | shell_cone_head_unfold
+    (shell_cone_head_unfold = 회사 담당자의 쉘·콘·헤드 전개 계산 문서. 전개에 필요한 수치는 5절)"""
     p = KNOWLEDGE_DIR / f"{topic}.md"
     if not p.exists():
         return {
