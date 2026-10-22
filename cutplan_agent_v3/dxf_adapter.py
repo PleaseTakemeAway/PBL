@@ -223,17 +223,6 @@ def _texts_in(entities, box: BBox | None):
     ]
 
 
-def find_title_region(entities: list[RawEntity], sheet: BBox) -> BBox | None:
-    hits = None
-    for e in entities:
-        if e.kind == "text" and e.text and any(k in e.text.upper() for k in TITLE_KEYS):
-            hits = _union(hits, e.bbox())
-    if hits is None:
-        return None
-    pad = 0.02 * hypot(sheet[2] - sheet[0], sheet[3] - sheet[1])
-    return _expand(hits, pad)
-
-
 def parse_title_block(
     entities: list[RawEntity],
     region: BBox | None,

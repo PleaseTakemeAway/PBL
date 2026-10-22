@@ -10,14 +10,12 @@ happens later in vision_adapter.
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from math import atan2, cos, degrees, hypot, sin
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from vlm import VLMClient, read_ocr_task

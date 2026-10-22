@@ -16,7 +16,7 @@ import functools
 import json
 import sys
 from pathlib import Path
-from typing import Any, Callable, List
+from typing import Callable, List
 
 from cutplan_agent.config import DATASET, MAX_TOKENS, MODEL
 from cutplan_agent.skills import knowledge as K
@@ -153,7 +153,6 @@ def run(
     max_steps: int = 80,
     hitl_policy: dict | None = None,
 ) -> JobState:
-    import anthropic
 
     state = JobState(job=job, inputs=inputs, eval_mode=eval_mode)
     if hitl_policy:

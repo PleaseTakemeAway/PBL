@@ -19,11 +19,8 @@ from dxf_adapter import (
     ORIENTATIONS,
     VIEW_TYPES,
     ViewCandidate,
-    _area,
     _contains,
     _expand,
-    _inter,
-    _relations,
     label_by_position,
 )
 from knowledge import STAGE_TOPICS

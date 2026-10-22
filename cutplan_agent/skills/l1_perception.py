@@ -13,9 +13,7 @@ VLM 호출은 Claude API (claude-opus-5-5) + structured output. ANTHROPIC_API_KE
 from __future__ import annotations
 
 import base64
-import io
 import json
-import os
 import re
 import subprocess
 from pathlib import Path

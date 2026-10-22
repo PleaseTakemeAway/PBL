@@ -641,7 +641,7 @@ def check_and_recut(ds, log=print):
             dst = os.path.join(RECUT_DIR, stem + ".dxf")
             try:
                 nmsp = rc.recut(r, dst)
-            except Exception as e:
+            except Exception:
                 nmsp = None
             if nmsp is not None:
                 c2, o2, l2, g2 = loop_check(nmsp)

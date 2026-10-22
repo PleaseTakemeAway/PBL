@@ -5,7 +5,6 @@
 knowledge/<topic>.md 를 그대로 돌려준다. topic 목록은 list_topics() 로.
 """
 
-from pathlib import Path
 from typing import Dict, List
 
 from cutplan_agent.config import KNOWLEDGE_DIR

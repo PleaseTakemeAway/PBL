@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from drawing_io import load_drawing
-from dxf_adapter import analyze_dxf, build_document
+from dxf_adapter import analyze_dxf
 from main import main
 from pipeline import ReconstructionPipeline
 from vlm import PART_CLASSES, VLMClient, VLMConfig, extract_json, softmax_class_scores
@@ -295,7 +295,7 @@ class DxfAdapterTests(unittest.TestCase):
             self.assertTrue({"front", "top", "right"} <= labels, a["views"])
             self.assertEqual(a["projection"], "third")
             tb = a["vlm_decision"]
-            title = json.loads(
+            json.loads(
                 (Path(tmp) / "work" / "sheet_analysis.json").read_text(encoding="utf-8")
             )
             self.assertEqual(a["entity_counts"]["arc"], 1)

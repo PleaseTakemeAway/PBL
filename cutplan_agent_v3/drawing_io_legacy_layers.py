@@ -1,7 +1,5 @@
 """Legacy DXF loader: views come from explicitly named FRONT/TOP/RIGHT layers."""
 
-import hashlib
-import json
 from pathlib import Path
 
 from models import DrawingDocument

@@ -20,12 +20,10 @@ import csv
 import json
 import os
 import re
-import sys
 
 import ezdxf
 import numpy as np
 from ezdxf import bbox
-from ezdxf.math import Vec3
 
 from cutplan_agent.config import DATA_DIR, DATASET
 

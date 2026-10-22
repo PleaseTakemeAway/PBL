@@ -14,7 +14,6 @@ import collections
 import csv
 import io
 import json
-import os
 import re
 from pathlib import Path
 
@@ -116,9 +115,9 @@ def main():
         dfiles = sorted(p for p in (d / "input_drawings").rglob("*") if p.is_file())
         dpick = pick_drawing(dfiles)
         cps = sorted((d / "output_cutting_plan").glob("*.png"))
-        groups, kg, nsheets = sheet_groups(d / "output_cutting_plan" / "sheets.csv")
+        groups, kg, _ = sheet_groups(d / "output_cutting_plan" / "sheets.csv")
         if wo.startswith("HCE"):
-            groups, kg, nsheets = ["St37-40 t4 ×1"], round(4 * 2438 * 1219 * DENSITY), 1
+            groups, kg = ["St37-40 t4 ×1"], round(4 * 2438 * 1219 * DENSITY)
         try:
             dthumb = pdf_thumb(dpick) if dpick else ""
         except Exception:
