@@ -1,6 +1,6 @@
 """Render a deck to PDF and one PNG per slide in presentation/build/, to check the layout.
 
-PYTHONPATH=. uv run python presentation/render.py presentation/reader_orchestrator.pptx
+PYTHONPATH=. uv run python presentation/render.py presentation/roadmap.pptx
 
 Needs LibreOffice (soffice) and a Korean font. The preview swaps the decks' Malgun Gothic
 for NanumGothic (on mlic in ~/.local/share/fonts), so line breaks can differ slightly from
