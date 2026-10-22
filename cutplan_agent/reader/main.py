@@ -1,17 +1,17 @@
-"""CLI. 레포 루트에서 실행한다.
+"""CLI. 레포 루트에서 실행한다. 단계를 처음부터 끝까지 한 번에 돈다.
 
 PYTHONPATH=. python cutplan_agent/reader/main.py tests/fixtures/box.json --output-dir output
 PYTHONPATH=. python cutplan_agent/reader/main.py part.dxf --analyze-only --reason-model qwen2.5vl:32b
+
+단계 순서는 stages/sequence.py 에 있다. 단계 하나만 돌리려면
+PYTHONPATH=. python cutplan_agent/reader/stages/<단계>.py --output-dir <폴더> 를 쓴다.
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-from cutplan_agent.reader.drawing_io import load_drawing
-from cutplan_agent.reader.unfold import run_unfold
-from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
-from cutplan_agent.reconstruct.step6 import ReconstructionExporter
+from cutplan_agent.reader.stages import document, reconstruct, sequence, unfold, workdir
 
 
 def _print_unfold(record: dict) -> None:
@@ -110,28 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip the class → dimensions → flat-pattern (전개도) stage",
     )
-    parser.add_argument(
-        "--no-vlm",
-        action="store_true",
-        help="Disable both VLMs; use regex + relative-position fallbacks only",
-    )
-    parser.add_argument(
-        "--ocr-model",
-        help="Small OCR VLM (overrides CUTPLAN_OCR_MODEL), e.g. qwen2.5vl:3b",
-    )
-    parser.add_argument(
-        "--reason-model",
-        help="Reasoning VLM (overrides CUTPLAN_REASON_MODEL), e.g. qwen2.5vl:32b or claude-sonnet-4-5",
-    )
-    parser.add_argument(
-        "--ocr-base-url", help="OpenAI-compatible endpoint for the OCR model"
-    )
-    parser.add_argument("--reason-base-url", help="Endpoint for the reasoning model")
-    parser.add_argument(
-        "--reason-provider",
-        choices=["openai", "anthropic"],
-        help="Provider for the reasoning model",
-    )
+    workdir.add_model_args(parser)
     parser.add_argument(
         "--projection",
         choices=["first", "third"],
@@ -140,16 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
-    from cutplan_agent.reader.vlm import make_clients
-
-    clients = make_clients(
-        disabled=args.no_vlm,
-        ocr_model=args.ocr_model,
-        reason_model=args.reason_model,
-        ocr_base_url=args.ocr_base_url,
-        reason_base_url=args.reason_base_url,
-        reason_provider=args.reason_provider,
-    )
+    clients = workdir.clients_from_args(args)
     inputs = args.drawing
     batch_mode = args.batch or len(inputs) > 1 or any(path.is_dir() for path in inputs)
     if batch_mode:
@@ -220,18 +190,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         try:
             if suffix == ".dxf" and args.input_mode == "dxf":
-                from cutplan_agent.reader.dxf_adapter import analyze_dxf
-
-                a = analyze_dxf(
+                a = sequence.analyze(
                     args.drawing,
-                    clients[0],
-                    clients[1],
                     work_dir,
+                    clients,
+                    output_dir=args.output_dir,
                     projection_default=args.projection,
-                )["analysis"]
+                )
             else:
                 from cutplan_agent.reader.vision_adapter import analyze_image
 
+                workdir.prepare("read", work_dir, args.output_dir, overwrite=True)
                 a = analyze_image(
                     args.drawing,
                     clients[0],
@@ -269,7 +238,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  review: {r}")
         print(f"outputs: {work_dir.resolve()}/sheet_analysis.json, sheet.png")
         if not args.no_unfold:
-            _print_unfold(run_unfold(a, None, clients[1], args.output_dir))
+            _print_unfold(
+                unfold.run(
+                    work_dir,
+                    clients=clients,
+                    use_document=False,
+                    output_dir=args.output_dir,
+                    overwrite=True,
+                )
+            )
         return 0
     try:
         artifacts = [
@@ -288,62 +265,52 @@ def main(argv: list[str] | None = None) -> int:
         if any(path.exists() and not path.is_file() for path in artifacts):
             raise ValueError("An output artifact path is not a regular file")
 
-        # Result의 역할? 어떤 식으로 구현 했는지 설명하기
-        kw = {"projection_default": args.projection}
-        if args.drawing.suffix.lower() != ".dxf" or args.input_mode == "vision":
-            kw["dpi"] = args.dpi
-        drawing = load_drawing(
-            args.drawing,
-            units=args.units,
-            dxf_mode=args.dxf_mode,
-            input_mode=args.input_mode,
-            vlm_clients=clients,
-            work_dir=work_dir,
-            **kw,
-        )
+        # 위에서 확인했으므로 단계는 자기 출력과 이후 단계 출력을 지우고 다시 쓴다
+        steps = {"output_dir": args.output_dir, "overwrite": True}
+        if document.staged(args.drawing, args.input_mode, args.dxf_mode):
+            sequence.analyze(
+                args.drawing,
+                work_dir,
+                clients,
+                output_dir=args.output_dir,
+                projection_default=args.projection,
+            )
+            document.run(work_dir, units=args.units, **steps)
+        else:
+            document.run(
+                work_dir,
+                source=args.drawing,
+                input_mode=args.input_mode,
+                dxf_mode=args.dxf_mode,
+                units=args.units,
+                dpi=args.dpi,
+                projection_default=args.projection,
+                clients=clients,
+                **steps,
+            )
         if not args.no_unfold:
             _print_unfold(
-                run_unfold(
-                    drawing.metadata.get("sheet_analysis", {}),
-                    drawing,
-                    clients[1],
-                    args.output_dir,
-                )
+                unfold.run(work_dir, clients=clients, use_document=True, **steps)
             )
-        tolerance = (
-            args.tolerance
-            if args.tolerance is not None
-            else float(drawing.metadata.get("suggested_tolerance_mm", 0.01))
+        out = reconstruct.run(
+            work_dir,
+            clients=clients,
+            tolerance=args.tolerance,
+            max_candidates=args.max_candidates,
+            confirm=not args.no_confirm,
+            **steps,
         )
-        result = ReconstructionPipeline(tolerance, args.max_candidates).run(drawing)
-        if not args.no_confirm and clients[1].enabled:
-            from cutplan_agent.reader.vision_adapter import confirm_candidates
-
-            confirm_candidates(result, clients[1], work_dir)
-
-        # Exporter의 역할? 어떤 식으로 구현 했는지 설명하기
-        exporter = ReconstructionExporter(tolerance)
-        exporter.export_provenance(result, args.output_dir / "provenance.json")
-        exporter.export_report(result, args.output_dir / "report.md")
-        valid = {e.candidate_id for e in result.evaluations if e.valid}
-        best = next((c for c in result.candidates if c.id in valid), None)
-        if best is None:
-            if args.overwrite:
-                for name in ("reconstruction.step", "parameters.json"):
-                    (args.output_dir / name).unlink(missing_ok=True)
+        best = out["reconstruction"]
+        if not best["valid"]:
             print(
                 "No valid candidate. Inspect report.md and provenance.json.",
                 file=sys.stderr,
             )
             return 2
-        exporter.export_step(best, args.output_dir / "reconstruction.step")
-        exporter.export_parameters(best, args.output_dir / "parameters.json")
         print(
-            f"Candidate: {best.id}; vertices: {len(best.vertices)}; edges: {len(best.edges)}"
+            f"Candidate: {best['candidate_id']}; vertices: {best['vertices']}; edges: {best['edges']}"
         )
-        print(
-            f"Review: {result.review_request['status']}; outputs: {args.output_dir.resolve()}"
-        )
+        print(f"Review: {out['review_status']}; outputs: {args.output_dir.resolve()}")
         return 0
     except (ValueError, RuntimeError, OSError) as exc:
         from cutplan_agent.reader.dxf_adapter import NotOrthographicSheet as _A

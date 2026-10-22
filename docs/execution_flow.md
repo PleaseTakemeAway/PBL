@@ -11,10 +11,10 @@
 | 폴더 | `cutplan_agent/` 의 `agent/`, `skills/`, `eval/`, `config.py`, `state.py`, `unfold.py` | `cutplan_agent/reader/` (판독·전개도·CLI), `cutplan_agent/reconstruct/` (3D 복원), `tests/`, `experiments/` |
 | 하는 일 | 워크오더 하나의 도면 세트 → 판재 구매의뢰(POR) | 도면 1장(부품 1개) → 형상 분류와 전개도 (+3D 복원) |
 | 처리 단위 | 워크오더 (도면 여러 장, 부품 여러 개) | 도면 1장 |
-| 먼저 볼 진입점 | [`eval/smoke_kd25038.py`](../cutplan_agent/eval/smoke_kd25038.py) | [`reader/main.py`](../cutplan_agent/reader/main.py), 실험은 [`experiments/experiments.sh`](../experiments/experiments.sh) |
+| 먼저 볼 진입점 | [`eval/smoke_kd25038.py`](../cutplan_agent/eval/smoke_kd25038.py) | [`reader/main.py`](../cutplan_agent/reader/main.py), 단계별은 [`reader/stages/`](../cutplan_agent/reader/stages/) ([reader/stages.md](reader/stages.md)), 실험은 [`experiments/experiments.sh`](../experiments/experiments.sh) |
 | 모델 | Claude (Anthropic SDK) | OCR 모델 + 추론 모델 두 역할. 로컬 vLLM(OpenAI 호환) 또는 Anthropic |
 | 실행 | `PYTHONPATH=. uv run python <파일>` | `PYTHONPATH=. python cutplan_agent/reader/main.py ...` |
-| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6125.0 kg). VLM 경로는 기록상 미실행 ([agent/skills.md](agent/skills.md)) | 단위 테스트 83개 중 13개 실패 (알려진 상태). 합성 도면 30장 형상 분류 27/30 |
+| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6125.0 kg). VLM 경로는 기록상 미실행 ([agent/skills.md](agent/skills.md)) | 단위 테스트 87개 중 13개 실패 (알려진 상태). 합성 도면 30장 형상 분류 27/30 |
 
 두 코드는 한 제품의 앞단과 뒷단에 가깝다. v3 는 v2 를 대체한 버전이 아니라, 앞단(도면 판독)을 새로 만든 것이다.
 
@@ -108,10 +108,13 @@ smoke test 는 ③ 의 `verify_part_spec` 부터 ⑥ 까지를 정해진 순서�
 ### 3.1 흐름
 
 ```
-DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추론 모델이 뷰와 형상(part_class)을 정함
-          ─▶ reader: 전개 파라미터 → 전개도 (flat_pattern)
-          └▶ reconstruct: (복원 가능할 때) 3D 복원 step1~5 → 후보 확인 → STEP 내보내기 (step6)
+DXF ─▶ 1 read ─▶ 2 title ─▶ 3 segment ─▶ 4 label ─▶ 5 document ─▶ 6 unfold ─▶ 7 reconstruct
+       엔티티     표제란      뷰 분할·    뷰 종류·     정면·평면·    전개 파라미터  3D 복원 step1~5
+                  (OCR →     도면 종류   투상법·형상   우측 문서     → 전개도      → 후보 확인
+                   추론)                 (추론)                     (추론)        (추론) → STEP
 ```
+
+단계마다 [`reader/stages/`](../cutplan_agent/reader/stages/) 에 스크립트가 하나씩 있다. 각 단계는 앞 단계가 `<출력 폴더>/analysis/` 에 남긴 파일을 읽고 자기 파일을 쓰므로 혼자 돌릴 수 있다. `main.py` 와 `batch.py` 는 이 단계들을 [`stages/sequence.py`](../cutplan_agent/reader/stages/sequence.py) 의 순서로 부른다. 단계별 명령과 볼 파일은 [reader/stages.md](reader/stages.md) 에 있다. 이미지·PDF 입력은 아직 단계로 나누지 않았고 5단계에서 한 번에 판독한다.
 
 모델은 두 역할로 나뉜다. OCR 모델은 글자를 읽고, 추론 모델은 그 글자와 도면으로 JSON 판단을 낸다. 모든 모델 단계에는 결정적 fallback 이 있어서 `--no-vlm` 으로 모델 없이도 끝까지 돈다 (형상은 맞히지 못한다). `reconstruct` 는 `reader` 의 모듈을 쓰지 않고, `reader` 만 `reconstruct` 를 쓴다.
 
@@ -120,7 +123,8 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 | 파일 | 하는 일 |
 |---|---|
 | [`experiments/experiments.sh`](../experiments/experiments.sh) | 동료가 27/30 을 낸 실험. vLLM 서버 두 개를 띄우고 (OCR DeepSeek-OCR-2: GPU 4, 포트 8000 / 추론 Qwen3.6-27B: GPU 5, 포트 8001) `reader/main.py --batch --input-mode dxf` 로 `data_v3/synthetic` 30장을 돈 뒤 서버를 끈다. 변형: `experiments_local.sh` (GPU 0/1), `experiments_claude.sh` (Anthropic) |
-| [`cutplan_agent/reader/main.py`](../cutplan_agent/reader/main.py) | CLI. 아래 세 모드 |
+| [`cutplan_agent/reader/main.py`](../cutplan_agent/reader/main.py) | CLI. 아래 세 모드. 단계를 처음부터 끝까지 한 번에 돈다 |
+| [`cutplan_agent/reader/stages/<단계>.py`](../cutplan_agent/reader/stages/) | 단계 하나만 돈다. `read`, `title`, `segment`, `label`, `document`, `unfold`, `reconstruct` ([reader/stages.md](reader/stages.md)) |
 | `tests/` | 단위 테스트. `PYTHONPATH=. python -m unittest discover -s tests` |
 
 `experiments.sh` 의 기본 출력 폴더는 동료의 기준 결과 폴더(`runs/reader/deepseek_ocr_qwen_reasoning_skills`)다. `--overwrite` 없이는 덮어쓰지 않고 멈추지만, 새 실험에는 `--output-dir` 로 다른 폴더를 주는 게 안전하다. `--dry-run` 은 서버를 띄우지 않고 설정만 출력한다.
@@ -130,8 +134,10 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 | 모드 | 조건 | 흐름 |
 |---|---|---|
 | 배치 | `--batch`, 입력이 여러 개, 또는 폴더 | `batch.run_batch` (3.3) |
-| 판독만 | `--analyze-only` | `analyze_dxf` 또는 `analyze_image` → `run_unfold` |
-| 단일 (기본) | 입력 1개 | `load_drawing` → `run_unfold` → `ReconstructionPipeline.run` → `confirm_candidates` → `ReconstructionExporter` |
+| 판독만 | `--analyze-only` | DXF 는 단계 1~4, 이미지는 `analyze_image` → 단계 6 `unfold` (문서 없이) |
+| 단일 (기본) | 입력 1개 | `--input-mode dxf` 의 DXF 는 단계 1~7. 그 밖의 입력은 단계 5 `document` 가 입력을 바로 읽고 6, 7 |
+
+CLI 의 `--input-mode` 기본값은 `vision` 이라, DXF 도 `--input-mode dxf` 를 주지 않으면 그림으로 바꿔 읽는다. 동료의 실험은 `dxf` 로 돌았다.
 
 ### 3.3 배치 실행 순서 — `experiments.sh` → `batch.run_batch`
 
@@ -142,28 +148,25 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 ```
 
 1. `main.py` — 인자를 해석하고 `vlm.make_clients` 로 OCR·추론 클라이언트를 만든다 (`--no-vlm` 이면 꺼진 클라이언트).
-2. [`reader/batch.py`](../cutplan_agent/reader/batch.py) 의 `run_batch` — `discover_dxf` 로 DXF 를 찾고, 도면마다:
-   1. `drawing_io.load_drawing` → `dxf_adapter.load_dxf_document` → **`analyze_dxf`** ([`reader/dxf_adapter.py`](../cutplan_agent/reader/dxf_adapter.py)):
-      - `read_dxf` — DXF 엔티티를 읽는다 (ezdxf, 없으면 순수 파이썬 리더)
-      - `detect_frames`, `find_title_region`, `parse_title_block` — 도면 틀과 표제란 (OCR → 추론 모델)
-      - `segment_views` — 뷰를 나눈다
-      - `classify_sheet` — 정투상 / 네스팅(커팅플랜) / 기타. 네스팅 도면이면 판 정보만 뽑고 복원은 하지 않는다
-      - `label_with_vlm` — 추론 모델이 뷰 종류, 투상법, 형상(`part_class`), 복원 가능 여부를 정한다
-   2. `dxf_adapter.build_document` — 판독 결과를 `reconstruct/models.py` 의 `DrawingDocument` 로 만든다
-   3. **`unfold.run_unfold`** ([`reader/unfold.py`](../cutplan_agent/reader/unfold.py)) — `extract_params` (추론 모델 `ask_unfold_params`, 실패하면 기하 기반 `fallback_params`) → `develop` (전개 계산) → `export_flat_pattern`
-   4. 복원 가능하면 [`reconstruct/pipeline.py`](../cutplan_agent/reconstruct/pipeline.py) 의 `ReconstructionPipeline.run` — step1 도면 해석 → step2 뷰 매칭 → step3 후보 생성 → step4 후보 평가 → step5 모호성 정리
-   5. `vision_adapter.confirm_candidates` — 추론 모델이 복원 후보를 확인한다
-   6. `step6.ReconstructionExporter` — `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`
-   7. 추론이 모두 끝난 뒤(`finally`)에야 정답 `label.json` 을 읽어 비교한다. 정답이 추론에 섞이지 않게 하려는 순서다
+2. [`reader/batch.py`](../cutplan_agent/reader/batch.py) 의 `run_batch` — `discover_dxf` 로 DXF 를 찾고, 도면마다 [`reader/stages/`](../cutplan_agent/reader/stages/) 의 단계를 차례로 부른다. 단계 안의 로직은 원래 모듈의 함수다:
+   1. `read` — `dxf_reader.read_dxf` 가 DXF 엔티티를 읽는다 (ezdxf, 없으면 순수 파이썬 리더)
+   2. `title` — `dxf_adapter.find_title_region`, `parse_title_block` 이 표제란을 읽는다 (정규식 → 빈 필드만 OCR → 추론 모델)
+   3. `segment` — `detect_frames`, `segment_views` 로 뷰를 나누고 `classify_sheet` 가 정투상 / 네스팅(커팅플랜) / 기타를 정한다. 네스팅 도면이면 판 정보만 뽑고 복원은 하지 않는다
+   4. `label` — `label_by_position` 다음 `label_with_vlm` 에서 추론 모델이 뷰 종류, 투상법, 형상(`part_class`), 복원 가능 여부를 정한다
+   5. `document` — `dxf_adapter.build_document` 가 판독 결과를 `reconstruct/models.py` 의 `DrawingDocument` 로 만든다
+   6. `unfold` — [`reader/unfold.py`](../cutplan_agent/reader/unfold.py) 의 `run_unfold`: `extract_params` (추론 모델 `ask_unfold_params`, 빈 값은 기하 기반 `fallback_params`) → `develop` (전개 계산) → `export_flat_pattern`
+   7. `reconstruct` — 복원 가능하면 [`reconstruct/pipeline.py`](../cutplan_agent/reconstruct/pipeline.py) 의 `ReconstructionPipeline.run` (step1 도면 해석 → step2 뷰 매칭 → step3 후보 생성 → step4 후보 평가 → step5 모호성 정리), `vision_adapter.confirm_candidates` (추론 모델이 후보 확인), `step6.ReconstructionExporter` (`provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`)
+   8. 추론이 모두 끝난 뒤(`finally`)에야 정답 `label.json` 을 읽어 비교한다. 정답이 추론에 섞이지 않게 하려는 순서다
 3. 전체 집계: `predictions.json`, `reconstruction.json`, `accuracy.md`, `flat_patterns.json`, `flat_patterns.md`
 
-이미지·PDF 입력은 `vision_adapter.analyze_image` 가 `analyze_dxf` 자리를 맡는다. 기하는 OpenCV 로, 글자는 OCR 모델이나 tesseract 로 읽는다.
+이미지·PDF 입력(배치에서는 `--input-mode vision`)은 `vision_adapter.analyze_image` 가 단계 1~5 자리를 한 번에 맡는다. 기하는 OpenCV 로, 글자는 OCR 모델이나 tesseract 로 읽는다. `dxf_adapter.analyze_dxf` 와 `drawing_io.load_drawing` 은 그대로 있고, DXF 는 안에서 단계 1~4 를 부른다.
 
 ### 3.4 모듈 지도
 
 | 파일 | 역할 |
 |---|---|
-| `reader/main.py`, `reader/batch.py` | CLI, 배치 실행과 집계 |
+| `reader/main.py`, `reader/batch.py` | CLI, 배치 실행과 집계. 단계를 순서대로 부른다 |
+| `reader/stages/` | 단계 스크립트 7개, 순서(`sequence.py`), 단계 사이 파일 이름과 읽고 쓰기(`workdir.py`) |
 | `reader/drawing_io.py`, `reader/drawing_io_legacy_layers.py` | 입력 종류(JSON / 이미지·PDF / DXF)별 분기 |
 | `reader/dxf_reader.py` | DXF 파싱 |
 | `reader/dxf_adapter.py` | DXF 도면 판독. 가장 큰 파일 |
@@ -176,7 +179,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 
 ### 3.5 결과물
 
-도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `analysis/` (`sheet.png`, `sheet_analysis.json` 등), `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`.
+도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`. 그 아래 `analysis/` 에는 단계 파일 `entities.json`, `title.json`, `views.json`, `sheet_analysis.json`, `document.json`, `unfold.json`, `reconstruct.json` 과 그림 `title_block.png`, `sheet_labeled.png`, `sheet.png`, `candidates.png` 가 있다. 단계 파일의 `trace` 에 그 단계의 모델 호출이 남는다 ([reader/stages.md](reader/stages.md) 3절).
 
 ## 4. 같은 일을 하는 곳
 
@@ -203,5 +206,7 @@ PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesse
   python -m unittest discover -s tests
 PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
   python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir /tmp/reader_novlm data_v3/synthetic
+PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
+  python cutplan_agent/reader/stages/read.py data_v3/synthetic/cone_0019/cone_0019.dxf --output-dir <폴더>  # 단계 하나 (reader/stages.md)
 ./experiments/experiments.sh --dry-run                                               # 설정만 출력
 ```

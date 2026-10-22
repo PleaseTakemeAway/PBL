@@ -39,8 +39,8 @@
 |---|---|
 | `cutplan_agent/` | 제품 패키지. 바로 아래의 `agent/`, `skills/`, `eval/`, `config.py` 등은 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐고, 패키지로 설치하지 않는다 |
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
-| `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
-| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다 |
+| `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다. `reader/stages/` 는 이 레포에서 판독 과정을 단계 스크립트 7개로 나눈 것이고, `main.py`·`batch.py` 가 이 단계들을 부른다 (브랜치 `reader-stages`) |
+| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py` 와 `docs/reader/stages.md` 는 이 레포에서 썼다 |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
 | `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
@@ -48,7 +48,7 @@
 
 - 사람이 읽는 문서는 `docs/` 아래에만 둔다. 예외는 코드가 실행 중에 읽는 문서(`skills/`, `cutplan_agent/knowledge/`, `cutplan_agent/agent/system.md`), 도구가 루트에서 찾는 `AGENTS.md`·`CLAUDE.md`, 짧은 소개만 두는 루트 `README.md` 다.
 - 폴더는 하는 일로 이름을 짓고, 버전은 git 으로 관리한다. `_v3` 같은 버전 폴더나 복사본을 만들지 않는다. 옛 상태는 커밋과 태그로 꺼낸다. 동료의 v3 원본은 253020c, 폴더를 옮기기 직전은 ca142a8 이다.
-- reader 도 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로 실행한다. `knowledge.py` 는 레포 루트의 `skills/` 를, `experiments/*.sh` 는 `data_v3/synthetic` 과 `runs/reader/` 를 기본값으로 쓴다.
+- reader 도 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로 실행한다. 단계 하나는 `PYTHONPATH=. python cutplan_agent/reader/stages/<단계>.py --output-dir <폴더>` 다 (`docs/reader/stages.md`). `knowledge.py` 는 레포 루트의 `skills/` 를, `experiments/*.sh` 는 `data_v3/synthetic` 과 `runs/reader/` 를 기본값으로 쓴다.
 - `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. 레포 루트에서 `PYTHONPATH=. uv run python scripts/<이름>.py` 로 실행한다. Windows PowerShell 은 먼저 `$env:PYTHONPATH = "."` 를 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
 
 ## 5. git 제외 데이터 (레포 루트 기준)
@@ -77,7 +77,7 @@
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
-- v3 단위 테스트 83건 중 13건이 실패한다. 동료가 올린 상태 그대로다. tesseract 미설치 7건, 실험 스크립트 GPU 기본값과 어긋난 테스트 2건, 원인 미확인 4건이다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
+- v3 단위 테스트 87건 중 13건이 실패한다 (2026-10-22 에 `tests/test_stages.py` 4건을 더했다). 실패 13건은 동료가 올린 상태 그대로다. tesseract 미설치 7건, 실험 스크립트 GPU 기본값과 어긋난 테스트 2건, 원인 미확인 4건이다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.

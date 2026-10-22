@@ -8,6 +8,9 @@ Pipeline (each stage records provenance and degrades to a deterministic fallback
      with a relative-position fallback
   5. convert to the front/top/right contract (arcs tessellated,
      left/bottom/back views mirrored), dimensions attached as annotations
+
+The functions here hold the logic; cutplan_agent/reader/stages/ runs them one stage
+at a time and hands results over through files (read, title, segment, label, document).
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ from math import acos, ceil, hypot
 from pathlib import Path
 from typing import Any
 
-from cutplan_agent.reader.dxf_reader import RawEntity, arc_points, read_dxf
+from cutplan_agent.reader.dxf_reader import RawEntity, arc_points
 from cutplan_agent.reader.knowledge import STAGE_TOPICS
 from cutplan_agent.reader.vlm import (
     VLMClient,
@@ -1218,136 +1221,24 @@ def analyze_dxf(
     projection_default: str = "third",
     gap_ratio: float = 0.008,
 ) -> dict:
-    path, work_dir = Path(path), Path(work_dir)
-    work_dir.mkdir(parents=True, exist_ok=True)
-    entities, info = read_dxf(path)
-    sheet = _sheet_bbox(entities)
-    frames, frame_handles = detect_frames(entities, sheet)
-    title_regions = find_title_regions(entities, sheet)
-    title_region = find_title_region(entities, sheet)
-    title = parse_title_block(entities, title_region, ocr, work_dir, reason=reason)
-    tables: list[BBox] = []
-    for e in entities:
-        if e.kind == "text" and e.text and any(k in e.text.upper() for k in TABLE_KEYS):
-            tables.append(
-                _expand(
-                    e.bbox(), 0.01 * hypot(sheet[2] - sheet[0], sheet[3] - sheet[1])
-                )
-            )
-    excluded = title_regions + tables
-    views, seg = segment_views(entities, excluded, gap_ratio, frame_handles, frames)
-    sheet_type, evidence = classify_sheet(entities, views)
-    review: list[dict] = []
-    projection = title.projection or projection_default
-    decision: dict = {"used": False}
-    plates: list[dict] = []
-    if sheet_type == "nesting":
-        plates = _nesting_plates(views, entities, sheet)
-        review.append(
-            {
-                "issue": "nesting / cutting-plan sheet: orthographic reconstruction not applicable; use `plates`"
-            }
-        )
-        for pl in plates:
-            if "caption" not in pl:
-                review.append({"view": pl["id"], "issue": "plate without size caption"})
-            elif not pl.get("caption_matches_outline"):
-                review.append(
-                    {
-                        "view": pl["id"],
-                        "issue": f"caption {pl['caption']} does not match drawn outline {pl['size_drawn']}",
-                    }
-                )
-    else:
-        label_by_position(views, projection)
-        fallback = {v.id: v.label for v in views}
-        decision = label_with_vlm(views, entities, title, reason, work_dir)
-        if decision.get("projection"):
-            projection = decision["projection"]
-            if title.projection is None:
-                title.projection, title.sources["projection"] = (
-                    projection,
-                    f"vlm_reason:{reason.config.model}",
-                )
-        disagreements = [
-            {"view": v.id, "position": fallback[v.id], "vlm": v.label}
-            for v in views
-            if decision.get("used") and fallback[v.id] != v.label
-        ]
-        if not decision.get("used"):
-            review.append(
-                {
-                    "issue": "view labels come from relative position only (no reasoning VLM); confirm front/top/right"
-                }
-            )
-        if decision.get("reconstructable") is False:
-            review.append(
-                {
-                    "issue": "model judged the shape not reconstructable from orthographic views alone",
-                    "notes": decision.get("notes"),
-                }
-            )
-        review += [
-            {
-                "view": d["view"],
-                "issue": f"position fallback said {d['position']}, VLM said {d['vlm']}",
-            }
-            for d in disagreements
-        ]
-        if sheet_type == "unknown":
-            review.append(
-                {
-                    "issue": "sheet type unclear (neither clean orthographic layout nor nesting captions)",
-                    "evidence": evidence,
-                }
-            )
-    render(
-        [e for e in entities if e.kind != "other"],
-        work_dir / "sheet.png",
-        boxes=[(v.bbox, f"{v.id}:{v.label}") for v in views],
-        width_in=18,
+    """Stages 1-4 (read, title, segment, label) of cutplan_agent/reader/stages.
+
+    Each stage writes its files to work_dir; the objects returned here are read back
+    from them: entities, labelled views, the title block and the sheet analysis.
+    """
+    from cutplan_agent.reader.stages import sequence, workdir
+
+    work_dir = Path(work_dir)
+    analysis = sequence.analyze(
+        path,
+        work_dir,
+        (ocr, reason),
+        projection_default=projection_default,
+        gap_ratio=gap_ratio,
     )
-    analysis = {
-        "source": str(path),
-        "reader": info["reader"],
-        "file_units": info["units"],
-        "entity_counts": _count(entities),
-        "sheet_bbox": sheet,
-        "frames": frames,
-        "title_regions": title_regions,
-        "title_region": title_region,
-        "excluded_regions": excluded,
-        "segmentation": seg,
-        "sheet_type": sheet_type,
-        "sheet_type_evidence": evidence,
-        "projection": projection,
-        "part_class": decision.get("part_class"),
-        "part_class_probabilities": decision.get("part_class_probabilities"),
-        "part_class_probability_source": decision.get("probability_source"),
-        "reconstructable": decision.get("reconstructable"),
-        "title_block": title.as_dict(),
-        "views": [
-            {
-                "id": v.id,
-                "bbox": v.bbox,
-                "label": v.label,
-                "confidence": v.confidence,
-                "source": v.label_source,
-                "reason": v.reason,
-                "counts": v.counts(),
-            }
-            for v in views
-        ],
-        "plates": plates,
-        "vlm_decision": {k: v for k, v in decision.items() if k != "raw"},
-        "vlm_trace": ocr.trace + reason.trace,
-        "review": review,
-        "renders": {"sheet": str(work_dir / "sheet.png")},
-    }
-    (work_dir / "sheet_analysis.json").write_text(
-        json.dumps(analysis, ensure_ascii=False, indent=2, default=list),
-        encoding="utf-8",
-    )
+    entities, _ = workdir.load_entities(work_dir)
+    views = workdir.labelled_views(work_dir, entities, analysis)
+    title = workdir.title_from_dict(analysis["title_block"])
     return {"entities": entities, "views": views, "title": title, "analysis": analysis}
 
 
@@ -1372,9 +1263,8 @@ class NotOrthographicSheet(ValueError):
 def load_dxf_document(
     path: str | Path, ocr: VLMClient, reason: VLMClient, work_dir: str | Path, **kw
 ) -> DrawingDocument:
-    a = analyze_dxf(path, ocr, reason, work_dir, **kw)
-    if a["analysis"]["sheet_type"] == "nesting":
-        raise NotOrthographicSheet(a["analysis"])
-    return build_document(
-        Path(path), a["entities"], a["views"], a["title"], a["analysis"]
-    )
+    """Stages 1-5 without writing document.json; load_drawing adds units and sha256."""
+    from cutplan_agent.reader.stages import document
+
+    analyze_dxf(path, ocr, reason, work_dir, **kw)
+    return document.from_stages(Path(work_dir))[0]

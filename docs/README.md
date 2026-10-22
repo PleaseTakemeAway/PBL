@@ -19,7 +19,8 @@
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
-| `reader/` (v3) | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
+| `reader/` (v3) | [stages.md](reader/stages.md) | 판독기를 단계별로 돌리는 명령, 단계마다 볼 파일, 고쳐서 이어 돌리기 |
+| | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
 | | [code_v3.md](reader/code_v3.md) | `experiments.sh` 실행 흐름과 파일별 역할, 출력 구조 |
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |
 | `data/` | [overview.md](data/overview.md) | 데이터 지도, 스크립트 ①~⑥ 의 입출력, 정답과 평가 |
@@ -30,7 +31,7 @@
 | | [unfold_classification_table.md](domain/unfold_classification_table.md) | KDM 도면 부품 라벨 779건의 전개 분류표 |
 | | [knowledge_files.md](domain/knowledge_files.md) | 에이전트가 읽는 지식·프롬프트 파일 목록과 읽는 시점 |
 
-동료의 zip 에서 받아 온 문서(`reader/`, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/`)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
+동료의 zip 에서 받아 온 문서(`reader/stages.md` 를 뺀 `reader/`, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/`)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
 
 ## 3. 레포 구조
 
@@ -49,6 +50,7 @@ cutplan_agent/
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
   reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
+  reader/stages/       판독 단계 7개(read·title·segment·label·document·unfold·reconstruct). 하나씩 따로 돈다
   reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), verify_ocr_output.py, requirements.txt

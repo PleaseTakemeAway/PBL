@@ -1,4 +1,9 @@
-"""Batch prediction and per-drawing reconstruction for folders of DXF files."""
+"""Batch prediction and per-drawing reconstruction for folders of DXF files.
+
+Each drawing goes through the stages of cutplan_agent/reader/stages in order
+(stages/sequence.py); this file adds discovery, ground-truth evaluation and the
+aggregate reports.
+"""
 
 from __future__ import annotations
 
@@ -12,11 +17,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from cutplan_agent.reader.drawing_io import load_drawing
-from cutplan_agent.reader.unfold import evaluate_against_label, run_unfold
+from cutplan_agent.reader.stages import document, reconstruct, sequence, workdir
+from cutplan_agent.reader.stages import unfold as unfold_stage
+from cutplan_agent.reader.unfold import evaluate_against_label
 from cutplan_agent.reader.vlm import PART_CLASSES, VLMClient
-from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
-from cutplan_agent.reconstruct.step6 import ReconstructionExporter
 
 
 def discover_dxf(inputs: Iterable[str | Path], *, recursive: bool = True) -> list[Path]:
@@ -247,27 +251,6 @@ def _accuracy_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _candidate_record(candidate, evaluation, item_dir: Path) -> dict[str, Any]:
-    return {
-        "candidate_id": candidate.id,
-        "valid": evaluation.valid,
-        "score": evaluation.score,
-        "extents_mm": dict(zip("xyz", candidate.extents)),
-        "vertices": len(candidate.vertices),
-        "edges": len(candidate.edges),
-        "features": candidate.features,
-        "parameters": candidate.parameters,
-        "artifacts": {
-            "step": str(item_dir / "reconstruction.step") if evaluation.valid else None,
-            "parameters": str(item_dir / "parameters.json")
-            if evaluation.valid
-            else None,
-            "provenance": str(item_dir / "provenance.json"),
-            "report": str(item_dir / "report.md"),
-        },
-    }
-
-
 def _item_id(path: Path, used: set[str]) -> str:
     base = re.sub(r"[^0-9A-Za-z._-]+", "_", path.stem).strip("._") or "drawing"
     value, index = base, 2
@@ -341,53 +324,67 @@ def run_batch(
                 raise ValueError(
                     f"Generated output already exists for {sample_id}; use --overwrite or a new output directory"
                 )
-            if overwrite:
-                # A prediction-only or failed rerun must not leave a stale model.
-                (item_dir / "reconstruction.step").unlink(missing_ok=True)
-                (item_dir / "parameters.json").unlink(missing_ok=True)
-                for name in (
-                    "flat_pattern.json",
-                    "flat_pattern.dxf",
-                    "flat_pattern.png",
-                ):
-                    (item_dir / name).unlink(missing_ok=True)
-            adapter_kw: dict[str, Any] = {"projection_default": projection_default}
-            if input_mode == "vision":
-                adapter_kw["dpi"] = dpi
+            # Each stage first clears its own and later stages' outputs, so a
+            # prediction-only or failed rerun does not leave a stale model.
+            steps: dict[str, Any] = {"output_dir": item_dir, "overwrite": True}
             if analyze_only:
                 if input_mode == "dxf":
-                    from cutplan_agent.reader.dxf_adapter import analyze_dxf
-
-                    analysis = analyze_dxf(path, ocr, reason, work_dir, **adapter_kw)[
-                        "analysis"
-                    ]
+                    analysis = sequence.analyze(
+                        path,
+                        work_dir,
+                        (ocr, reason),
+                        output_dir=item_dir,
+                        projection_default=projection_default,
+                    )
                 else:
                     from cutplan_agent.reader.vision_adapter import analyze_image
 
-                    analysis = analyze_image(path, ocr, reason, work_dir, **adapter_kw)[
-                        "analysis"
-                    ]
+                    workdir.prepare("read", work_dir, item_dir, overwrite=True)
+                    analysis = analyze_image(
+                        path,
+                        ocr,
+                        reason,
+                        work_dir,
+                        projection_default=projection_default,
+                        dpi=dpi,
+                    )["analysis"]
                 record["prediction"] = _prediction(analysis)
                 record["status"] = "predicted"
                 if unfold:
-                    record["flat_pattern"] = run_unfold(
-                        analysis, None, reason, item_dir
+                    record["flat_pattern"] = unfold_stage.run(
+                        work_dir, clients=(ocr, reason), use_document=False, **steps
                     )
                 continue
-            drawing = load_drawing(
-                path,
-                units=units,
-                dxf_mode=dxf_mode,
-                input_mode=input_mode,
-                vlm_clients=(ocr, reason),
-                work_dir=work_dir,
-                **adapter_kw,
+            if document.staged(path, input_mode, dxf_mode):
+                sequence.analyze(
+                    path,
+                    work_dir,
+                    (ocr, reason),
+                    output_dir=item_dir,
+                    projection_default=projection_default,
+                )
+                document.run(work_dir, units=units, **steps)
+            else:
+                document.run(
+                    work_dir,
+                    source=path,
+                    input_mode=input_mode,
+                    dxf_mode=dxf_mode,
+                    units=units,
+                    dpi=dpi,
+                    projection_default=projection_default,
+                    clients=(ocr, reason),
+                    **steps,
+                )
+            analysis = workdir.load_document(work_dir).metadata.get(
+                "sheet_analysis", {}
             )
-            analysis = drawing.metadata.get("sheet_analysis", {})
             record["prediction"] = _prediction(analysis)
             # class → dimensions → development, independent of the 3D wireframe search below
             if unfold:
-                record["flat_pattern"] = run_unfold(analysis, drawing, reason, item_dir)
+                record["flat_pattern"] = unfold_stage.run(
+                    work_dir, clients=(ocr, reason), use_document=True, **steps
+                )
             if analysis.get("reconstructable") is False:
                 record["status"] = "prediction_only"
                 record["reconstruction"] = {
@@ -395,62 +392,20 @@ def run_batch(
                     "reason": "prediction says the shape is not reconstructable from orthographic views alone",
                 }
             else:
-                effective_tolerance = (
-                    tolerance
-                    if tolerance is not None
-                    else float(drawing.metadata.get("suggested_tolerance_mm", 0.01))
+                out = reconstruct.run(
+                    work_dir,
+                    clients=(ocr, reason),
+                    tolerance=tolerance,
+                    max_candidates=max_candidates,
+                    confirm=confirm,
+                    **steps,
                 )
-                result = ReconstructionPipeline(
-                    effective_tolerance, max_candidates
-                ).run(drawing)
-                if confirm and reason.enabled:
-                    from cutplan_agent.reader.vision_adapter import confirm_candidates
-
-                    confirm_candidates(result, reason, work_dir)
-                exporter = ReconstructionExporter(effective_tolerance)
-                exporter.export_provenance(result, item_dir / "provenance.json")
-                exporter.export_report(result, item_dir / "report.md")
-                valid_ids = {
-                    evaluation.candidate_id
-                    for evaluation in result.evaluations
-                    if evaluation.valid
-                }
-                best = next(
-                    (
-                        candidate
-                        for candidate in result.candidates
-                        if candidate.id in valid_ids
-                    ),
-                    None,
+                record["status"] = (
+                    "reconstructed"
+                    if out["reconstruction"]["valid"]
+                    else "no_valid_candidate"
                 )
-                if best is None:
-                    if overwrite:
-                        (item_dir / "reconstruction.step").unlink(missing_ok=True)
-                        (item_dir / "parameters.json").unlink(missing_ok=True)
-                    record["status"] = "no_valid_candidate"
-                    record["reconstruction"] = {
-                        "attempted": True,
-                        "valid": False,
-                        "candidate_count": len(result.candidates),
-                        "review_status": result.review_request.get("status"),
-                        "artifacts": {
-                            "provenance": str(item_dir / "provenance.json"),
-                            "report": str(item_dir / "report.md"),
-                        },
-                    }
-                else:
-                    evaluation = next(
-                        item
-                        for item in result.evaluations
-                        if item.candidate_id == best.id
-                    )
-                    exporter.export_step(best, item_dir / "reconstruction.step")
-                    exporter.export_parameters(best, item_dir / "parameters.json")
-                    record["status"] = "reconstructed"
-                    record["reconstruction"] = {
-                        "attempted": True,
-                        **_candidate_record(best, evaluation, item_dir),
-                    }
+                record["reconstruction"] = out["reconstruction"]
         except Exception as exc:
             from cutplan_agent.reader.dxf_adapter import (
                 NotOrthographicSheet as DxfNotOrthographic,
