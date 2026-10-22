@@ -23,7 +23,7 @@ PYTHONPATH=. uv run python cutplan_agent/agent/orchestrator.py --job KD23002 --e
 PYTHONPATH=. uv run python cutplan_agent/eval/run_eval.py --jobs KD23002,KD23015,KD23022
 ```
 
-도면 판독기(v3, `cutplan_agent/reader/`)는 uv 환경에 아직 의존성이 없어 `--with` 로 붙인다. 로컬 모델 실험은 vllm 이 깔린 파이썬으로 `./experiments/experiments.sh --python <파이썬>` 을 쓴다.
+도면 판독기(v3, `cutplan_agent/reader/`)는 uv 환경에 아직 의존성이 없어 `--with` 로 붙인다. 로컬 모델 실험은 vllm 이 깔린 파이썬으로 `./experiments/experiments.sh --python <파이썬>` 을 쓴다. 서버를 띄워 두고 여러 번 돌릴 때는 `./experiments/serve.sh` 를 쓴다 (3절 로컬 모델).
 
 ```bash
 PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
@@ -52,7 +52,7 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
 
 ### 로컬 모델 (vLLM)
 
-`experiments/experiments.sh` 는 vLLM 서버를 직접 띄운다. vLLM 은 레포의 `.venv` 와 따로 가상환경을 만든다. 아래는 RTX A5000 24GB 4장, NVIDIA 드라이버 535(CUDA 12.2)인 서버에서 실제로 쓴 명령이다.
+`experiments/experiments.sh` 와 `experiments/serve.sh` 는 vLLM 서버를 직접 띄운다. vLLM 은 레포의 `.venv` 와 따로 가상환경을 만든다. 아래는 RTX A5000 24GB 4장, NVIDIA 드라이버 535(CUDA 12.2)인 서버에서 실제로 쓴 명령이다.
 
 ```bash
 uv venv --python 3.12 ~/venvs/vllm-0.31
@@ -75,6 +75,23 @@ HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download Qwen/Qwen3.6-27B
 - `HF_HUB_DISABLE_XET=1` 은 일반 HTTP 로 받게 한다. 이 서버에서는 xet 프로토콜이 초당 5MB 안팎으로 HTTP 보다 몇 배 느렸다.
 - 스크립트 기본값은 GPU 0 에 OCR, GPU 1,2,3 에 Qwen3.6-27B 를 pipeline parallel 로 올린다 ([reader/README.md](reader/README.md)). GPU 가 다르면 `--ocr-gpu`, `--reason-gpu`, `--reason-parallel` 로 바꾼다.
 
+`experiments.sh` 는 실행할 때마다 서버를 띄우고 끝나면 끈다. Qwen3.6-27B 는 뜨는 데 몇 분 걸리므로, 단계를 하나씩 돌리거나 여러 번 실험할 때는 `serve.sh` 로 서버만 띄워 둔다.
+
+```bash
+# 창 1 (tmux 등): 서버를 띄우고 Ctrl-C 까지 기다린다. ocr 이나 reason 만 주면 그 서버만 띄운다
+./experiments/serve.sh --vllm-bin ~/venvs/vllm-0.31/bin/vllm
+
+# 창 2: 레포 루트에서. 서버가 뜨면 생기는 파일을 읽는다
+. runs/vllm/ocr.env; . runs/vllm/reason.env
+PYTHONPATH=. ~/venvs/vllm-0.31/bin/python cutplan_agent/reader/stages/run.py \
+  data_v3/synthetic/cone_0019/cone_0019.dxf runs/reader/check/cone_0019 --to sheet
+./experiments/experiments.sh --python ~/venvs/vllm-0.31/bin/python --output-dir runs/reader/<새 폴더>
+```
+
+- `runs/vllm/<역할>.env` 는 서버가 health 검사를 통과하면 생기고, 서버가 내려가면 지워진다. 안에는 `CUTPLAN_<역할>_{MODEL,BASE_URL,PROVIDER,OUTPUT_FORMAT,API_KEY}` 와 `CUTPLAN_<역할>_MODE=api` 가 있다. `main.py`, 단계 스크립트, `make_clients()` 는 앞의 다섯 개를 읽고, `experiments.sh` 는 `MODE=api` 를 보고 그 역할의 서버를 새로 띄우지 않는다. 같은 셸에서 다시 `experiments.sh` 가 서버를 띄우게 하려면 새 셸을 연다.
+- 서버 로그는 `runs/vllm/<역할>_vllm.log` 에 쌓인다. 서버가 도중에 죽으면 `serve.sh` 가 로그 끝부분을 출력하고, 남은 서버도 끄고 멈춘다.
+- `serve.sh --dry-run` 은 실행할 `vllm serve` 명령을 그대로 출력한다. 옵션은 `experiments.sh` 의 서버 쪽 옵션과 같다 (`--help`).
+
 ## 4. 자주 나는 문제
 
 | 증상 | 해결 |
@@ -87,4 +104,5 @@ HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download Qwen/Qwen3.6-27B
 | `dwg2dxf 실패` | 3절의 dwg2dxf 설치 확인 |
 | vLLM 이 `libnvrtc.so.13: cannot open shared object file` 로 죽음 | `torchcodec` 을 CPU 판으로 바꾼다 (3절 로컬 모델) |
 | vLLM 이 `No such file or directory: 'ninja'` 로 죽음 | FlashInfer sampler 의 JIT 컴파일이다. `VLLM_USE_FLASHINFER_SAMPLER=0` 으로 끈다. `experiments.sh` 는 기본으로 끈다 |
+| `port 8000 already has a server` | `serve.sh` 등으로 이미 떠 있는 서버다. `runs/vllm/*.env` 를 source 해서 쓰거나, 그 서버를 끄고 다시 실행한다 |
 | vLLM 이 `No available memory for the cache blocks` 로 죽음 | 모델 weight 가 GPU 메모리 비율을 거의 다 쓴 것이다. GPU 를 더 주거나 `--reason-vllm-arg=--gpu-memory-utilization=…` 를 올린다 |
