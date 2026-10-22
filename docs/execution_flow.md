@@ -129,9 +129,11 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 
 | 모드 | 조건 | 흐름 |
 |---|---|---|
-| 배치 | `--batch`, 입력이 여러 개, 또는 폴더 | `batch.run_batch` (3.3) |
+| 배치 | `--batch`, 입력이 여러 개, 또는 폴더 | `batch.run_batch` (3.3). DXF 입력은 도면마다 `stages/run.py` 의 `run_drawing` |
 | 판독만 | `--analyze-only` | `analyze_dxf` 또는 `analyze_image` → `run_unfold` |
 | 단일 (기본) | 입력 1개 | `load_drawing` → `run_unfold` → `ReconstructionPipeline.run` → `confirm_candidates` → `ReconstructionExporter` |
+
+DXF 도면 1장을 단계별로 돌리는 스크립트는 `cutplan_agent/reader/stages/` 에 있다. 명령과 단계별 산출물은 [reader/stages.md](reader/stages.md) 에 정리했다.
 
 ### 3.3 배치 실행 순서 — `experiments.sh` → `batch.run_batch`
 
@@ -142,7 +144,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 ```
 
 1. `main.py` — 인자를 해석하고 `vlm.make_clients` 로 OCR·추론 클라이언트를 만든다 (`--no-vlm` 이면 꺼진 클라이언트).
-2. [`reader/batch.py`](../cutplan_agent/reader/batch.py) 의 `run_batch` — `discover_dxf` 로 DXF 를 찾고, 도면마다:
+2. [`reader/batch.py`](../cutplan_agent/reader/batch.py) 의 `run_batch` — `discover_dxf` 로 DXF 를 찾고, 도면마다 아래 일을 한다. `--input-mode dxf` 이면 2026-10-22 부터 이 일을 [`stages/run.py`](../cutplan_agent/reader/stages/run.py) 의 `run_drawing` 이 13단계(read → title_regex → title_ocr → title_fields → views → view_labels → sheet → document → unfold_params → develop → reconstruct → confirm → export)로 나눠 부르고, 단계마다 `<도면>/stages/NN_<단계>.json` 을 남긴다 ([reader/stages.md](reader/stages.md)). 부르는 함수와 결과는 아래와 같다.
    1. `drawing_io.load_drawing` → `dxf_adapter.load_dxf_document` → **`analyze_dxf`** ([`reader/dxf_adapter.py`](../cutplan_agent/reader/dxf_adapter.py)):
       - `read_dxf` — DXF 엔티티를 읽는다 (ezdxf, 없으면 순수 파이썬 리더)
       - `detect_frames`, `find_title_region`, `parse_title_block` — 도면 틀과 표제란 (OCR → 추론 모델)
@@ -164,6 +166,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 | 파일 | 역할 |
 |---|---|
 | `reader/main.py`, `reader/batch.py` | CLI, 배치 실행과 집계 |
+| `reader/stages/` | DXF 판독 13단계 스크립트 (단계마다 `run()` 과 CLI), `workspace.py` (단계 파일 읽고 쓰기), `run.py` (차례로 실행) |
 | `reader/drawing_io.py`, `reader/drawing_io_legacy_layers.py` | 입력 종류(JSON / 이미지·PDF / DXF)별 분기 |
 | `reader/dxf_reader.py` | DXF 파싱 |
 | `reader/dxf_adapter.py` | DXF 도면 판독. 가장 큰 파일 |
@@ -176,7 +179,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 
 ### 3.5 결과물
 
-도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `analysis/` (`sheet.png`, `sheet_analysis.json` 등), `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`.
+도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `stages/` (DXF 입력의 단계 파일 13개), `analysis/` (`sheet.png`, `sheet_analysis.json` 등), `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`.
 
 ## 4. 같은 일을 하는 곳
 
@@ -204,4 +207,6 @@ PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesse
 PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
   python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir /tmp/reader_novlm data_v3/synthetic
 ./experiments/experiments.sh --dry-run                                               # 설정만 출력
+PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
+  python cutplan_agent/reader/stages/run.py <도면.dxf> runs/reader/check/<도면> --no-vlm   # 도면 1장 단계별 (reader/stages.md)
 ```
