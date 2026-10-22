@@ -243,3 +243,140 @@ def reproducible(data: bytes, path: Path) -> None:
                 entry = zipfile.ZipInfo(info.filename, date_time=(2026, 1, 1, 0, 0, 0))
                 entry.compress_type = zipfile.ZIP_DEFLATED
                 dst.writestr(entry, src.read(info.filename))
+
+
+# ---------------------------------------------------------------------- charts and pictures
+def plain_chart(chart):
+    """No title and no frame around the chart area."""
+    chart.has_title = False
+    space = chart._chartSpace
+    sp_pr = space.find(qn("c:spPr"))
+    if sp_pr is None:
+        sp_pr = space.makeelement(qn("c:spPr"), {})
+        space.find(qn("c:chart")).addnext(sp_pr)
+    sp_pr.append(sp_pr.makeelement(qn("a:noFill"), {}))
+    line = sp_pr.makeelement(qn("a:ln"), {})
+    line.append(line.makeelement(qn("a:noFill"), {}))
+    sp_pr.append(line)
+
+
+def bar_chart(
+    slide,
+    x,
+    y,
+    w,
+    h,
+    categories,
+    values,
+    colors,
+    *,
+    number_format="0",
+    horizontal=True,
+    label_size=14,
+    gap=60,
+):
+    """One-series bar chart with a value label on each bar and no axis numbers or grid."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION
+
+    data = CategoryChartData()
+    data.categories = categories
+    data.add_series("values", values)
+    kind = XL_CHART_TYPE.BAR_CLUSTERED if horizontal else XL_CHART_TYPE.COLUMN_CLUSTERED
+    chart = slide.shapes.add_chart(
+        kind, Inches(x), Inches(y), Inches(w), Inches(h), data
+    ).chart
+    plain_chart(chart)
+    chart.has_legend = False
+    chart.font.size = Pt(label_size)
+    chart.font.name = FONT
+    chart.font.color.rgb = rgb(INK)
+    plot = chart.plots[0]
+    plot.gap_width = gap
+    plot.has_data_labels = True
+    labels = plot.data_labels
+    labels.number_format = number_format
+    labels.number_format_is_linked = False
+    labels.position = XL_LABEL_POSITION.OUTSIDE_END
+    labels.font.size = Pt(label_size)
+    labels.font.bold = True
+    for point, color in zip(plot.series[0].points, colors):
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = rgb(color)
+    value_axis = chart.value_axis
+    value_axis.visible = False
+    value_axis.has_major_gridlines = False
+    value_axis.minimum_scale = 0
+    category_axis = chart.category_axis
+    category_axis.format.line.fill.background()
+    category_axis.tick_labels.font.size = Pt(label_size)
+    if horizontal:
+        category_axis.reverse_order = True  # first category on top
+    return chart
+
+
+def doughnut_chart(slide, x, y, w, h, categories, values, colors, *, hole=58):
+    """Doughnut with value labels and a legend on the right."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+
+    data = CategoryChartData()
+    data.categories = categories
+    data.add_series("values", values)
+    chart = slide.shapes.add_chart(
+        XL_CHART_TYPE.DOUGHNUT, Inches(x), Inches(y), Inches(w), Inches(h), data
+    ).chart
+    plain_chart(chart)
+    chart.font.size = Pt(14)
+    chart.font.name = FONT
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.RIGHT
+    chart.legend.include_in_layout = False
+    chart.legend.font.size = Pt(15)
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    plot.data_labels.font.size = Pt(14)
+    plot.data_labels.font.bold = True
+    plot.data_labels.font.color.rgb = rgb(WHITE)
+    plot.data_labels.number_format = "0"
+    plot.data_labels.number_format_is_linked = False
+    for point, color in zip(plot.series[0].points, colors):
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = rgb(color)
+    hole_size = plot._element.find(qn("c:holeSize"))
+    if hole_size is None:
+        hole_size = plot._element.makeelement(qn("c:holeSize"), {})
+        plot._element.append(hole_size)
+    hole_size.set("val", str(hole))
+    return chart
+
+
+def picture(slide, path, x, y, w=None, h=None):
+    """A picture, or a gray box naming the missing file so the deck still builds."""
+    if Path(path).is_file():
+        return slide.shapes.add_picture(
+            str(path),
+            Inches(x),
+            Inches(y),
+            Inches(w) if w else None,
+            Inches(h) if h else None,
+        )
+    return card(
+        slide,
+        x,
+        y,
+        w or 4,
+        h or 3,
+        [f"그림 없음: {path}"],
+        size=12,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+        anchor=MSO_ANCHOR.MIDDLE,
+    )
+
+
+def badge(slide, x, y, d, glyph, fill, color=WHITE, size=None):
+    """A round marker with one symbol or number in it."""
+    return circle(
+        slide, x, y, d, glyph, fill=fill, color=color, size=size or int(d * 30)
+    )

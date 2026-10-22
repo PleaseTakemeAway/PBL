@@ -8,7 +8,7 @@
 |---|---|
 | `presentation/slides.py` | 모든 덱이 같이 쓰는 색, 글꼴, 도형, 슬라이드 틀(`Deck`) |
 | `presentation/build_reader_orchestrator.py` | "도면 판독 orchestrator" 파트 (14장, 약 18분) → `reader_orchestrator.pptx` |
-| `presentation/build_dwg_dxf.py` | "DWG 와 DXF" 파트 (11장, 약 15분) → `dwg_dxf.pptx` |
+| `presentation/build_dwg_dxf.py` | "DWG 와 DXF" 파트 (12장, 약 15분) → `dwg_dxf.pptx`. 글은 줄이고 차트 · 도면 그림 · 도식으로 보여 준다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -24,7 +24,7 @@ PYTHONPATH=. uv run --with python-pptx python presentation/build_dwg_dxf.py     
 PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx               # → presentation/build/*.png
 ```
 
-- `render.py` 는 LibreOffice(`soffice`)가 필요하다. 한글 폰트가 없으면 글자가 네모로 나온다. `mlic` 에는 나눔고딕을 `~/.local/share/fonts/nanum/` 에 받아 두었다 (2026-10-23).
+- `render.py` 는 LibreOffice(`soffice`)와 한글 폰트가 필요하다. 미리보기는 임시 사본에서 맑은 고딕을 나눔고딕으로 바꿔 그린다. 바꾸지 않으면 LibreOffice 가 글자 묶음마다 대체 글꼴을 따로 골라 일부 한글이 네모로 나온다. `mlic` 에는 나눔고딕을 `~/.local/share/fonts/nanum/` 에 받아 두었다 (2026-10-23).
 - 슬라이드 글꼴은 맑은 고딕(Malgun Gothic)이다. 미리보기는 나눔고딕과 DejaVu Sans 로 대신 그리므로, PowerPoint 에서는 줄바꿈 위치와 단어 간격이 조금 다르다. 대체 글꼴이 더 넓어서, 미리보기에서 들어가면 PowerPoint 에서도 들어간다.
 - 같은 스크립트는 같은 pptx 를 바이트 단위로 똑같이 만든다 (zip 항목 시각과 문서 속성을 고정한다). 리팩터링 뒤 결과가 그대로인지 sha256 으로 확인할 수 있다.
 
@@ -43,6 +43,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | DWG 0.2–0.5 MB → DXF 1.1–2.8 MB (5.0–7.7배) | 위 536장을 정렬해 50장마다 1장씩 뽑은 11장을 LibreDWG 0.14 `dwg2dxf` 로 변환. R2007 2장은 7,463 바이트 빈 DXF, 나머지 9장 |
 | 82만–218만 토큰 | 변환한 DXF 3장 전체를 Qwen3.6-27B 토크나이저로 셈 (837,402 / 823,730 / 2,179,027) |
 | 4,747 토큰, 엔티티 66개 | `data_v3/synthetic/cone_0019/cone_0019.dxf` 같은 방법. 엔티티 수는 판독 01단계 결과 |
+| cone_0019 의 표제란 SPCC, 4t · 1/2 · SYN-00019, 치수 150 × 150 × 150 | 판독 02 `title_regex`, 08 `document` 단계 결과 (orchestrator 시연 실행) |
 | 262,144 | Qwen3.6-27B 토크나이저 설정의 최대 길이 |
 | 엔티티 2,085–7,245개, LINE 60–69% | 변환한 DXF 2장을 ezdxf 로 읽어 modelspace 엔티티를 셈 |
 | UTF-8 로 62자 깨짐, CP949 로 한글 39자 | AC1018 DXF 2장(`$DWGCODEPAGE` = ANSI_949)을 두 인코딩으로 읽어 셈 |
