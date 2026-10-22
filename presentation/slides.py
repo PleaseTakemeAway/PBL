@@ -7,6 +7,7 @@ with PYTHONPATH=. so `presentation.slides` imports.
 
 import datetime
 import io
+import re
 import zipfile
 from pathlib import Path
 
@@ -236,13 +237,37 @@ class Deck:
 
 def reproducible(data: bytes, path: Path) -> None:
     """Rewrite the zip with fixed entry times, so the same slides give the same bytes and
-    a rebuild without changes leaves git clean."""
+    a rebuild without changes leaves git clean. A chart's embedded workbook carries the
+    time it was written, so it is rewritten the same way."""
     with zipfile.ZipFile(io.BytesIO(data)) as src:
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as dst:
             for info in src.infolist():
+                body = src.read(info.filename)
+                if info.filename.endswith(".xlsx"):
+                    body = fixed_workbook(body)
                 entry = zipfile.ZipInfo(info.filename, date_time=(2026, 1, 1, 0, 0, 0))
                 entry.compress_type = zipfile.ZIP_DEFLATED
-                dst.writestr(entry, src.read(info.filename))
+                dst.writestr(entry, body)
+
+
+def fixed_workbook(data: bytes) -> bytes:
+    """The workbook with its created and modified times set to FIXED_TIME."""
+    stamp = FIXED_TIME.strftime("%Y-%m-%dT%H:%M:%SZ").encode()
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as src:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+            for info in src.infolist():
+                body = src.read(info.filename)
+                if info.filename == "docProps/core.xml":
+                    body = re.sub(
+                        rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*",
+                        rb"\g<1>" + stamp,
+                        body,
+                    )
+                entry = zipfile.ZipInfo(info.filename, date_time=(2026, 1, 1, 0, 0, 0))
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                dst.writestr(entry, body)
+    return out.getvalue()
 
 
 # ---------------------------------------------------------------------- charts and pictures
