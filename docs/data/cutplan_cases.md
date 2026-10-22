@@ -13,7 +13,7 @@ test_data/cases/                   scripts/build_cutplan_cases.py 가 위 폴더
   index.csv, README.md             설비별 요약
   <설비>/
     input_drawings/                설계 도면 (받은 그대로)
-    output_cutting_plan/           CP.dwg, CP.dxf, CP.png, qc.png, sheets.csv, parts.csv, pieces.csv
+    output_cutting_plan/           CP.dwg, CP.dxf, CP.pdf, qc.pdf, sheets.csv, parts.csv, pieces.csv
     output_unfold/P<n>.dxf         조각마다 외곽 (pieces.csv 의 piece_id)
     source.csv                     받은 파일의 크기·sha256, 기존 데이터와의 비교, 입력 DWG 를 읽을 수 있는지
     coverage.csv                   정답 부품이 가리키는 설계 도면이 입력에 있는지
@@ -45,7 +45,7 @@ test_data/cases/                   scripts/build_cutplan_cases.py 가 위 폴더
 - 조각: 닫힌 외곽선 하나다. 블록(INSERT)은 풀어서 쓴다. 조각 안의 닫힌 외곽은 구멍이다.
 - 부품 라벨 → 조각 (`parts.csv` 의 `outline`): `label` 라벨을 감싸는 조각, `face` 선을 공유한 부품끼리의 면, `near` 라벨 옆의 조각(추정), `none` 못 찾음.
 - 라벨 없는 조각 → 부품 (`pieces.csv` 의 `link`): `copy` 같은 판의 같은 모양, `row` 전개도 모음에서 같은 줄의 유일한 부품. 둘 다 추정이다.
-- 결과는 `output_cutting_plan/qc.png` 로 확인한다. 초록 = label, 파랑 = face, 주황 = near, 연두 = copy·row, 빨간 테두리 = 부품에 묶이지 않은 조각.
+- 결과는 `output_cutting_plan/qc.pdf` 로 확인한다 (2026-10-23 부터 PDF. PNG 는 작은 글자가 뭉개졌다). 초록 = label, 파랑 = face, 주황 = near, 연두 = copy·row, 빨간 테두리 = 부품에 묶이지 않은 조각.
 
 기존 정답(`Data/_dataset/`)을 만든 툴킷 `cp_extract.py` (`~/dwg2png`, sha256 `1db0888d…`) 를 같은 CP.dxf 에 돌려 비교했다 (2026-10-23).
 
@@ -55,6 +55,9 @@ test_data/cases/                   scripts/build_cutplan_cases.py 가 위 폴더
 ## 4. 알려진 문제 (2026-10-23)
 
 담당자에게 물어볼 것은 [company_questions.md](../domain/company_questions.md) 2절에 모았다.
+
+- 받은 원본 폴더 `test_data/cutting_plan/` 은 2026-10-23 00:59 쯤 지워졌다. 받은 파일은 `test_data/cases/<설비>/input_drawings/` 와 `output_cutting_plan/CP.dwg` 에 그대로 있고 sha256 이 `source.csv` 와 같다. 다시 만들려면 이 사본으로 원본 폴더를 되살린다.
+- D-1203 은 판재 배치 전의 전개도 목록이다. 같은 부품이 기존 KD23079 재질별 CP 에 다른 설비 부품과 섞여 배치되어 있다. `cp_parse.py` 는 그 CP 의 판재 라벨 형식(`SA240-304L T25 x 2700 x 11740 - 1 SH'T`, `T29 -> 30`)을 아직 읽지 못한다.
 
 - S-2120 판 8 (`A240-304 t8 x 1150 x 1200`) 의 링 조각 6개 (380.5 x 85.7) 는 부품에 묶이지 않았다. 5-2 INSUL SUP'T RING 열에 있지만 라벨이 붙은 5-2 조각 (283 x 76.4) 과 크기가 달라 추정하지 않았다.
 - D-1203 의 입력 DWG 6개는 LibreDWG 0.14 가 DXF 를 TABLES 구간까지만 쓰고 멈춰 ezdxf 가 열지 못한다 (`source.csv` 의 `readable`). 이 환경에서는 같은 이름의 PDF 를 입력으로 쓴다. S-2120 의 DWG 4개는 읽힌다.

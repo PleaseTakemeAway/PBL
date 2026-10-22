@@ -10,8 +10,8 @@ CP.dwg (D-1203 은 백업 CP.bak 도), 워크오더 번호 한 줄을 적은 not
 출력 (설비마다):
   <out>/<설비>/
     input_drawings/        설계 도면 dwg·pdf. 받은 그대로 복사
-    output_cutting_plan/   CP.dwg (받은 그대로), CP.dxf (dwg2dxf 변환), CP.png (사람이 보는 그림),
-                           qc.png (읽은 조각을 색으로 칠한 그림),
+    output_cutting_plan/   CP.dwg (받은 그대로), CP.dxf (dwg2dxf 변환), CP.pdf (사람이 보는 그림),
+                           qc.pdf (읽은 조각을 색으로 칠한 그림),
                            sheets.csv, parts.csv, pieces.csv (cutplan_agent/eval/cp_parse.py 가 읽은 정답)
     output_unfold/         조각마다 외곽 DXF (P<piece_id>.dxf, 좌하단을 원점으로 옮김). 목록은 pieces.csv
     source.csv             받은 파일마다 크기·sha256·역할. Data/dataset 의 같은 워크오더에 같은 이름 파일이
@@ -21,8 +21,9 @@ CP.dwg (D-1203 은 백업 CP.bak 도), 워크오더 번호 한 줄을 적은 not
   <out>/index.csv          설비별 요약
   <out>/README.md
 
-정답을 읽는 규칙과 한계는 cutplan_agent/eval/cp_parse.py 에 있다. 결과는 qc.png 로 확인한다.
-CP.png 는 scripts/render_drawings.py 로 그린다. 한글 폰트가 없으면 한글이 네모로 나온다.
+정답을 읽는 규칙과 한계는 cutplan_agent/eval/cp_parse.py 에 있다. 결과는 qc.pdf 로 확인한다.
+두 그림은 선과 글자를 벡터로 담은 PDF 라 확대해도 깨지지 않는다 (PNG 는 작은 글자가 뭉개져 2026-10-23 에 바꿨다).
+CP.pdf 는 scripts/render_drawings.py 로 그린다. 한글 폰트가 없으면 한글이 네모로 나온다.
 """
 
 import argparse
@@ -132,8 +133,8 @@ def old_dataset_files(wo: str) -> dict:
     return out
 
 
-def render_cp_png(dxf: Path, out_png: Path) -> None:
-    tmp = out_png.parent / "_render"
+def render_cp_pdf(dxf: Path, out_pdf: Path) -> None:
+    tmp = out_pdf.parent / "_render"
     r = subprocess.run(
         [
             sys.executable,
@@ -142,7 +143,7 @@ def render_cp_png(dxf: Path, out_png: Path) -> None:
             "-o",
             str(tmp),
             "--format",
-            "png",
+            "pdf",
             "--px",
             "4000",
             "--force",
@@ -150,19 +151,21 @@ def render_cp_png(dxf: Path, out_png: Path) -> None:
         capture_output=True,
         text=True,
     )
-    png = tmp / (dxf.stem + ".png")
-    if r.returncode == 0 and png.exists():
-        shutil.move(png, out_png)
+    pdf = tmp / (dxf.stem + ".pdf")
+    if r.returncode == 0 and pdf.exists():
+        shutil.move(pdf, out_pdf)
     else:
-        print(f"  주의: CP.png 를 그리지 못했다\n{r.stdout[-1000:]}{r.stderr[-1000:]}")
+        print(f"  주의: CP.pdf 를 그리지 못했다\n{r.stdout[-1000:]}{r.stderr[-1000:]}")
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-def render_qc(dxf: Path, cp, out_png: Path) -> None:
+def render_qc(dxf: Path, cp, out_pdf: Path) -> None:
     """읽은 조각을 link 별 색으로 칠하고 부품 번호를 적는다. 빨간 테두리 = 부품에 묶이지 않은 조각."""
     import matplotlib
 
     matplotlib.use("Agg")
+    # 글자를 PDF 글자로 넣는다 (검색·복사 가능)
+    matplotlib.rcParams["pdf.fonttype"] = 42
     import matplotlib.pyplot as plt
 
     _, lines = read_geometry(ezdxf.readfile(dxf).modelspace())
@@ -203,7 +206,7 @@ def render_qc(dxf: Path, cp, out_png: Path) -> None:
         ax.fill(ex, ey, color=LINK_COLORS.get(p.link, "#bdbdbd"), alpha=0.45, lw=0)
         cx, cy = p.center
         ax.text(cx, cy, str(p.part_no), ha="center", va="center", fontsize=fs)
-    fig.savefig(out_png)
+    fig.savefig(out_pdf)
     plt.close(fig)
 
 
@@ -295,8 +298,8 @@ def build_case(case_dir: Path, out_root: Path) -> dict:
     for k in ("sheets", "parts", "pieces"):
         write_csv(cpdir / f"{k}.csv", rows[k])
     write_piece_dxfs(cp, out / "output_unfold")
-    render_cp_png(dxf, cpdir / "CP.png")
-    render_qc(dxf, cp, cpdir / "qc.png")
+    render_cp_pdf(dxf, cpdir / "CP.pdf")
+    render_qc(dxf, cp, cpdir / "qc.pdf")
 
     names = [p.name for p in (out / "input_drawings").iterdir()]
     by_ref = defaultdict(int)
@@ -350,7 +353,7 @@ README = """# cases — 회사 담당자에게 받은 커팅플랜 테스트셋
   size, w, h)와 조각 모양(pieces.csv, output_unfold/)을 비교할 수 있고, 판재 수·중량은 비교할 수 없다.
 - 부품 외곽: label = 라벨이 조각 안에 있음, face = 선을 공유한 부품의 면, near = 라벨 옆 조각 (추정),
   none = 못 찾음. 규칙은 `cutplan_agent/eval/cp_parse.py`.
-- 확인은 `output_cutting_plan/qc.png` 로 한다. 초록 = 라벨로 찾은 조각, 파랑 = face, 주황 = near,
+- 확인은 `output_cutting_plan/qc.pdf` 로 한다. 초록 = 라벨로 찾은 조각, 파랑 = face, 주황 = near,
   연두 = 같은 판의 같은 모양(copy)이나 같은 줄(row) 로 묶은 조각, 빨간 테두리 = 부품에 안 묶인 조각.
 - `source.csv` 의 old_dataset: Data/dataset 의 같은 워크오더에 같은 이름 파일이 있으면 sha256 비교 결과
   (same / different), 없으면 absent. readable: 입력 DWG 를 이 환경의 dwg2dxf + ezdxf 로 읽을 수 있는지.
