@@ -16,9 +16,19 @@ dependencies = [
     "python-dotenv>=1.2.4",
 ]
 
-[build-system]
-requires = ["uv_build>=0.9.8,<0.10"]
-build-backend = "uv_build"
+[tool.uv]
+# cutplan_agent 는 설치하지 않는다. 레포 루트에서 PYTHONPATH=. 를 주고 파일로 실행한다.
+package = false
 
-[tool.uv.build-backend]
-module-root = ""
+[dependency-groups]
+dev = [
+    "ruff==0.17.1",
+]
+
+[tool.ruff]
+# 마크다운 안의 코드 블록은 포맷하지 않는다. skills/ 는 동료 원본과 sha256 이 같아야 한다.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# 상대 import 를 금지한다. `uv run ruff check --select I,TID252 .` 로 확인한다.
+ban-relative-imports = "all"

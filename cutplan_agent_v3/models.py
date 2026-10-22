@@ -1,4 +1,5 @@
 """Shared, serializable data contracts for the six reconstruction stages."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -32,7 +33,8 @@ class Primitive2D:
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> Primitive2D:
         primitive = cls(
-            id=str(value["id"]), kind=str(value.get("kind", "line")).lower(),
+            id=str(value["id"]),
+            kind=str(value.get("kind", "line")).lower(),
             points=[point2(p) for p in value.get("points", [])],
             center=point2(value["center"]) if value.get("center") is not None else None,
             radius=float(value["radius"]) if value.get("radius") is not None else None,
@@ -42,10 +44,14 @@ class Primitive2D:
         if primitive.kind == "line" and len(primitive.points) != 2:
             raise ValueError(f"Line {primitive.id} requires exactly two points")
         if primitive.kind == "circle" and (
-            primitive.center is None or primitive.radius is None
-            or not isfinite(primitive.radius) or primitive.radius <= 0
+            primitive.center is None
+            or primitive.radius is None
+            or not isfinite(primitive.radius)
+            or primitive.radius <= 0
         ):
-            raise ValueError(f"Circle {primitive.id} requires a center and positive radius")
+            raise ValueError(
+                f"Circle {primitive.id} requires a center and positive radius"
+            )
         if primitive.kind not in {"line", "circle"}:
             raise ValueError(f"Unsupported primitive: {primitive.kind}")
         return primitive
@@ -73,14 +79,20 @@ class DrawingDocument:
     source: str | None = None
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any], source: str | None = None) -> DrawingDocument:
-        views = [DrawingView(
-            id=str(v["id"]), name=str(v.get("name", v["id"])),
-            primitives=[Primitive2D.from_dict(p) for p in v.get("primitives", [])],
-            annotations=list(v.get("annotations", [])),
-            origin=point2(v["origin"]) if v.get("origin") is not None else None,
-            scale=float(v.get("scale", 1.0)),
-        ) for v in value.get("views", [])]
+    def from_dict(
+        cls, value: dict[str, Any], source: str | None = None
+    ) -> DrawingDocument:
+        views = [
+            DrawingView(
+                id=str(v["id"]),
+                name=str(v.get("name", v["id"])),
+                primitives=[Primitive2D.from_dict(p) for p in v.get("primitives", [])],
+                annotations=list(v.get("annotations", [])),
+                origin=point2(v["origin"]) if v.get("origin") is not None else None,
+                scale=float(v.get("scale", 1.0)),
+            )
+            for v in value.get("views", [])
+        ]
         if not views or len({v.id for v in views}) != len(views):
             raise ValueError("Drawing must have views with unique IDs")
         for view in views:
@@ -96,16 +108,21 @@ class ReconstructionCandidate:
     id: str
     vertices: list[Point3D]
     edges: list[tuple[int, int]]
-    features: list[dict[str, Any]] = field(default_factory=list) # Feature 설계를 어떻게 진행하는가?
-    parameters: dict[str, Any] = field(default_factory=dict) # 뭐에 대한 parameters?
-    provenance: list[dict[str, Any]] = field(default_factory=list) 
+    features: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # Feature 설계를 어떻게 진행하는가?
+    parameters: dict[str, Any] = field(default_factory=dict)  # 뭐에 대한 parameters?
+    provenance: list[dict[str, Any]] = field(default_factory=list)
     score: float = 0.0
 
     @property
     def extents(self) -> Point3D:
         if not self.vertices:
             return (0.0, 0.0, 0.0)
-        return tuple(max(p[a] for p in self.vertices) - min(p[a] for p in self.vertices) for a in range(3))
+        return tuple(
+            max(p[a] for p in self.vertices) - min(p[a] for p in self.vertices)
+            for a in range(3)
+        )
 
 
 @dataclass

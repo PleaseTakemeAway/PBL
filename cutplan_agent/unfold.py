@@ -14,10 +14,11 @@
     KDM TECH 의 실제 도면 태그 44건을 역산한 결과, 원통 전개길이는
         L = pi x (ID + t)
     즉 중립축을 평균지름에 두고 있다 (K-factor = 0.5).
-    python -m cutplan_agent.unfold --validate 로 그 44건을 재검증할 수 있다.
+    PYTHONPATH=. uv run python cutplan_agent/unfold.py --validate 로 그 44건을 재검증할 수 있다.
 
 원본: tools/dwg2png/vlm/unfold.py (이전 세션 툴킷). l3_rules.unfold_part 가 절곡·평판에 쓴다.
 """
+
 from __future__ import annotations
 
 import math
@@ -50,16 +51,20 @@ class PartModel(BaseModel):
 
     # --- bent_sheet ---
     width: float = Field(0, description="절곡판 폭 (굽힘축 방향 길이)")
-    segments: List[float] = Field(default_factory=list,
-                                  description="굽힘 사이 직선구간 길이들 (외측 기준)")
-    bend_angles: List[float] = Field(default_factory=list,
-                                     description="각 굽힘의 굽힘각(도). 90 이면 직각")
-    bend_radii: List[float] = Field(default_factory=list,
-                                    description="각 굽힘의 내측 반지름 R")
+    segments: List[float] = Field(
+        default_factory=list, description="굽힘 사이 직선구간 길이들 (외측 기준)"
+    )
+    bend_angles: List[float] = Field(
+        default_factory=list, description="각 굽힘의 굽힘각(도). 90 이면 직각"
+    )
+    bend_radii: List[float] = Field(
+        default_factory=list, description="각 굽힘의 내측 반지름 R"
+    )
 
     # --- flat ---
-    outline: List[List[float]] = Field(default_factory=list,
-                                       description="평판 윤곽 [[x,y], ...]")
+    outline: List[List[float]] = Field(
+        default_factory=list, description="평판 윤곽 [[x,y], ...]"
+    )
 
     confidence: Literal["high", "medium", "estimated", "unreadable"] = "medium"
     notes: List[str] = Field(default_factory=list)
@@ -67,9 +72,10 @@ class PartModel(BaseModel):
 
 class FlatPattern(BaseModel):
     """전개 계산 결과."""
+
     part_type: str
-    outline: List[List[float]]          # 전개 블랭크 윤곽
-    arcs: List[dict] = Field(default_factory=list)   # 부채꼴 등 호 정보
+    outline: List[List[float]]  # 전개 블랭크 윤곽
+    arcs: List[dict] = Field(default_factory=list)  # 부채꼴 등 호 정보
     bend_lines: List[List[List[float]]] = Field(default_factory=list)
     blank_w: float = 0
     blank_h: float = 0
@@ -110,20 +116,28 @@ def unfold_cylinder(m: PartModel) -> FlatPattern:
     """원통 -> 직사각형.  L = pi x (ID + t)"""
     w = []
     if m.inner_dia <= 0 or m.length <= 0:
-        return FlatPattern(part_type="cylinder", outline=[],
-                           warnings=["inner_dia 또는 length 가 비어 전개 불가"])
-    mean_dia = m.inner_dia + m.thickness            # 중립축 지름 (K=0.5)
+        return FlatPattern(
+            part_type="cylinder",
+            outline=[],
+            warnings=["inner_dia 또는 length 가 비어 전개 불가"],
+        )
+    mean_dia = m.inner_dia + m.thickness  # 중립축 지름 (K=0.5)
     L = math.pi * mean_dia
     if m.thickness > 0 and m.inner_dia / m.thickness < 20:
-        w.append(f"ID/t = {m.inner_dia/m.thickness:.1f} 로 작다 — 후육 원통은 "
-                 f"중립축이 평균지름에서 벗어날 수 있다")
+        w.append(
+            f"ID/t = {m.inner_dia / m.thickness:.1f} 로 작다 — 후육 원통은 "
+            f"중립축이 평균지름에서 벗어날 수 있다"
+        )
     H = m.length
     return FlatPattern(
         part_type="cylinder",
         outline=[[0, 0], [L, 0], [L, H], [0, H]],
-        blank_w=L, blank_h=H, developed_length=L,
+        blank_w=L,
+        blank_h=H,
+        developed_length=L,
         formula=f"L = pi x (ID + t) = pi x ({m.inner_dia} + {m.thickness}) = {L:.1f}",
-        warnings=w)
+        warnings=w,
+    )
 
 
 def unfold_cone(m: PartModel) -> FlatPattern:
@@ -140,39 +154,55 @@ def unfold_cone(m: PartModel) -> FlatPattern:
     D2m = m.small_inner_dia + m.thickness if m.small_inner_dia > 0 else m.thickness
     h = m.cone_height
     if D1m <= 0 or h <= 0:
-        return FlatPattern(part_type="cone_frustum", outline=[],
-                           warnings=["large_inner_dia 또는 cone_height 가 비어 전개 불가"])
+        return FlatPattern(
+            part_type="cone_frustum",
+            outline=[],
+            warnings=["large_inner_dia 또는 cone_height 가 비어 전개 불가"],
+        )
     if D2m >= D1m:
-        return FlatPattern(part_type="cone_frustum", outline=[],
-                           warnings=["작은쪽 지름이 큰쪽 이상 — 값이 뒤바뀐 듯"])
+        return FlatPattern(
+            part_type="cone_frustum",
+            outline=[],
+            warnings=["작은쪽 지름이 큰쪽 이상 — 값이 뒤바뀐 듯"],
+        )
 
     dR = (D1m - D2m) / 2.0
     s = math.hypot(h, dR)
     R1 = s * D1m / (D1m - D2m)
     R2 = R1 - s
-    theta = math.pi * D1m / R1                      # rad
+    theta = math.pi * D1m / R1  # rad
     if theta > 2 * math.pi:
         w.append("중심각이 360도를 넘는다 — 분할 전개가 필요하다")
 
     # 부채꼴 윤곽을 점으로 (호는 arcs 에도 남긴다)
     n = max(24, int(math.degrees(theta) / 2))
-    outer = [[R1 * math.cos(a), R1 * math.sin(a)]
-             for a in (theta * i / n for i in range(n + 1))]
-    inner = [[R2 * math.cos(a), R2 * math.sin(a)]
-             for a in (theta * i / n for i in range(n, -1, -1))]
+    outer = [
+        [R1 * math.cos(a), R1 * math.sin(a)]
+        for a in (theta * i / n for i in range(n + 1))
+    ]
+    inner = [
+        [R2 * math.cos(a), R2 * math.sin(a)]
+        for a in (theta * i / n for i in range(n, -1, -1))
+    ]
     pts = outer + inner
 
-    xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
     return FlatPattern(
         part_type="cone_frustum",
         outline=pts,
-        arcs=[{"r": R1, "start": 0.0, "end": math.degrees(theta)},
-              {"r": R2, "start": 0.0, "end": math.degrees(theta)}],
-        blank_w=max(xs) - min(xs), blank_h=max(ys) - min(ys),
+        arcs=[
+            {"r": R1, "start": 0.0, "end": math.degrees(theta)},
+            {"r": R2, "start": 0.0, "end": math.degrees(theta)},
+        ],
+        blank_w=max(xs) - min(xs),
+        blank_h=max(ys) - min(ys),
         developed_length=theta * R1,
-        formula=(f"s={s:.1f}  R1={R1:.1f}  R2={R2:.1f}  "
-                 f"theta={math.degrees(theta):.2f}도"),
-        warnings=w)
+        formula=(
+            f"s={s:.1f}  R1={R1:.1f}  R2={R2:.1f}  theta={math.degrees(theta):.2f}도"
+        ),
+        warnings=w,
+    )
 
 
 def unfold_bent(m: PartModel) -> FlatPattern:
@@ -183,28 +213,33 @@ def unfold_bent(m: PartModel) -> FlatPattern:
     """
     w = []
     if not m.segments:
-        return FlatPattern(part_type="bent_sheet", outline=[],
-                           warnings=["segments 가 비어 전개 불가"])
+        return FlatPattern(
+            part_type="bent_sheet", outline=[], warnings=["segments 가 비어 전개 불가"]
+        )
     n_bend = len(m.bend_angles)
     if n_bend != len(m.bend_radii) or len(m.segments) != n_bend + 1:
-        w.append(f"구간 {len(m.segments)}개 / 굽힘 {n_bend}개 — 개수가 "
-                 f"맞지 않는다 (구간 = 굽힘 + 1 이어야 함)")
+        w.append(
+            f"구간 {len(m.segments)}개 / 굽힘 {n_bend}개 — 개수가 "
+            f"맞지 않는다 (구간 = 굽힘 + 1 이어야 함)"
+        )
 
     t = m.thickness
     total = 0.0
-    cuts = []           # 굽힘선 위치(전개 좌표 x)
+    cuts = []  # 굽힘선 위치(전개 좌표 x)
     for i, seg in enumerate(m.segments):
         # 앞뒤 굽힘에 물린 setback 을 뺀 실제 평면부 길이
         sb = 0.0
         if i > 0 and i - 1 < n_bend:
-            r, a = m.bend_radii[i-1], m.bend_angles[i-1]
+            r, a = m.bend_radii[i - 1], m.bend_angles[i - 1]
             sb += (r + t) * math.tan(math.radians(a) / 2)
         if i < n_bend:
             r, a = m.bend_radii[i], m.bend_angles[i]
             sb += (r + t) * math.tan(math.radians(a) / 2)
         flat = seg - sb
         if flat < 0:
-            w.append(f"구간 {i+1} 이 굽힘에 모두 먹혔다 (길이 {seg}, setback {sb:.1f})")
+            w.append(
+                f"구간 {i + 1} 이 굽힘에 모두 먹혔다 (길이 {seg}, setback {sb:.1f})"
+            )
             flat = 0.0
         total += flat
         if i < n_bend:
@@ -220,31 +255,49 @@ def unfold_bent(m: PartModel) -> FlatPattern:
         part_type="bent_sheet",
         outline=[[0, 0], [total, 0], [total, W], [0, W]],
         bend_lines=bl,
-        blank_w=total, blank_h=W, developed_length=total,
-        formula=("전개 = sum(평면부) + sum(BA),  BA = theta x (R + K t), "
-                 f"K={k_factor(m.bend_radii[0] if m.bend_radii else t, t):.2f}"),
-        warnings=w)
+        blank_w=total,
+        blank_h=W,
+        developed_length=total,
+        formula=(
+            "전개 = sum(평면부) + sum(BA),  BA = theta x (R + K t), "
+            f"K={k_factor(m.bend_radii[0] if m.bend_radii else t, t):.2f}"
+        ),
+        warnings=w,
+    )
 
 
 def unfold_flat(m: PartModel) -> FlatPattern:
     if not m.outline:
-        return FlatPattern(part_type="flat", outline=[],
-                           warnings=["outline 이 비어 있다"])
-    xs = [p[0] for p in m.outline]; ys = [p[1] for p in m.outline]
-    return FlatPattern(part_type="flat", outline=m.outline,
-                       blank_w=max(xs)-min(xs), blank_h=max(ys)-min(ys),
-                       formula="평판 - 전개 불필요, 윤곽 그대로")
+        return FlatPattern(
+            part_type="flat", outline=[], warnings=["outline 이 비어 있다"]
+        )
+    xs = [p[0] for p in m.outline]
+    ys = [p[1] for p in m.outline]
+    return FlatPattern(
+        part_type="flat",
+        outline=m.outline,
+        blank_w=max(xs) - min(xs),
+        blank_h=max(ys) - min(ys),
+        formula="평판 - 전개 불필요, 윤곽 그대로",
+    )
 
 
-DISPATCH = {"cylinder": unfold_cylinder, "cone_frustum": unfold_cone,
-            "bent_sheet": unfold_bent, "flat": unfold_flat}
+DISPATCH = {
+    "cylinder": unfold_cylinder,
+    "cone_frustum": unfold_cone,
+    "bent_sheet": unfold_bent,
+    "flat": unfold_flat,
+}
 
 
 def unfold(m: PartModel) -> FlatPattern:
     fn = DISPATCH.get(m.part_type)
     if fn is None:
-        return FlatPattern(part_type=m.part_type, outline=[],
-                           warnings=[f"지원하지 않는 형상: {m.part_type}"])
+        return FlatPattern(
+            part_type=m.part_type,
+            outline=[],
+            warnings=[f"지원하지 않는 형상: {m.part_type}"],
+        )
     return fn(m)
 
 
@@ -273,12 +326,14 @@ def write_dxf(m: PartModel, fp: FlatPattern, path: str) -> None:
     ] + [f"! {x}" for x in fp.warnings]
     y = -30.0
     for ln in info:
-        msp.add_text(ln, height=max(fp.blank_h, 100) * 0.03,
-                     dxfattribs={"layer": "INFO"}).set_placement((0, y))
+        msp.add_text(
+            ln, height=max(fp.blank_h, 100) * 0.03, dxfattribs={"layer": "INFO"}
+        ).set_placement((0, y))
         y -= max(fp.blank_h, 100) * 0.045
 
-    doc.set_modelspace_vport(height=max(fp.blank_h, 100) * 1.6,
-                             center=(fp.blank_w / 2, fp.blank_h / 2))
+    doc.set_modelspace_vport(
+        height=max(fp.blank_h, 100) * 1.6, center=(fp.blank_w / 2, fp.blank_h / 2)
+    )
     doc.saveas(path)
 
 
@@ -295,7 +350,10 @@ def validate(tags_csv: str) -> None:
     대조군으로 안지름/바깥지름 기준 공식도 같이 재서, 평균지름 가설이
     실제로 더 잘 맞는지 확인한다.
     """
-    import csv, io as _io, re
+    import csv
+    import io as _io
+    import re
+
     rows = list(csv.DictReader(_io.open(tags_csv, encoding="utf-8-sig")))
     cases = []
     for r in rows:
@@ -315,9 +373,11 @@ def validate(tags_csv: str) -> None:
     print(f"{'가설':<26}{'5mm격자 잔차 중앙값':>22}{'<=2mm':>9}{'<=0.5mm':>10}")
     print("-" * 68)
     best = None
-    for label, dia in (("중립축 = 평균지름 (ID+t)", lambda L, t: L / math.pi - t),
-                       ("중립축 = 안지름 (ID)",      lambda L, t: L / math.pi),
-                       ("중립축 = 바깥지름 (ID+2t)", lambda L, t: L / math.pi - 2 * t)):
+    for label, dia in (
+        ("중립축 = 평균지름 (ID+t)", lambda L, t: L / math.pi - t),
+        ("중립축 = 안지름 (ID)", lambda L, t: L / math.pi),
+        ("중립축 = 바깥지름 (ID+2t)", lambda L, t: L / math.pi - 2 * t),
+    ):
         res = [residual(dia(L, t), 5.0) for _, t, L in cases]
         res.sort()
         med = res[len(res) // 2]
@@ -340,9 +400,14 @@ def validate(tags_csv: str) -> None:
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] == "--validate":
         from cutplan_agent.config import ROOT
-        validate(sys.argv[2] if len(sys.argv) > 2
-                 else str(ROOT / "Data" / "_dataset" / "part_tags.csv"))
+
+        validate(
+            sys.argv[2]
+            if len(sys.argv) > 2
+            else str(ROOT / "Data" / "_dataset" / "part_tags.csv")
+        )
     else:
         print(__doc__)

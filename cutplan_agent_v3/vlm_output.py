@@ -3,28 +3,56 @@
 OCR model calls return raw text; the reasoning model structures that text using
 the text_extraction/title_block tasks defined here.
 """
+
 from __future__ import annotations
 
-from copy import deepcopy
 import json
-from math import isfinite
 import re
+from copy import deepcopy
+from math import isfinite
 from typing import Any
 
-
 PART_CLASSES = ("flat", "cylinder", "cone", "press_formed", "bent_sheet", "other")
-VIEW_TYPES = ("front", "top", "bottom", "right", "left", "back", "section",
-              "detail", "flat_pattern", "isometric", "table", "other")
-TASK_BLOCKS = {"text_extraction": "text_extraction", "title_block": "title_block", "view_labels": "reasoning",
-               "candidate_confirmation": "confirmation", "unfold_params": "unfold"}
+VIEW_TYPES = (
+    "front",
+    "top",
+    "bottom",
+    "right",
+    "left",
+    "back",
+    "section",
+    "detail",
+    "flat_pattern",
+    "isometric",
+    "table",
+    "other",
+)
+TASK_BLOCKS = {
+    "text_extraction": "text_extraction",
+    "title_block": "title_block",
+    "view_labels": "reasoning",
+    "candidate_confirmation": "confirmation",
+    "unfold_params": "unfold",
+}
 # part_type names of skills/02_prompts/unfold_extract.md (+ head from unfold_rules.md)
-UNFOLD_PART_TYPES = ("cylinder", "cone_frustum", "bent_sheet", "flat", "head", "unknown")
+UNFOLD_PART_TYPES = (
+    "cylinder",
+    "cone_frustum",
+    "bent_sheet",
+    "flat",
+    "head",
+    "unknown",
+)
 UNFOLD_CONFIDENCE = ("high", "medium", "estimated", "unreadable")
 
 
 def _object(properties: dict) -> dict:
-    return {"type": "object", "properties": properties,
-            "required": list(properties), "additionalProperties": False}
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "additionalProperties": False,
+    }
 
 
 def _nullable(schema: dict) -> dict:
@@ -34,60 +62,112 @@ def _nullable(schema: dict) -> dict:
 _STRING = {"type": "string"}
 _NUMBER = {"type": "number"}
 _PROJECTION = {"type": "string", "enum": ["first", "third"]}
-TEXT_SCHEMA = _object({
-    "items": {"type": "array", "items": _object({
-        "text": _STRING, "bbox": {"type": "array", "items": _NUMBER},
-        "kind": {"type": "string", "enum": ["dimension", "label", "note", "title", "table", "caption", "other"]},
-    })},
-})
-TITLE_SCHEMA = _object({
-    "drawing_no": _nullable(_STRING), "part_name": _nullable(_STRING),
-    "material": _nullable(_STRING), "thickness_mm": _nullable(_NUMBER),
-    "scale": _nullable(_STRING),
-    "units": _nullable({"type": "string", "enum": ["mm", "inch"]}),
-    "projection": _nullable(_PROJECTION), "weight_kg": _nullable(_NUMBER),
-})
-VIEW_SCHEMA = _object({
-    "id": {"type": "integer"},
-    "type": {"type": "string", "enum": list(VIEW_TYPES)},
-    "confidence": _NUMBER, "reason": _STRING,
-    "overall_width_mm": _nullable(_NUMBER), "overall_height_mm": _nullable(_NUMBER),
-})
-REASONING_SCHEMA = _object({
-    "projection": _nullable(_PROJECTION),
-    "part_class": _nullable({"type": "string", "enum": list(PART_CLASSES)}),
-    "part_class_scores": _nullable(_object({name: _NUMBER for name in PART_CLASSES})),
-    "reconstructable_from_views": _nullable({"type": "boolean"}),
-    "views": {"type": "array", "items": VIEW_SCHEMA},
-})
-CONFIRMATION_SCHEMA = _object({
-    "pick": _nullable({"type": "integer"}), "confidence": _NUMBER,
-    "reason": _STRING, "problems": {"type": "array", "items": _STRING},
-})
+TEXT_SCHEMA = _object(
+    {
+        "items": {
+            "type": "array",
+            "items": _object(
+                {
+                    "text": _STRING,
+                    "bbox": {"type": "array", "items": _NUMBER},
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "dimension",
+                            "label",
+                            "note",
+                            "title",
+                            "table",
+                            "caption",
+                            "other",
+                        ],
+                    },
+                }
+            ),
+        },
+    }
+)
+TITLE_SCHEMA = _object(
+    {
+        "drawing_no": _nullable(_STRING),
+        "part_name": _nullable(_STRING),
+        "material": _nullable(_STRING),
+        "thickness_mm": _nullable(_NUMBER),
+        "scale": _nullable(_STRING),
+        "units": _nullable({"type": "string", "enum": ["mm", "inch"]}),
+        "projection": _nullable(_PROJECTION),
+        "weight_kg": _nullable(_NUMBER),
+    }
+)
+VIEW_SCHEMA = _object(
+    {
+        "id": {"type": "integer"},
+        "type": {"type": "string", "enum": list(VIEW_TYPES)},
+        "confidence": _NUMBER,
+        "reason": _STRING,
+        "overall_width_mm": _nullable(_NUMBER),
+        "overall_height_mm": _nullable(_NUMBER),
+    }
+)
+REASONING_SCHEMA = _object(
+    {
+        "projection": _nullable(_PROJECTION),
+        "part_class": _nullable({"type": "string", "enum": list(PART_CLASSES)}),
+        "part_class_scores": _nullable(
+            _object({name: _NUMBER for name in PART_CLASSES})
+        ),
+        "reconstructable_from_views": _nullable({"type": "boolean"}),
+        "views": {"type": "array", "items": VIEW_SCHEMA},
+    }
+)
+CONFIRMATION_SCHEMA = _object(
+    {
+        "pick": _nullable({"type": "integer"}),
+        "confidence": _NUMBER,
+        "reason": _STRING,
+        "problems": {"type": "array", "items": _STRING},
+    }
+)
 _NUMBERS = {"type": "array", "items": _NUMBER}
-UNFOLD_SCHEMA = _object({
-    "part_type": {"type": "string", "enum": list(UNFOLD_PART_TYPES)},
-    "thickness": _nullable(_NUMBER),
-    "inner_dia": _nullable(_NUMBER), "length": _nullable(_NUMBER),
-    "large_inner_dia": _nullable(_NUMBER), "small_inner_dia": _nullable(_NUMBER), "cone_height": _nullable(_NUMBER),
-    "width": _nullable(_NUMBER), "segments": _NUMBERS, "bend_angles": _NUMBERS, "bend_radii": _NUMBERS,
-    "outline": {"type": "array", "items": _NUMBERS},
-    "head_type": _nullable(_STRING), "straight_flange": _nullable(_NUMBER),
-    "holes": {"type": "array", "items": _object({"diameter": _NUMBER, "count": {"type": "integer"}})},
-    "part_name": _nullable(_STRING), "material": _nullable(_STRING), "quantity": _nullable({"type": "integer"}),
-    "confidence": {"type": "string", "enum": list(UNFOLD_CONFIDENCE)},
-})
-VLM_RESPONSE_SCHEMA = _object({
-    "schema_version": {"type": "integer", "enum": [1]},
-    "role": {"type": "string", "enum": ["ocr", "reason"]},
-    "task": {"type": "string", "enum": list(TASK_BLOCKS)},
-    "text_extraction": _nullable(TEXT_SCHEMA),
-    "title_block": _nullable(TITLE_SCHEMA),
-    "reasoning": _nullable(REASONING_SCHEMA),
-    "confirmation": _nullable(CONFIRMATION_SCHEMA),
-    "unfold": _nullable(UNFOLD_SCHEMA),
-    "notes": _STRING,
-})
+UNFOLD_SCHEMA = _object(
+    {
+        "part_type": {"type": "string", "enum": list(UNFOLD_PART_TYPES)},
+        "thickness": _nullable(_NUMBER),
+        "inner_dia": _nullable(_NUMBER),
+        "length": _nullable(_NUMBER),
+        "large_inner_dia": _nullable(_NUMBER),
+        "small_inner_dia": _nullable(_NUMBER),
+        "cone_height": _nullable(_NUMBER),
+        "width": _nullable(_NUMBER),
+        "segments": _NUMBERS,
+        "bend_angles": _NUMBERS,
+        "bend_radii": _NUMBERS,
+        "outline": {"type": "array", "items": _NUMBERS},
+        "head_type": _nullable(_STRING),
+        "straight_flange": _nullable(_NUMBER),
+        "holes": {
+            "type": "array",
+            "items": _object({"diameter": _NUMBER, "count": {"type": "integer"}}),
+        },
+        "part_name": _nullable(_STRING),
+        "material": _nullable(_STRING),
+        "quantity": _nullable({"type": "integer"}),
+        "confidence": {"type": "string", "enum": list(UNFOLD_CONFIDENCE)},
+    }
+)
+VLM_RESPONSE_SCHEMA = _object(
+    {
+        "schema_version": {"type": "integer", "enum": [1]},
+        "role": {"type": "string", "enum": ["ocr", "reason"]},
+        "task": {"type": "string", "enum": list(TASK_BLOCKS)},
+        "text_extraction": _nullable(TEXT_SCHEMA),
+        "title_block": _nullable(TITLE_SCHEMA),
+        "reasoning": _nullable(REASONING_SCHEMA),
+        "confirmation": _nullable(CONFIRMATION_SCHEMA),
+        "unfold": _nullable(UNFOLD_SCHEMA),
+        "notes": _STRING,
+    }
+)
 
 
 def response_schema(role: str, task: str) -> dict:
@@ -100,7 +180,8 @@ def response_schema(role: str, task: str) -> dict:
     for block in TASK_BLOCKS.values():
         schema["properties"][block] = (
             schema["properties"][block]["anyOf"][0]
-            if block == TASK_BLOCKS[task] else {"type": "null"}
+            if block == TASK_BLOCKS[task]
+            else {"type": "null"}
         )
     return schema
 
@@ -155,7 +236,9 @@ def _validate(value: Any, schema: dict, path: str = "response") -> None:
         missing = set(schema["required"]) - value.keys()
         extra = value.keys() - schema["properties"].keys()
         if missing or extra:
-            raise ValueError(f"{path}: missing={sorted(missing)}, extra={sorted(extra)}")
+            raise ValueError(
+                f"{path}: missing={sorted(missing)}, extra={sorted(extra)}"
+            )
         for key, child in schema["properties"].items():
             _validate(value[key], child, f"{path}.{key}")
     elif typ == "array":
@@ -163,7 +246,9 @@ def _validate(value: Any, schema: dict, path: str = "response") -> None:
             _validate(item, schema["items"], f"{path}[{index}]")
 
 
-def normalize_response(data: Any, role: str, task: str, *, allow_legacy: bool = True) -> tuple[dict, bool]:
+def normalize_response(
+    data: Any, role: str, task: str, *, allow_legacy: bool = True
+) -> tuple[dict, bool]:
     """Validate the new envelope or migrate an old bare task JSON response.
 
     Legacy missing fields are represented by null/empty values, not guessed.
@@ -176,10 +261,14 @@ def normalize_response(data: Any, role: str, task: str, *, allow_legacy: bool = 
     if not isinstance(data, dict):
         raise ValueError("VLM response must be a JSON object")
     schema = response_schema(role, task)
-    legacy = not any(key in data for key in ("schema_version", "role", "task", *TASK_BLOCKS.values()))
+    legacy = not any(
+        key in data for key in ("schema_version", "role", "task", *TASK_BLOCKS.values())
+    )
     if legacy:
         if not allow_legacy:
-            raise ValueError("structured response must use the complete task envelope; legacy JSON is not allowed")
+            raise ValueError(
+                "structured response must use the complete task envelope; legacy JSON is not allowed"
+            )
         block = TASK_BLOCKS[task]
         fields = schema["properties"][block]["properties"]
         if not fields.keys() & data.keys():
@@ -189,39 +278,62 @@ def normalize_response(data: Any, role: str, task: str, *, allow_legacy: bool = 
             if not isinstance(payload["items"], list):
                 raise ValueError("text_extraction.items: expected array")
             payload["items"] = [
-                {"text": item.get("text"), "bbox": item.get("bbox"), "kind": item.get("kind", "other")}
-                if isinstance(item, dict) else item for item in payload["items"]
+                {
+                    "text": item.get("text"),
+                    "bbox": item.get("bbox"),
+                    "kind": item.get("kind", "other"),
+                }
+                if isinstance(item, dict)
+                else item
+                for item in payload["items"]
             ]
         elif task == "view_labels":
             # Views are essential to this task: a missing list is an error.
             if not isinstance(payload["views"], list):
                 raise ValueError("reasoning.views: expected array")
             payload["views"] = [
-                {key: item.get(key, "" if key == "reason" else None)
-                 for key in VIEW_SCHEMA["properties"]}
-                if isinstance(item, dict) else item for item in payload["views"]
+                {
+                    key: item.get(key, "" if key == "reason" else None)
+                    for key in VIEW_SCHEMA["properties"]
+                }
+                if isinstance(item, dict)
+                else item
+                for item in payload["views"]
             ]
         elif task == "candidate_confirmation":
             payload["reason"] = data.get("reason", "")
             payload["problems"] = data.get("problems", [])
-        data = {"schema_version": 1, "role": role, "task": task,
-                **{name: None for name in TASK_BLOCKS.values()},
-                "notes": data.get("notes", ""), block: payload}
+        data = {
+            "schema_version": 1,
+            "role": role,
+            "task": task,
+            **{name: None for name in TASK_BLOCKS.values()},
+            "notes": data.get("notes", ""),
+            block: payload,
+        }
     _validate(data, schema)
     block_data = data[TASK_BLOCKS[task]]
     if task == "text_extraction":
         for item in block_data["items"]:
             box = item["bbox"]
             if len(box) != 4 or min(box) < 0 or box[2] <= box[0] or box[3] <= box[1]:
-                raise ValueError("text bbox must contain [x0,y0,x1,y1] with nonnegative coordinates and positive area")
+                raise ValueError(
+                    "text bbox must contain [x0,y0,x1,y1] with nonnegative coordinates and positive area"
+                )
             if not item["text"].strip():
                 raise ValueError("text item must not be empty")
     if task == "title_block":
         scale = block_data["scale"]
         if scale is not None:
-            ratio = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)\s*", scale)
-            if not ratio or not all(isfinite(float(v)) and float(v) > 0 for v in ratio.groups()):
-                raise ValueError("title_block.scale must be a positive ratio string or null")
+            ratio = re.fullmatch(
+                r"\s*(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)\s*", scale
+            )
+            if not ratio or not all(
+                isfinite(float(v)) and float(v) > 0 for v in ratio.groups()
+            ):
+                raise ValueError(
+                    "title_block.scale must be a positive ratio string or null"
+                )
         if block_data["thickness_mm"] is not None and block_data["thickness_mm"] <= 0:
             raise ValueError("title_block.thickness_mm must be positive or null")
         if block_data["weight_kg"] is not None and block_data["weight_kg"] < 0:
@@ -233,7 +345,16 @@ def normalize_response(data: Any, role: str, task: str, *, allow_legacy: bool = 
             if view[key] is not None and view[key] <= 0:
                 raise ValueError(f"view {key} must be positive or null")
     if task == "unfold_params":
-        for key in ("thickness", "inner_dia", "length", "large_inner_dia", "small_inner_dia", "cone_height", "width", "straight_flange"):
+        for key in (
+            "thickness",
+            "inner_dia",
+            "length",
+            "large_inner_dia",
+            "small_inner_dia",
+            "cone_height",
+            "width",
+            "straight_flange",
+        ):
             if block_data[key] is not None and block_data[key] < 0:
                 raise ValueError(f"unfold.{key} must be nonnegative or null")
         if any(len(point) != 2 for point in block_data["outline"]):

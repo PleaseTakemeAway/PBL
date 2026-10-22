@@ -14,9 +14,16 @@ quality == chain_path 판재는 부품 분리가 불가하므로 건너뛴다.
     → 해당 부품은 ARC 가 잘려 나가고 match=diff/none 으로 표시됨. 평가에는 match=ok 행만 사용할 것.
   - 근본 해결은 닫힌 루프(연결성) 기반 재추출. TODO.
 """
-import csv, json, os, re, sys, collections
-import numpy as np
+
+import collections
+import csv
+import json
+import os
+import re
+import sys
+
 import ezdxf
+import numpy as np
 from ezdxf import bbox
 from ezdxf.math import Vec3
 
@@ -24,9 +31,15 @@ from cutplan_agent.config import DATA_DIR, DATASET
 
 BASE = DATA_DIR
 OUT = DATASET
-YEAR_DIR = {"23": "2023년 cutting plan", "24": "2024년 cutting plan", "25": "2025년 cutting plan"}
+YEAR_DIR = {
+    "23": "2023년 cutting plan",
+    "24": "2024년 cutting plan",
+    "25": "2025년 cutting plan",
+}
 GEOM = {"LINE", "ARC", "CIRCLE", "LWPOLYLINE", "POLYLINE", "ELLIPSE", "SPLINE"}
-EXCLUDE_LAYERS = {"부재번호"}   # 부재번호 풍선 원 등 주석용 레이어 (레이어 census 로 확인)
+EXCLUDE_LAYERS = {
+    "부재번호"
+}  # 부재번호 풍선 원 등 주석용 레이어 (레이어 census 로 확인)
 TOL = 1.0  # mm
 
 
@@ -51,7 +64,9 @@ def entity_boxes(msp):
 
 
 def main():
-    data = json.load(open(os.path.join(BASE, "_dataset", "nesting_dataset.json"), encoding="utf8"))
+    data = json.load(
+        open(os.path.join(BASE, "_dataset", "nesting_dataset.json"), encoding="utf8")
+    )
     by_drawing = collections.defaultdict(list)
     for sh in data:
         by_drawing[sh["drawing"]].append(sh)
@@ -75,12 +90,27 @@ def main():
                 total_parts += 1
                 x0, y0 = ox + p["rel_x"], oy + p["rel_y"]
                 x1, y1 = x0 + p["w"], y0 + p["h"]
-                m = (boxes[:, 0] >= x0 - TOL) & (boxes[:, 1] >= y0 - TOL) & (boxes[:, 2] <= x1 + TOL) & (boxes[:, 3] <= y1 + TOL)
+                m = (
+                    (boxes[:, 0] >= x0 - TOL)
+                    & (boxes[:, 1] >= y0 - TOL)
+                    & (boxes[:, 2] <= x1 + TOL)
+                    & (boxes[:, 3] <= y1 + TOL)
+                )
                 # 판재 전체 크기의 엔티티(판 외곽선)는 제외
-                m &= ~((boxes[:, 2] - boxes[:, 0] >= sh["sheet_w"] - TOL) & (boxes[:, 3] - boxes[:, 1] >= sh["sheet_h"] - TOL))
+                m &= ~(
+                    (boxes[:, 2] - boxes[:, 0] >= sh["sheet_w"] - TOL)
+                    & (boxes[:, 3] - boxes[:, 1] >= sh["sheet_h"] - TOL)
+                )
                 idx = np.nonzero(m)[0]
                 if len(idx) == 0:
-                    index_rows.append({**_row(drawing, sh, i, p), "file": "", "n_ents_cut": 0, "match": "none"})
+                    index_rows.append(
+                        {
+                            **_row(drawing, sh, i, p),
+                            "file": "",
+                            "n_ents_cut": 0,
+                            "match": "none",
+                        }
+                    )
                     continue
                 new = ezdxf.new("R2010")
                 nmsp = new.modelspace()
@@ -93,9 +123,16 @@ def main():
                 fname = f"{safe_name(drawing)}_S{sh['sheet_id']:02d}_P{i:03d}_{safe_name(p['label'])}.dxf"
                 new.saveas(os.path.join(out_dir, fname))
                 total_written += 1
-                ok = (len(idx) == p["n_ents"])
-                mismatch += (not ok)
-                index_rows.append({**_row(drawing, sh, i, p), "file": fname, "n_ents_cut": len(idx), "match": "ok" if ok else "diff"})
+                ok = len(idx) == p["n_ents"]
+                mismatch += not ok
+                index_rows.append(
+                    {
+                        **_row(drawing, sh, i, p),
+                        "file": fname,
+                        "n_ents_cut": len(idx),
+                        "match": "ok" if ok else "diff",
+                    }
+                )
         # index.csv 는 워크오더 단위로 누적
         idx_path = os.path.join(out_dir, "index.csv")
         old = []
@@ -106,21 +143,38 @@ def main():
         if rows:
             with open(idx_path, "w", encoding="utf-8-sig", newline="") as f:
                 w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-                w.writeheader(); w.writerows(rows)
-        print(f"{drawing:45s} sheets={len(sheets):3d} parts={sum(len(s['parts']) for s in sheets):5d} written={sum(1 for r in index_rows if r['file']):5d}")
-    print(f"\nparts={total_parts} written={total_written} n_ents mismatch={mismatch} ({mismatch/max(total_written,1):.1%})")
+                w.writeheader()
+                w.writerows(rows)
+        print(
+            f"{drawing:45s} sheets={len(sheets):3d} parts={sum(len(s['parts']) for s in sheets):5d} written={sum(1 for r in index_rows if r['file']):5d}"
+        )
+    print(
+        f"\nparts={total_parts} written={total_written} n_ents mismatch={mismatch} ({mismatch / max(total_written, 1):.1%})"
+    )
 
 
 def _row(drawing, sh, i, p):
     tag = p.get("tag") or {}
     return {
-        "drawing": drawing, "sheet_id": sh["sheet_id"], "quality": sh["quality"],
-        "material": sh["material"], "thickness": sh["thickness"],
-        "part_idx": i, "label": p["label"], "w": p["w"], "h": p["h"],
-        "rel_x": p["rel_x"], "rel_y": p["rel_y"], "n_ents": p["n_ents"], "holes": p["holes"],
-        "tag_name": tag.get("name", ""), "tag_material": tag.get("material", ""),
-        "tag_thickness": tag.get("thickness", ""), "tag_size": tag.get("size", ""),
-        "tag_qty": tag.get("qty", ""), "tag_dwg_no": tag.get("dwg_no", ""),
+        "drawing": drawing,
+        "sheet_id": sh["sheet_id"],
+        "quality": sh["quality"],
+        "material": sh["material"],
+        "thickness": sh["thickness"],
+        "part_idx": i,
+        "label": p["label"],
+        "w": p["w"],
+        "h": p["h"],
+        "rel_x": p["rel_x"],
+        "rel_y": p["rel_y"],
+        "n_ents": p["n_ents"],
+        "holes": p["holes"],
+        "tag_name": tag.get("name", ""),
+        "tag_material": tag.get("material", ""),
+        "tag_thickness": tag.get("thickness", ""),
+        "tag_size": tag.get("size", ""),
+        "tag_qty": tag.get("qty", ""),
+        "tag_dwg_no": tag.get("dwg_no", ""),
     }
 
 
