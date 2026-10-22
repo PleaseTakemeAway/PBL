@@ -61,6 +61,7 @@ cutplan_agent/
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), serve.sh (서버만), verify_ocr_output.py, requirements.txt
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (data/overview.md)
+  reader/              reader 단계 결과를 표와 그림으로 보기 (show_stages.py)
 skills/                reader 와 v2 가 프롬프트로 읽는 지식·프롬프트 문서 (01_core_knowledge, 02_prompts)
 docs/                  사람이 읽는 문서 (이 폴더)
 

@@ -92,3 +92,4 @@ EOF
 # 한 단계부터 다시 돌리는 예: 06 부터 끝까지 (01–05 는 작업 폴더의 파일을 그대로 쓴다)
 #   "${PY[@]}" cutplan_agent/reader/stages/run.py "$W" --from view_labels "${O[@]}" "${R[@]}"
 # 모델 원문 응답은 stages/03, 04, 06, 09, 12 파일의 "trace" 에 있다
+# 단계 결과를 표와 그림으로 보기: uv run python scripts/reader/show_stages.py "$W" [단계 ...] → "$W"/figures/index.html

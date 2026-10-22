@@ -136,6 +136,40 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $W --from title_fi
 
 ## 4. 결과 보기
 
+단계 파일은 다음 단계가 읽는 자료라 사람이 보기 어렵다. [`scripts/reader/show_stages.py`](../../scripts/reader/show_stages.py) 가 단계마다 볼 것만 골라 표로 출력하고, 같은 내용을 그림으로 그린다.
+
+```bash
+uv run python scripts/reader/show_stages.py $W              # 있는 단계 전부
+uv run python scripts/reader/show_stages.py $W 6            # 한 단계 (번호나 이름: view_labels)
+uv run python scripts/reader/show_stages.py $W 2 4 6-9      # 여러 단계, 범위
+uv run python scripts/reader/show_stages.py $W 9 --raw      # 모델 원문 응답까지
+uv run python scripts/reader/show_stages.py $W 1 --limit 0  # 목록을 자르지 않는다 (기본 30줄)
+uv run python scripts/reader/show_stages.py $W --no-figures # 표만
+```
+
+- 표: `skipped` 는 이유, `failed` 는 오류를 출력하고, 모델 단계는 호출마다 모델, 걸린 시간, 성공 여부, 붙인 skill 문서를 출력한다.
+- 그림: 고른 단계마다 `<작업 폴더>/figures/NN_<단계>.png` 를 쓰고, 단계 끝에 그 경로와 단계가 직접 남긴 그림(`analysis/*.png`, `flat_pattern.png`)의 경로를 출력한다.
+- `figures/index.html`: 모든 단계의 그림과 표를 한 페이지에 묶는다. 고른 단계만 그림을 새로 그리고, 이 파일에는 늘 모든 단계가 들어간다.
+- 정답: DXF 옆에 `label.json` 이 있으면 (합성 도면) 표제란, 뷰 이름, 형상, 복원 가능 여부, 전개 파라미터, 전개 결과에 정답을 나란히 보여 준다. 뷰 이름은 bbox 가 정답 뷰와 절반 넘게 겹칠 때만 짝짓는다.
+- 단계 파일만 읽고 `cutplan_agent` 를 import 하지 않아서 `PYTHONPATH` 가 없어도 된다.
+
+| 단계 | 그림 |
+|---|---|
+| 01 | 도면 전체를 레이어별 색으로 (점선 = 숨은선) |
+| 02 | 표제란으로 찾은 영역 (빨간 상자), 그 확대, 필드 표 (정답과 같으면 초록, 다르거나 못 읽으면 빨강) |
+| 03 | OCR 에 넣은 그림과 받아쓴 글자 |
+| 04 | 정규식, 모델 답, 최종값, 정답 표 |
+| 05 | 뷰 후보 (주황), 제외 영역 (회색), 도면 틀 (파란 점선) |
+| 06 | 뷰 라벨 (front 빨강, top 파랑, right 초록), 정답 뷰와 다르면 함께 표시, 형상 확률 막대 |
+| 08 | 3D 복원에 넘기는 front/top/right 뷰와 치수 |
+| 09 | 전개 파라미터와 누가 채웠나 (모델 / 코드) |
+| 10 | 계산한 전개도와 정답을 같은 축척으로 겹친 그림 (부채꼴, 직사각형, 원) |
+| 11 | 3D 와이어프레임 후보와 검사 결과 |
+
+07, 12 는 단계가 남긴 `analysis/sheet.png`, `analysis/candidates.png` 를 쓴다. 원격 서버에서는 PNG 를 VSCode 로 바로 열거나, `uv run python -m http.server 8765 -d $W` 를 띄우고 `http://localhost:8765/figures/index.html` 을 연다 (VSCode 가 포트를 넘겨 준다). 한글 폰트는 matplotlib 이 아는 것이 없으면 `fc-list :lang=ko` 로 찾는다.
+
+JSON 을 직접 볼 때는 아래처럼 한다.
+
 ```bash
 # 단계 상태 한눈에
 python3 - $W <<'EOF'
