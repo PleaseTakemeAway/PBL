@@ -4,8 +4,10 @@
 
 knowledge/<topic>.md 를 그대로 돌려준다. topic 목록은 list_topics() 로.
 """
+
 from pathlib import Path
 from typing import Dict, List
+
 from ..config import KNOWLEDGE_DIR
 from ..state import logged
 
@@ -13,7 +15,9 @@ from ..state import logged
 def list_topics() -> List[Dict[str, str]]:
     out = []
     for p in sorted(KNOWLEDGE_DIR.glob("*.md")):
-        first = p.read_text(encoding="utf8").strip().splitlines()[0].lstrip("# ").strip()
+        first = (
+            p.read_text(encoding="utf8").strip().splitlines()[0].lstrip("# ").strip()
+        )
         out.append({"topic": p.stem, "title": first})
     return out
 
@@ -24,5 +28,8 @@ def load_domain_prompt(topic: str) -> dict:
     material_mapping | nesting_rules | design_data_ga | por_format"""
     p = KNOWLEDGE_DIR / f"{topic}.md"
     if not p.exists():
-        return {"error": f"없는 topic: {topic}", "available": [t["topic"] for t in list_topics()]}
+        return {
+            "error": f"없는 topic: {topic}",
+            "available": [t["topic"] for t in list_topics()],
+        }
     return {"topic": topic, "text": p.read_text(encoding="utf8")}

@@ -19,14 +19,26 @@ Data/dataset/ 구축 스크립트.
 
 원본 폴더는 건드리지 않는다(복사만).
 """
-import csv, json, os, re, shutil, sys, collections
+
+import collections
+import csv
+import json
+import os
+import re
+import shutil
+import sys
+
 import openpyxl
 
 from cutplan_agent.config import DATA_DIR, DATASET
 
 BASE = DATA_DIR
 OUT = DATASET
-YEAR_DIR = {"2023": "2023년 cutting plan", "2024": "2024년 cutting plan", "2025": "2025년 cutting plan"}
+YEAR_DIR = {
+    "2023": "2023년 cutting plan",
+    "2024": "2024년 cutting plan",
+    "2025": "2025년 cutting plan",
+}
 WO_RE = re.compile(r"(KD\d{5})")
 
 
@@ -52,14 +64,29 @@ def copy(src, dst):
 
 
 def build_kdm():
-    wb = openpyxl.load_workbook(os.path.join(BASE, "KD_CP_파일목록.xlsx"), read_only=True)
+    wb = openpyxl.load_workbook(
+        os.path.join(BASE, "KD_CP_파일목록.xlsx"), read_only=True
+    )
     rows = list(wb.worksheets[0].iter_rows(values_only=True))[1:]
     sheets = read_csv(os.path.join(BASE, "_dataset", "sheets.csv"))
     parts = read_csv(os.path.join(BASE, "_dataset", "parts.csv"))
     tags = read_csv(os.path.join(BASE, "_dataset", "part_tags.csv"))
-    score = {r["drawing"]: r for r in read_csv(os.path.join(BASE, "_dataset", "scorecard.csv"))}
-    by_drawing = lambda rows_: collections.defaultdict(list, {k: [r for r in rows_ if r["drawing"] == k] for k in {r["drawing"] for r in rows_}})
-    sheets_by, parts_by, tags_by = by_drawing(sheets), by_drawing(parts), by_drawing(tags)
+    score = {
+        r["drawing"]: r
+        for r in read_csv(os.path.join(BASE, "_dataset", "scorecard.csv"))
+    }
+    by_drawing = lambda rows_: collections.defaultdict(
+        list,
+        {
+            k: [r for r in rows_ if r["drawing"] == k]
+            for k in {r["drawing"] for r in rows_}
+        },
+    )
+    sheets_by, parts_by, tags_by = (
+        by_drawing(sheets),
+        by_drawing(parts),
+        by_drawing(tags),
+    )
 
     manifest = []
     workorders = collections.OrderedDict()
@@ -75,8 +102,14 @@ def build_kdm():
         src_dir = os.path.join(BASE, YEAR_DIR[year])
         gt_sheets, gt_parts, gt_tags, sc = [], [], [], {}
         for cp in cp_names:
-            copy(os.path.join(src_dir, cp + ".dwg"), os.path.join(root, "cutting_plan", cp + ".dwg"))
-            for ext, sub in ((".png", "images"), (".dxf", os.path.join("images", "_dxf"))):
+            copy(
+                os.path.join(src_dir, cp + ".dwg"),
+                os.path.join(root, "cutting_plan", cp + ".dwg"),
+            )
+            for ext, sub in (
+                (".png", "images"),
+                (".dxf", os.path.join("images", "_dxf")),
+            ):
                 p = os.path.join(src_dir, sub, cp + ext)
                 if os.path.exists(p):
                     copy(p, os.path.join(root, "cutting_plan", cp + ext))
@@ -85,54 +118,111 @@ def build_kdm():
             gt_tags += tags_by[cp]
             if cp in score:
                 sc[cp] = score[cp]
-        write_csv(os.path.join(root, "gt", "sheets.csv"), gt_sheets, list(sheets[0].keys()))
-        write_csv(os.path.join(root, "gt", "parts.csv"), gt_parts, list(parts[0].keys()))
-        write_csv(os.path.join(root, "gt", "part_tags.csv"), gt_tags, list(tags[0].keys()))
-        with open(os.path.join(root, "gt", "scorecard.json"), "w", encoding="utf8") as f:
+        write_csv(
+            os.path.join(root, "gt", "sheets.csv"), gt_sheets, list(sheets[0].keys())
+        )
+        write_csv(
+            os.path.join(root, "gt", "parts.csv"), gt_parts, list(parts[0].keys())
+        )
+        write_csv(
+            os.path.join(root, "gt", "part_tags.csv"), gt_tags, list(tags[0].keys())
+        )
+        with open(
+            os.path.join(root, "gt", "scorecard.json"), "w", encoding="utf8"
+        ) as f:
             json.dump(sc, f, ensure_ascii=False, indent=1)
         n_ok = sum(1 for s in gt_sheets if s["quality"] == "ok")
         grades = sorted({v["grade"] for v in sc.values()})
-        manifest.append({
-            "source": "KDM", "year": year, "workorder": wo,
-            "cp_files": len(cp_names), "cp_names": " | ".join(cp_names),
-            "n_sheets": len(gt_sheets), "n_sheets_ok": n_ok, "n_parts": len(gt_parts),
-            "n_tags": len(gt_tags), "grade": "/".join(grades),
-            "input_drawings": len([f for f in os.listdir(os.path.join(root, "input")) if not f.startswith(".")]),
-            "unfold_files": len(os.listdir(os.path.join(root, "unfold"))),
-            "path": os.path.relpath(root, OUT).replace(os.sep, "/"),   # OS 와 무관하게 슬래시로 기록
-        })
+        manifest.append(
+            {
+                "source": "KDM",
+                "year": year,
+                "workorder": wo,
+                "cp_files": len(cp_names),
+                "cp_names": " | ".join(cp_names),
+                "n_sheets": len(gt_sheets),
+                "n_sheets_ok": n_ok,
+                "n_parts": len(gt_parts),
+                "n_tags": len(gt_tags),
+                "grade": "/".join(grades),
+                "input_drawings": len(
+                    [
+                        f
+                        for f in os.listdir(os.path.join(root, "input"))
+                        if not f.startswith(".")
+                    ]
+                ),
+                "unfold_files": len(os.listdir(os.path.join(root, "unfold"))),
+                "path": os.path.relpath(root, OUT).replace(
+                    os.sep, "/"
+                ),  # OS 와 무관하게 슬래시로 기록
+            }
+        )
     return manifest
 
 
 def build_hce():
     src = os.path.join(BASE, "data_v2")
     root = os.path.join(OUT, "HCE", "76K3-40022")
-    for sub in ("input", "unfold", "unfold/generated_flat", "unfold/generated_flat_dim", "cutting_plan", "gt"):
+    for sub in (
+        "input",
+        "unfold",
+        "unfold/generated_flat",
+        "unfold/generated_flat_dim",
+        "cutting_plan",
+        "gt",
+    ):
         os.makedirs(os.path.join(root, sub), exist_ok=True)
-    copy(os.path.join(src, "76K3-40022.pdf"), os.path.join(root, "input", "76K3-40022.pdf"))
-    copy(os.path.join(src, "76K3-40022BOM.xlsx"), os.path.join(root, "input", "76K3-40022BOM.xlsx"))
+    copy(
+        os.path.join(src, "76K3-40022.pdf"),
+        os.path.join(root, "input", "76K3-40022.pdf"),
+    )
+    copy(
+        os.path.join(src, "76K3-40022BOM.xlsx"),
+        os.path.join(root, "input", "76K3-40022BOM.xlsx"),
+    )
     # 페이지별 트레이스 DXF도 입력 보조자료로
     for f in os.listdir(os.path.join(src, "_dxf_from_pdf")):
-        copy(os.path.join(src, "_dxf_from_pdf", f), os.path.join(root, "input", "page_trace_dxf", f))
+        copy(
+            os.path.join(src, "_dxf_from_pdf", f),
+            os.path.join(root, "input", "page_trace_dxf", f),
+        )
     n_cust = 0
     for f in os.listdir(src):
-        if f.lower().endswith(".dxf") and "／" in f:          # 고객 제공 정답 전개 DXF
+        if f.lower().endswith(".dxf") and "／" in f:  # 고객 제공 정답 전개 DXF
             copy(os.path.join(src, f), os.path.join(root, "unfold", f))
             n_cust += 1
-    for sub, dst in (("_flat_by_page", "generated_flat"), ("_flat_by_page_dim", "generated_flat_dim")):
+    for sub, dst in (
+        ("_flat_by_page", "generated_flat"),
+        ("_flat_by_page_dim", "generated_flat_dim"),
+    ):
         for f in os.listdir(os.path.join(src, sub)):
             copy(os.path.join(src, sub, f), os.path.join(root, "unfold", dst, f))
-    copy(os.path.join(src, "76K3_40022_4T_2.TAF"), os.path.join(root, "cutting_plan", "76K3_40022_4T_2.TAF"))
+    copy(
+        os.path.join(src, "76K3_40022_4T_2.TAF"),
+        os.path.join(root, "cutting_plan", "76K3_40022_4T_2.TAF"),
+    )
     for f in os.listdir(os.path.join(src, "_dataset")):
         dst = "cutting_plan" if f in ("nesting_dataset.json",) else "gt"
         copy(os.path.join(src, "_dataset", f), os.path.join(root, dst, f))
     parts = read_csv(os.path.join(root, "gt", "parts.csv"))
-    return [{
-        "source": "HCE", "year": "2022", "workorder": "76K3-40022",
-        "cp_files": 1, "cp_names": "76K3_40022_4T_2.TAF",
-        "n_sheets": 1, "n_sheets_ok": 1, "n_parts": len(parts), "n_tags": 22, "grade": "성공",
-        "input_drawings": 2, "unfold_files": n_cust, "path": os.path.relpath(root, OUT).replace(os.sep, "/"),
-    }]
+    return [
+        {
+            "source": "HCE",
+            "year": "2022",
+            "workorder": "76K3-40022",
+            "cp_files": 1,
+            "cp_names": "76K3_40022_4T_2.TAF",
+            "n_sheets": 1,
+            "n_sheets_ok": 1,
+            "n_parts": len(parts),
+            "n_tags": 22,
+            "grade": "성공",
+            "input_drawings": 2,
+            "unfold_files": n_cust,
+            "path": os.path.relpath(root, OUT).replace(os.sep, "/"),
+        }
+    ]
 
 
 README = """# dataset/ 구조
@@ -192,7 +282,12 @@ def main():
     with open(os.path.join(OUT, "README.md"), "w", encoding="utf8") as f:
         f.write(README)
     n_files = sum(len(fs) for _, _, fs in os.walk(OUT))
-    size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs) / 1e6
+    size = (
+        sum(
+            os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs
+        )
+        / 1e6
+    )
     print(f"workorders: {len(manifest)}  files: {n_files}  size: {size:.1f} MB")
     print("grade 분포:", collections.Counter(m["grade"] for m in manifest))
 

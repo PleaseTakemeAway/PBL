@@ -5,15 +5,15 @@ the file stem of any markdown under the skills root (e.g. `unfold_rules`, `unfol
 `drawing_conventions_kr`). The root defaults to `<repo>/skills` next to this package and can be
 moved with CUTPLAN_SKILLS_DIR. STAGE_TOPICS fixes which documents each reasoning stage reads.
 """
+
 from __future__ import annotations
 
-from functools import lru_cache
 import hashlib
 import os
+from functools import lru_cache
 from pathlib import Path
 
-
-DEFAULT_SKILLS_DIR = Path(__file__).resolve().parent.parent/"skills"
+DEFAULT_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
 # unfold_rules.md: "부품 유형을 정하기 전에 unfold_rules" (00_system_role_and_procedure.md 원칙 4)
 STAGE_TOPICS = {
@@ -55,8 +55,13 @@ def load_domain_prompt(topic: str) -> dict:
 def skill_system_prompt(names: list[str] | tuple[str, ...]) -> tuple[str, list[dict]]:
     """Join the requested documents into one system-prompt block plus their trace records."""
     docs = [load_domain_prompt(name) for name in names]
-    body = "\n\n".join(f"<skill topic=\"{d['topic']}\">\n{d['text'].strip()}\n</skill>" for d in docs)
-    guide = ("Domain knowledge (skills). Apply these rules when judging the part shape and reading values. "
-             "When a skill describes tools, output fields or a JSON layout that differ from this task's "
-             "output contract, follow the output contract and keep only the domain rules.\n\n" + body)
+    body = "\n\n".join(
+        f'<skill topic="{d["topic"]}">\n{d["text"].strip()}\n</skill>' for d in docs
+    )
+    guide = (
+        "Domain knowledge (skills). Apply these rules when judging the part shape and reading values. "
+        "When a skill describes tools, output fields or a JSON layout that differ from this task's "
+        "output contract, follow the output contract and keep only the domain rules.\n\n"
+        + body
+    )
     return guide, [{k: d[k] for k in ("topic", "path", "sha256")} for d in docs]

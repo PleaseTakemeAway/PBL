@@ -8,11 +8,13 @@ Claude 클라이언트 생성 한 곳.
   1) 콘솔에서 워크스페이스 안에 들어가 키를 만든다 (헤더 불필요)
   2) 환경변수 ANTHROPIC_WORKSPACE_ID=wrkspc_... 를 두면 여기서 헤더를 붙인다
 """
+
 import os
 
 
 def make_client():
     import anthropic
+
     headers = {}
     ws = os.environ.get("ANTHROPIC_WORKSPACE_ID", "").strip()
     if ws:

@@ -19,7 +19,13 @@ Drive 구조 (2026-10-01 확인):
   documents(절차서 등)  -> 복사 안 함 (용량 큼). index.csv 에만 기록
   모든 파일은 dataset/KDM/<year>/<wo>/input/index.csv 에 (category, copied, source, size) 로 기록
 """
-import csv, os, re, shutil, sys, collections
+
+import collections
+import csv
+import os
+import re
+import shutil
+import sys
 
 from cutplan_agent.config import DATASET, DRIVE_STAGING
 
@@ -76,13 +82,24 @@ def ingest_tech(staging, index, stats):
                     sub = "/".join(rel.split("/")[1:]) if "/" in rel else rel
                     copied = ""
                     if copy_it:
-                        dst = os.path.join(wo_dir(yy, num), "input", cat, *sub.split("/"))
+                        dst = os.path.join(
+                            wo_dir(yy, num), "input", cat, *sub.split("/")
+                        )
                         new = copy_file(src, dst)
-                        copied = os.path.relpath(dst, wo_dir(yy, num)).replace("\\", "/")
+                        copied = os.path.relpath(dst, wo_dir(yy, num)).replace(
+                            "\\", "/"
+                        )
                         stats["copied" if new else "skipped"] += 1
-                    index[wo].append({"workorder": wo, "category": cat, "copied_to": copied,
-                                      "source": os.path.relpath(src, staging).replace("\\", "/"),
-                                      "size_mb": round(os.path.getsize(src) / 1e6, 2), "customer": folder})
+                    index[wo].append(
+                        {
+                            "workorder": wo,
+                            "category": cat,
+                            "copied_to": copied,
+                            "source": os.path.relpath(src, staging).replace("\\", "/"),
+                            "size_mb": round(os.path.getsize(src) / 1e6, 2),
+                            "customer": folder,
+                        }
+                    )
 
 
 def ingest_por(staging, index, stats):
@@ -101,10 +118,18 @@ def ingest_por(staging, index, stats):
             dst = os.path.join(wo_dir(yy, num), "input", "por", f)
             new = copy_file(src, dst)
             stats["copied" if new else "skipped"] += 1
-            index[wo].append({"workorder": wo, "category": "por",
-                              "copied_to": os.path.relpath(dst, wo_dir(yy, num)).replace("\\", "/"),
-                              "source": os.path.relpath(src, staging).replace("\\", "/"),
-                              "size_mb": round(os.path.getsize(src) / 1e6, 2), "customer": ""})
+            index[wo].append(
+                {
+                    "workorder": wo,
+                    "category": "por",
+                    "copied_to": os.path.relpath(dst, wo_dir(yy, num)).replace(
+                        "\\", "/"
+                    ),
+                    "source": os.path.relpath(src, staging).replace("\\", "/"),
+                    "size_mb": round(os.path.getsize(src) / 1e6, 2),
+                    "customer": "",
+                }
+            )
 
 
 def index_third_party(staging):
@@ -118,12 +143,25 @@ def index_third_party(staging):
             src = os.path.join(r, f)
             rel = os.path.relpath(src, tp).replace("\\", "/")
             parts = rel.split("/")
-            rows.append({"vendor": parts[0], "project": parts[2] if len(parts) > 3 else "", "subfolder": parts[-2],
-                         "file": f, "source": os.path.relpath(src, staging).replace("\\", "/"),
-                         "size_mb": round(os.path.getsize(src) / 1e6, 2)})
-    with open(os.path.join(OUT, "_third_party_index.csv"), "w", encoding="utf-8-sig", newline="") as fh:
+            rows.append(
+                {
+                    "vendor": parts[0],
+                    "project": parts[2] if len(parts) > 3 else "",
+                    "subfolder": parts[-2],
+                    "file": f,
+                    "source": os.path.relpath(src, staging).replace("\\", "/"),
+                    "size_mb": round(os.path.getsize(src) / 1e6, 2),
+                }
+            )
+    with open(
+        os.path.join(OUT, "_third_party_index.csv"),
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
-        w.writeheader(); w.writerows(rows)
+        w.writeheader()
+        w.writerows(rows)
     return len(rows)
 
 
@@ -132,9 +170,12 @@ def write_indexes(index):
     for wo, rows in index.items():
         d = os.path.join(OUT, "KDM", "20" + wo[2:4], wo, "input")
         os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, "index.csv"), "w", encoding="utf-8-sig", newline="") as fh:
+        with open(
+            os.path.join(d, "index.csv"), "w", encoding="utf-8-sig", newline=""
+        ) as fh:
             w = csv.DictWriter(fh, fieldnames=fields)
-            w.writeheader(); w.writerows(sorted(rows, key=lambda r: (r["category"], r["source"])))
+            w.writeheader()
+            w.writerows(sorted(rows, key=lambda r: (r["category"], r["source"])))
 
 
 def refresh_manifest(new_wo=()):
@@ -142,7 +183,13 @@ def refresh_manifest(new_wo=()):
     with open(path, encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
     fields = list(rows[0].keys())
-    for col in ("input_drawings", "input_calc", "input_por", "input_docs_indexed", "customer"):
+    for col in (
+        "input_drawings",
+        "input_calc",
+        "input_por",
+        "input_docs_indexed",
+        "customer",
+    ):
         if col not in fields:
             fields.append(col)
     known = {r["workorder"] for r in rows}
@@ -150,32 +197,60 @@ def refresh_manifest(new_wo=()):
     for ydir in sorted(os.listdir(os.path.join(OUT, "KDM"))):
         for wo in sorted(os.listdir(os.path.join(OUT, "KDM", ydir))):
             if wo not in known:
-                rows.append({k: "" for k in fields} | {"source": "KDM", "year": ydir, "workorder": wo,
-                            "cp_files": 0, "grade": "도면만", "path": f"KDM/{ydir}/{wo}"})
+                rows.append(
+                    {k: "" for k in fields}
+                    | {
+                        "source": "KDM",
+                        "year": ydir,
+                        "workorder": wo,
+                        "cp_files": 0,
+                        "grade": "도면만",
+                        "path": f"KDM/{ydir}/{wo}",
+                    }
+                )
                 known.add(wo)
     for r in rows:
-        root = os.path.join(OUT, *r["path"].replace("\\", "/").split("/"))   # Windows 에서 만든 manifest 는 역슬래시 경로
+        root = os.path.join(
+            OUT, *r["path"].replace("\\", "/").split("/")
+        )  # Windows 에서 만든 manifest 는 역슬래시 경로
         inp = os.path.join(root, "input")
-        cnt = lambda sub: sum(len(fs) for _, _, fs in os.walk(os.path.join(inp, sub))) if os.path.isdir(os.path.join(inp, sub)) else 0
-        r["input_drawings"], r["input_calc"], r["input_por"] = cnt("drawings"), cnt("calculation"), cnt("por")
+        cnt = lambda sub: (
+            sum(len(fs) for _, _, fs in os.walk(os.path.join(inp, sub)))
+            if os.path.isdir(os.path.join(inp, sub))
+            else 0
+        )
+        r["input_drawings"], r["input_calc"], r["input_por"] = (
+            cnt("drawings"),
+            cnt("calculation"),
+            cnt("por"),
+        )
         r["input_docs_indexed"], r["customer"] = 0, r.get("customer", "")
         idx = os.path.join(inp, "index.csv")
         if os.path.exists(idx):
             with open(idx, encoding="utf-8-sig", newline="") as f:
                 irows = list(csv.DictReader(f))
-            r["input_docs_indexed"] = sum(1 for x in irows if x["category"] in ("documents", "other"))
+            r["input_docs_indexed"] = sum(
+                1 for x in irows if x["category"] in ("documents", "other")
+            )
             cust = next((x["customer"] for x in irows if x["customer"]), "")
             if cust:
                 r["customer"] = cust
         unf = os.path.join(root, "unfold")
-        r["unfold_files"] = sum(1 for f in os.listdir(unf) if f.lower().endswith(".dxf")) if os.path.isdir(unf) else 0
+        r["unfold_files"] = (
+            sum(1 for f in os.listdir(unf) if f.lower().endswith(".dxf"))
+            if os.path.isdir(unf)
+            else 0
+        )
     rows.sort(key=lambda r: (r["source"] != "KDM", r["year"], r["workorder"]))
     with open(path, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader(); w.writerows(rows)
+        w.writeheader()
+        w.writerows(rows)
     have = [r for r in rows if int(r["input_drawings"] or 0) > 0]
     both = [r for r in have if int(r["cp_files"] or 0) > 0]
-    print(f"manifest.csv 갱신: 워크오더 {len(rows)}개, 도면 있음 {len(have)}개, 도면+커팅플랜 모두 있음 {len(both)}개")
+    print(
+        f"manifest.csv 갱신: 워크오더 {len(rows)}개, 도면 있음 {len(have)}개, 도면+커팅플랜 모두 있음 {len(both)}개"
+    )
 
 
 def main():
@@ -183,12 +258,16 @@ def main():
     if not os.path.isdir(staging):
         sys.exit(f"스테이징 폴더 없음: {staging}")
     index = collections.defaultdict(list)
-    stats = collections.Counter(); stats["unmatched_folders"] = []; stats["unmatched_files"] = []
+    stats = collections.Counter()
+    stats["unmatched_folders"] = []
+    stats["unmatched_files"] = []
     ingest_tech(staging, index, stats)
     ingest_por(staging, index, stats)
     write_indexes(index)
     n_tp = index_third_party(staging)
-    print(f"copied={stats['copied']} skipped(existing)={stats['skipped']} workorders_with_input={len(index)} third_party_indexed={n_tp}")
+    print(
+        f"copied={stats['copied']} skipped(existing)={stats['skipped']} workorders_with_input={len(index)} third_party_indexed={n_tp}"
+    )
     if stats["unmatched_folders"]:
         print("워크오더 번호 없는 폴더:", stats["unmatched_folders"])
     if stats["unmatched_files"]:

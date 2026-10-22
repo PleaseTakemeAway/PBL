@@ -8,7 +8,14 @@ test_data/README.html 생성 — 단일 파일(썸네일 base64 내장), 브라�
       → 폴더 구조 → 사용법 → 제외 목록
 데이터가 바뀌면 build_test_data.py 다음에 다시 실행.
 """
-import base64, csv, io, json, os, re, collections
+
+import base64
+import collections
+import csv
+import io
+import json
+import os
+import re
 from pathlib import Path
 
 from cutplan_agent.config import TEST_DATA
@@ -21,19 +28,23 @@ DENSITY = 7.85e-6
 
 def jpeg_b64(img, quality=72) -> str:
     from PIL import Image
+
     img = img.convert("RGB")
     w, h = img.size
     s = THUMB_LONG / max(w, h)
     if s < 1:
         img = img.resize((max(1, int(w * s)), max(1, int(h * s))), Image.LANCZOS)
-    buf = io.BytesIO(); img.save(buf, "JPEG", quality=quality, optimize=True)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=quality, optimize=True)
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def pdf_thumb(pdf: Path) -> str:
     import pymupdf
     from PIL import Image
-    doc = pymupdf.open(str(pdf)); pg = doc[0]
+
+    doc = pymupdf.open(str(pdf))
+    pg = doc[0]
     long_pt = max(pg.rect.width, pg.rect.height)
     pix = pg.get_pixmap(dpi=max(36, int(THUMB_LONG / (long_pt / 72))))
     return jpeg_b64(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
@@ -42,12 +53,20 @@ def pdf_thumb(pdf: Path) -> str:
 def png_thumb(png: Path) -> str:
     """커팅플랜 PNG 는 여백이 커서 흰 테두리를 잘라낸 뒤 축소한다."""
     from PIL import Image, ImageChops
+
     img = Image.open(png).convert("RGB")
     bg = Image.new("RGB", img.size, (255, 255, 255))
     bbox = ImageChops.difference(img, bg).getbbox()
     if bbox:
         pad = 20
-        img = img.crop((max(0, bbox[0] - pad), max(0, bbox[1] - pad), min(img.width, bbox[2] + pad), min(img.height, bbox[3] + pad)))
+        img = img.crop(
+            (
+                max(0, bbox[0] - pad),
+                max(0, bbox[1] - pad),
+                min(img.width, bbox[2] + pad),
+                min(img.height, bbox[3] + pad),
+            )
+        )
     return jpeg_b64(img)
 
 
@@ -64,14 +83,20 @@ def sheet_groups(csv_path: Path):
     if not csv_path.exists():
         return [], 0.0, 0
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8-sig")))
-    g = collections.OrderedDict(); kg = 0.0; n = 0
+    g = collections.OrderedDict()
+    kg = 0.0
+    n = 0
     for r in rows:
         try:
-            t = float(r["thickness"]); w = float(r["sheet_w"]); h = float(r["sheet_h"]); q = int(float(r["sheet_qty"] or 1))
+            t = float(r["thickness"])
+            w = float(r["sheet_w"])
+            h = float(r["sheet_h"])
+            q = int(float(r["sheet_qty"] or 1))
         except Exception:
             continue
         key = f"{r['material'] or '재질없음'} t{t:g}"
-        g[key] = g.get(key, 0) + q; n += q
+        g[key] = g.get(key, 0) + q
+        n += q
         kg += t * w * h * q * DENSITY
     top = sorted(g.items(), key=lambda kv: -kv[1])[:4]
     return [f"{k} ×{v}" for k, v in top], round(kg), n
@@ -82,9 +107,12 @@ def main():
     data, excluded = [], []
     for r in idx:
         if r["included"] != "yes":
-            excluded.append({"wo": r["workorder"], "reason": r["reason"], "year": r["year"]})
+            excluded.append(
+                {"wo": r["workorder"], "reason": r["reason"], "year": r["year"]}
+            )
             continue
-        wo = r["workorder"]; d = ROOT / wo
+        wo = r["workorder"]
+        d = ROOT / wo
         dfiles = sorted(p for p in (d / "input_drawings").rglob("*") if p.is_file())
         dpick = pick_drawing(dfiles)
         cps = sorted((d / "output_cutting_plan").glob("*.png"))
@@ -100,30 +128,65 @@ def main():
         except Exception:
             cthumb = ""
         grade = r["grade"]
-        gclass = "mixed" if "/" in grade else {"성공": "good", "부분": "warn", "실패": "bad"}.get(grade, "mixed")
-        data.append({
-            "wo": wo, "year": r["year"], "customer": re.sub(r"^KD\d{5}(-\d)?\s*-?\s*", "", r["customer"]).strip() or r["customer"],
-            "grade": grade, "gclass": gclass,
-            "n_dwg": int(r["input_drawings"] or 0), "n_dwgfile": sum(1 for f in dfiles if f.suffix.lower() == ".dwg"),
-            "n_pdf": sum(1 for f in dfiles if f.suffix.lower() == ".pdf"),
-            "n_unfold": int(r["unfold_dxf"] or 0), "n_ok": int(r["unfold_match_ok"] or 0) if r["unfold_match_ok"] else None,
-            "gt_sheets": int(float(r["gt_sheets"] or 0)), "gt_ok": int(float(r["gt_sheets_ok"] or 0)), "kg": kg,
-            "groups": groups, "drawings": [p.relative_to(d / "input_drawings").as_posix() for p in dfiles][:60],
-            "dthumb": dthumb, "cthumb": cthumb, "dname": dpick.name if dpick else "", "cname": cps[0].name if cps else "",
-        })
-    tot = {"wo": len(data), "dwg": sum(x["n_dwg"] for x in data), "unfold": sum(x["n_unfold"] for x in data),
-           "ok": sum(x["n_ok"] or 0 for x in data), "sheets": sum(x["gt_sheets"] for x in data),
-           "kg": sum(x["kg"] for x in data), "excluded": len(excluded)}
+        gclass = (
+            "mixed"
+            if "/" in grade
+            else {"성공": "good", "부분": "warn", "실패": "bad"}.get(grade, "mixed")
+        )
+        data.append(
+            {
+                "wo": wo,
+                "year": r["year"],
+                "customer": re.sub(r"^KD\d{5}(-\d)?\s*-?\s*", "", r["customer"]).strip()
+                or r["customer"],
+                "grade": grade,
+                "gclass": gclass,
+                "n_dwg": int(r["input_drawings"] or 0),
+                "n_dwgfile": sum(1 for f in dfiles if f.suffix.lower() == ".dwg"),
+                "n_pdf": sum(1 for f in dfiles if f.suffix.lower() == ".pdf"),
+                "n_unfold": int(r["unfold_dxf"] or 0),
+                "n_ok": int(r["unfold_match_ok"] or 0)
+                if r["unfold_match_ok"]
+                else None,
+                "gt_sheets": int(float(r["gt_sheets"] or 0)),
+                "gt_ok": int(float(r["gt_sheets_ok"] or 0)),
+                "kg": kg,
+                "groups": groups,
+                "drawings": [
+                    p.relative_to(d / "input_drawings").as_posix() for p in dfiles
+                ][:60],
+                "dthumb": dthumb,
+                "cthumb": cthumb,
+                "dname": dpick.name if dpick else "",
+                "cname": cps[0].name if cps else "",
+            }
+        )
+    tot = {
+        "wo": len(data),
+        "dwg": sum(x["n_dwg"] for x in data),
+        "unfold": sum(x["n_unfold"] for x in data),
+        "ok": sum(x["n_ok"] or 0 for x in data),
+        "sheets": sum(x["gt_sheets"] for x in data),
+        "kg": sum(x["kg"] for x in data),
+        "excluded": len(excluded),
+    }
     by_year = collections.OrderedDict()
     for x in data:
         by_year.setdefault(x["year"], collections.Counter())[x["gclass"]] += 1
 
-    html = TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False)) \
-                   .replace("__EXCL__", json.dumps(excluded, ensure_ascii=False)) \
-                   .replace("__TOT__", json.dumps(tot, ensure_ascii=False)) \
-                   .replace("__BYYEAR__", json.dumps({k: dict(v) for k, v in by_year.items()}, ensure_ascii=False))
+    html = (
+        TEMPLATE.replace("__DATA__", json.dumps(data, ensure_ascii=False))
+        .replace("__EXCL__", json.dumps(excluded, ensure_ascii=False))
+        .replace("__TOT__", json.dumps(tot, ensure_ascii=False))
+        .replace(
+            "__BYYEAR__",
+            json.dumps({k: dict(v) for k, v in by_year.items()}, ensure_ascii=False),
+        )
+    )
     OUT.write_text(html, encoding="utf8")
-    print(f"written {OUT}  {OUT.stat().st_size/1e6:.1f} MB  workorders={len(data)} excluded={len(excluded)}")
+    print(
+        f"written {OUT}  {OUT.stat().st_size / 1e6:.1f} MB  workorders={len(data)} excluded={len(excluded)}"
+    )
 
 
 TEMPLATE = r"""<!doctype html>

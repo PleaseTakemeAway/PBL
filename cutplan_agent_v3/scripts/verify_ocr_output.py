@@ -7,22 +7,23 @@ Example (use an existing server):
 --start-vllm temporarily starts ONE server on --port and stops its own process
 group in finally. API responses, prompts and untruncated content are preserved.
 """
+
 from __future__ import annotations
 
 import argparse
 import ast
 import base64
-from contextlib import contextmanager
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import signal
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
 
@@ -35,10 +36,20 @@ from vlm_output import normalize_response, output_instructions
 def title_prompt() -> str:
     """Read the current production prompt verbatim, without importing adapters."""
     tree = ast.parse((ROOT / "dxf_adapter.py").read_text())
-    function = next(node for node in tree.body
-                    if isinstance(node, ast.FunctionDef) and node.name == "parse_title_block")
-    assignment = next(node for node in ast.walk(function) if isinstance(node, ast.Assign)
-                      and any(isinstance(target, ast.Name) and target.id == "prompt" for target in node.targets))
+    function = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "parse_title_block"
+    )
+    assignment = next(
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "prompt"
+            for target in node.targets
+        )
+    )
     return ast.literal_eval(assignment.value)
 
 
@@ -54,22 +65,44 @@ def endpoint(args):
         pass
     else:
         raise RuntimeError(f"port {args.port} already has a server")
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES=args.gpu,
-               VLLM_ENGINE_READY_TIMEOUT_S=str(args.startup_timeout),
-               TRITON_ALLOW_NON_CONSTEXPR_GLOBALS="1")
-    command = [args.vllm_bin, "serve", args.model, "--host", "127.0.0.1",
-               "--port", str(args.port), "--max-model-len", "8192",
-               "--max-num-seqs", "1", "--gpu-memory-utilization", "0.20"]
+    env = dict(
+        os.environ,
+        CUDA_VISIBLE_DEVICES=args.gpu,
+        VLLM_ENGINE_READY_TIMEOUT_S=str(args.startup_timeout),
+        TRITON_ALLOW_NON_CONSTEXPR_GLOBALS="1",
+    )
+    command = [
+        args.vllm_bin,
+        "serve",
+        args.model,
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(args.port),
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.20",
+    ]
     process = None
     with (args.output_dir / "server.log").open("w") as stream:
         try:
-            process = subprocess.Popen(command, env=env, stdout=stream,
-                                       stderr=subprocess.STDOUT, start_new_session=True)
+            process = subprocess.Popen(
+                command,
+                env=env,
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
             deadline = time.monotonic() + args.startup_timeout
             notice = time.monotonic() + 30
             while time.monotonic() < deadline:
                 if process.poll() is not None:
-                    raise RuntimeError(f"probe vLLM exited ({process.returncode}); inspect server.log")
+                    raise RuntimeError(
+                        f"probe vLLM exited ({process.returncode}); inspect server.log"
+                    )
                 try:
                     ready = requests.get(address + "/health", timeout=2).ok
                 except requests.RequestException:
@@ -105,16 +138,35 @@ def compact(text: str) -> str:
 def probe(args, base_url):
     image_data = args.image.read_bytes()
     mime = "image/png" if args.image.suffix.lower() == ".png" else "image/jpeg"
-    image = {"type": "image_url", "image_url": {
-        "url": f"data:{mime};base64," + base64.b64encode(image_data).decode()}}
+    image = {
+        "type": "image_url",
+        "image_url": {
+            "url": f"data:{mime};base64," + base64.b64encode(image_data).decode()
+        },
+    }
     variants = [
-        ("current_schema_text_first", title_prompt() + output_instructions("ocr", "title_block"), False, {}),
-        ("short_fields_text_first", "Read the title block. Return only a JSON object with drawing_no, "
-         "part_name, material, thickness_mm, scale, units, projection, weight_kg. "
-         "Use a ratio string for scale and null for unknown values.", False, {}),
+        (
+            "current_schema_text_first",
+            title_prompt() + output_instructions("ocr", "title_block"),
+            False,
+            {},
+        ),
+        (
+            "short_fields_text_first",
+            "Read the title block. Return only a JSON object with drawing_no, "
+            "part_name, material, thickness_mm, scale, units, projection, weight_kg. "
+            "Use a ratio string for scale and null for unknown values.",
+            False,
+            {},
+        ),
         ("free_ocr_text_first", "Free OCR.", False, {}),
         ("free_ocr_image_first", "Free OCR.", True, {}),
-        ("free_ocr_image_first_repetition_penalty", "Free OCR.", True, {"repetition_penalty": 1.1}),
+        (
+            "free_ocr_image_first_repetition_penalty",
+            "Free OCR.",
+            True,
+            {"repetition_penalty": 1.1},
+        ),
     ]
     headers = {}
     key = os.getenv("CUTPLAN_OCR_API_KEY", "")
@@ -127,14 +179,20 @@ def probe(args, base_url):
     for name, prompt, image_first, extra in variants:
         text = {"type": "text", "text": prompt}
         content = [image, text] if image_first else [text, image]
-        body = {"model": args.model, "messages": [{"role": "user", "content": content}],
-                "max_tokens": 1500, "temperature": 0.0, **extra}
+        body = {
+            "model": args.model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": 1500,
+            "temperature": 0.0,
+            **extra,
+        }
         (args.output_dir / f"{name}.prompt.txt").write_text(prompt)
         start = time.monotonic()
         record = {"variant": name, "image_first": image_first}
         try:
-            response = requests.post(base_url + "/chat/completions", json=body,
-                                     headers=headers, timeout=180)
+            response = requests.post(
+                base_url + "/chat/completions", json=body, headers=headers, timeout=180
+            )
             record["http_status"] = response.status_code
             (args.output_dir / f"{name}.http.json").write_text(response.text)
             response.raise_for_status()
@@ -142,14 +200,22 @@ def probe(args, base_url):
             choice = wire["choices"][0]
             raw = choice["message"].get("content") or ""
             (args.output_dir / f"{name}.raw.txt").write_text(raw)
-            record.update(raw_chars=len(raw), finish_reason=choice.get("finish_reason"),
-                          usage=wire.get("usage"), preview=raw[:800],
-                          title_block_repetitions=raw.count("Title Block"),
-                          matched_text=[word for word in args.expect if compact(word) in compact(raw)])
+            record.update(
+                raw_chars=len(raw),
+                finish_reason=choice.get("finish_reason"),
+                usage=wire.get("usage"),
+                preview=raw[:800],
+                title_block_repetitions=raw.count("Title Block"),
+                matched_text=[
+                    word for word in args.expect if compact(word) in compact(raw)
+                ],
+            )
             try:
                 parsed = extract_json(raw)
                 normalized, legacy = normalize_response(parsed, "ocr", "title_block")
-                record.update(title_block_valid=True, normalized=normalized, legacy=legacy)
+                record.update(
+                    title_block_valid=True, normalized=normalized, legacy=legacy
+                )
             except (ValueError, TypeError) as exc:
                 record.update(title_block_valid=False, validation_error=str(exc))
         except requests.RequestException as exc:
@@ -157,11 +223,17 @@ def probe(args, base_url):
         record["seconds"] = round(time.monotonic() - start, 2)
         results.append(record)
         print(json.dumps(record, ensure_ascii=False), flush=True)
-        report = {"model": args.model, "image": str(args.image.resolve()),
-                  "image_sha256": hashlib.sha256(image_data).hexdigest(),
-                  "checked_at": datetime.now(timezone.utc).isoformat(),
-                  "expected_text": args.expect, "results": results}
-        (args.output_dir / "results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
+        report = {
+            "model": args.model,
+            "image": str(args.image.resolve()),
+            "image_sha256": hashlib.sha256(image_data).hexdigest(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "expected_text": args.expect,
+            "results": results,
+        }
+        (args.output_dir / "results.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2)
+        )
 
 
 def main():

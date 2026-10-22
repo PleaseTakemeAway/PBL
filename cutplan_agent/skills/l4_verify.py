@@ -9,12 +9,15 @@ L4 검증·HITL — 저신뢰·모호 항목은 사람이 확정. verifier 는 P
   ask_human               HITL 지점 H1~H4. eval_mode/policy=auto 면 기본값으로 자동 응답하고 기록
   confidence_report       저신뢰 항목 목록 (HITL 배치 결정 근거, RQ2)
 """
+
 from __future__ import annotations
-import csv, sys
+
+import csv
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..config import DATASET, DENSITY_STEEL, KERF_MARGIN, DEFAULT_CUT, TRANSPORT_MAX
+from ..config import DATASET, DEFAULT_CUT, DENSITY_STEEL, KERF_MARGIN, TRANSPORT_MAX
 from ..state import HitlEvent, get_state, logged
 
 
@@ -23,31 +26,57 @@ def verify_part_spec(part_index: int) -> dict:
     st = get_state()
     p = st.parts[part_index]
     issues: List[str] = []
-    req = {"cylinder": ["inner_dia", "length|courses"], "cone_frustum": ["large_inner_dia", "cone_height"],
-           "head": ["inner_dia"], "pad_ring": ["pad_od", "pad_id"], "bent_sheet": ["width", "segments"], "flat": ["outline"]}
+    req = {
+        "cylinder": ["inner_dia", "length|courses"],
+        "cone_frustum": ["large_inner_dia", "cone_height"],
+        "head": ["inner_dia"],
+        "pad_ring": ["pad_od", "pad_id"],
+        "bent_sheet": ["width", "segments"],
+        "flat": ["outline"],
+    }
     for f in req.get(p.part_type, []):
         if f == "length|courses":
             if p.length <= 0 and not p.seams.get("courses"):
                 issues.append("length 와 courses 가 모두 비어 있음")
         else:
             v = getattr(p, f)
-            if (isinstance(v, (int, float)) and v <= 0) or (isinstance(v, list) and not v):
+            if (isinstance(v, (int, float)) and v <= 0) or (
+                isinstance(v, list) and not v
+            ):
                 issues.append(f"{f} 비어 있음")
     if p.thickness <= 0:
         issues.append("thickness 0")
-    if p.part_type == "cylinder" and p.inner_dia > 0 and p.thickness > 0 and p.inner_dia / p.thickness < 20:
-        issues.append(f"ID/t={p.inner_dia/p.thickness:.1f} 후육 — OD 를 ID 로 넣었는지 확인")
+    if (
+        p.part_type == "cylinder"
+        and p.inner_dia > 0
+        and p.thickness > 0
+        and p.inner_dia / p.thickness < 20
+    ):
+        issues.append(
+            f"ID/t={p.inner_dia / p.thickness:.1f} 후육 — OD 를 ID 로 넣었는지 확인"
+        )
     if p.part_type == "cone_frustum" and p.small_inner_dia >= p.large_inner_dia > 0:
         issues.append("작은 지름이 큰 지름 이상")
     if p.part_type == "pad_ring" and p.pad_id >= p.pad_od > 0:
         issues.append("패드 ID >= OD")
     ok = not issues
-    st.verify.setdefault("part_spec", {})[p.part_id] = {"ok": ok, "issues": issues, "confidence": p.confidence}
-    return {"part_id": p.part_id, "ok": ok, "issues": issues, "confidence": p.confidence}
+    st.verify.setdefault("part_spec", {})[p.part_id] = {
+        "ok": ok,
+        "issues": issues,
+        "confidence": p.confidence,
+    }
+    return {
+        "part_id": p.part_id,
+        "ok": ok,
+        "issues": issues,
+        "confidence": p.confidence,
+    }
 
 
 @logged
-def verify_weight_vs_bom(part_index: int, bom_weight_kg: Optional[float] = None, tol: float = 0.08) -> dict:
+def verify_weight_vs_bom(
+    part_index: int, bom_weight_kg: Optional[float] = None, tol: float = 0.08
+) -> dict:
     """전개 면적으로 계산한 중량과 BOM 중량을 비교한다 (정답 없이 쓰는 self-verification)."""
     st = get_state()
     p = st.parts[part_index]
@@ -55,15 +84,36 @@ def verify_weight_vs_bom(part_index: int, bom_weight_kg: Optional[float] = None,
     if not flat:
         return {"error": "전개 결과 없음 (unfold_part 먼저)"}
     if bom_weight_kg is None:
-        cand = [b.weight_kg for b in st.bom if b.weight_kg and b.part_name.upper() == p.part_name.upper()]
+        cand = [
+            b.weight_kg
+            for b in st.bom
+            if b.weight_kg and b.part_name.upper() == p.part_name.upper()
+        ]
         bom_weight_kg = cand[0] if cand else None
     calc = flat["area"] * p.thickness * DENSITY_STEEL
     if not bom_weight_kg:
-        return {"part_id": p.part_id, "calc_kg": round(calc, 1), "bom_kg": None, "ok": None, "note": "BOM 중량 없음"}
+        return {
+            "part_id": p.part_id,
+            "calc_kg": round(calc, 1),
+            "bom_kg": None,
+            "ok": None,
+            "note": "BOM 중량 없음",
+        }
     err = abs(calc - bom_weight_kg) / bom_weight_kg
     ok = err <= tol
-    st.verify.setdefault("weight", {})[p.part_id] = {"calc": calc, "bom": bom_weight_kg, "err": err, "ok": ok}
-    return {"part_id": p.part_id, "calc_kg": round(calc, 1), "bom_kg": bom_weight_kg, "rel_err": round(err, 3), "ok": ok}
+    st.verify.setdefault("weight", {})[p.part_id] = {
+        "calc": calc,
+        "bom": bom_weight_kg,
+        "err": err,
+        "ok": ok,
+    }
+    return {
+        "part_id": p.part_id,
+        "calc_kg": round(calc, 1),
+        "bom_kg": bom_weight_kg,
+        "rel_err": round(err, 3),
+        "ok": ok,
+    }
 
 
 @logged
@@ -86,14 +136,21 @@ def verify_nesting(cut: str = "gas") -> dict:
                 dy = max(b.y - (a.y + a.h), a.y - (b.y + b.h))
                 if dx < 0 and dy < 0:
                     overlaps.append((sh.sheet_id, a.piece_id, b.piece_id))
-                elif max(dx, dy) < kerf - 0.5:            # 좌표 반올림(0.1mm) 여유
-                    gaps.append((sh.sheet_id, a.piece_id, b.piece_id, round(max(dx, dy), 1)))
+                elif max(dx, dy) < kerf - 0.5:  # 좌표 반올림(0.1mm) 여유
+                    gaps.append(
+                        (sh.sheet_id, a.piece_id, b.piece_id, round(max(dx, dy), 1))
+                    )
     expected = sum(p.qty for p in st.pieces)
     n_placed = sum(len(s.placements) for s in st.sheets)
     unplaced = [p.piece_id for p in st.pieces if p.piece_id not in placed_ids]
-    res = {"ok": not overlaps and not gaps and not oversize and n_placed == expected,
-           "placed": f"{n_placed}/{expected}", "overlaps": overlaps[:10], "gap_violations": gaps[:10],
-           "oversize_sheets": oversize, "unplaced": unplaced[:10]}
+    res = {
+        "ok": not overlaps and not gaps and not oversize and n_placed == expected,
+        "placed": f"{n_placed}/{expected}",
+        "overlaps": overlaps[:10],
+        "gap_violations": gaps[:10],
+        "oversize_sheets": oversize,
+        "unplaced": unplaced[:10],
+    }
     st.verify["nesting"] = res
     return res
 
@@ -108,6 +165,7 @@ def compare_with_gt(job: str = "") -> dict:
     if not p.exists():
         return {"error": f"GT 없음: {p}"}
     gt = list(csv.DictReader(open(p, encoding="utf-8-sig")))
+
     def agg(rows, mat_k, t_k, w_k, h_k, q_k):
         out: Dict[str, Dict[str, float]] = {}
         for r in rows:
@@ -118,26 +176,60 @@ def compare_with_gt(job: str = "") -> dict:
             d["area_m2"] += float(r[w_k]) * float(r[h_k]) * q / 1e6
             d["kg"] += float(r[t_k]) * float(r[w_k]) * float(r[h_k]) * q * DENSITY_STEEL
         return out
+
     g = agg(gt, "material", "thickness", "sheet_w", "sheet_h", "sheet_qty")
-    ours = agg([{"material": s.material, "thickness": s.thickness, "sheet_w": s.w, "sheet_h": s.l, "sheet_qty": s.qty} for s in st.sheets],
-               "material", "thickness", "sheet_w", "sheet_h", "sheet_qty")
+    ours = agg(
+        [
+            {
+                "material": s.material,
+                "thickness": s.thickness,
+                "sheet_w": s.w,
+                "sheet_h": s.l,
+                "sheet_qty": s.qty,
+            }
+            for s in st.sheets
+        ],
+        "material",
+        "thickness",
+        "sheet_w",
+        "sheet_h",
+        "sheet_qty",
+    )
     keys = sorted(set(g) | set(ours))
-    rows = [{"group": k, "gt_sheets": g.get(k, {}).get("sheets", 0), "our_sheets": ours.get(k, {}).get("sheets", 0),
-             "gt_kg": round(g.get(k, {}).get("kg", 0), 0), "our_kg": round(ours.get(k, {}).get("kg", 0), 0)} for k in keys]
-    tot_gt = sum(r["gt_kg"] for r in rows); tot_us = sum(r["our_kg"] for r in rows)
-    res = {"job": job, "groups": rows, "gt_total_kg": tot_gt, "our_total_kg": tot_us,
-           "kg_ratio": round(tot_us / tot_gt, 3) if tot_gt else None}
+    rows = [
+        {
+            "group": k,
+            "gt_sheets": g.get(k, {}).get("sheets", 0),
+            "our_sheets": ours.get(k, {}).get("sheets", 0),
+            "gt_kg": round(g.get(k, {}).get("kg", 0), 0),
+            "our_kg": round(ours.get(k, {}).get("kg", 0), 0),
+        }
+        for k in keys
+    ]
+    tot_gt = sum(r["gt_kg"] for r in rows)
+    tot_us = sum(r["our_kg"] for r in rows)
+    res = {
+        "job": job,
+        "groups": rows,
+        "gt_total_kg": tot_gt,
+        "our_total_kg": tot_us,
+        "kg_ratio": round(tot_us / tot_gt, 3) if tot_gt else None,
+    }
     st.verify["gt"] = res
     return res
 
 
 @logged
-def ask_human(point: str, question: str, options: Optional[List[str]] = None, default: str = "") -> dict:
+def ask_human(
+    point: str, question: str, options: Optional[List[str]] = None, default: str = ""
+) -> dict:
     """HITL. point: H1(전개 직전) H2(자재목록 후) H3(네스팅 후) H4(구매의뢰 전).
     policy 가 'auto' 이거나 eval_mode 면 default(없으면 첫 option)로 자동 응답하고 기록만 남긴다."""
     st = get_state()
     options = options or []
-    ev = HitlEvent(point=point, question=question, options=options, step=len(st.hitl) + 1)
+    ev = HitlEvent(
+        point=point, question=question, options=options, step=len(st.hitl) + 1
+    )
     policy = st.hitl_policy.get(point, "ask")
     if st.eval_mode or policy == "auto":
         ev.answer, ev.auto = (default or (options[0] if options else "")), True
@@ -150,19 +242,44 @@ def ask_human(point: str, question: str, options: Optional[List[str]] = None, de
             a = options[int(a) - 1]
         ev.answer = a or default
     else:
-        ev.answer = None                                     # 비대화형: pending 으로 남김
+        ev.answer = None  # 비대화형: pending 으로 남김
     st.hitl.append(ev)
-    return {"point": point, "answer": ev.answer, "auto": ev.auto, "status": "answered" if ev.answer is not None else "pending"}
+    return {
+        "point": point,
+        "answer": ev.answer,
+        "auto": ev.auto,
+        "status": "answered" if ev.answer is not None else "pending",
+    }
 
 
 @logged
 def confidence_report() -> dict:
     """저신뢰 항목 요약. 어느 H 지점에 사람을 둘지 결정하는 근거."""
     st = get_state()
-    low_bom = [{"item": b.item_no, "name": b.part_name, "why": b.notes} for b in st.bom if b.is_plate and (b.thickness is None or b.confidence != "high")]
-    low_parts = [{"part_id": p.part_id, "type": p.part_type, "confidence": p.confidence, "notes": p.notes[-2:]}
-                 for p in st.parts if p.confidence in ("estimated", "unreadable", "medium")]
+    low_bom = [
+        {"item": b.item_no, "name": b.part_name, "why": b.notes}
+        for b in st.bom
+        if b.is_plate and (b.thickness is None or b.confidence != "high")
+    ]
+    low_parts = [
+        {
+            "part_id": p.part_id,
+            "type": p.part_type,
+            "confidence": p.confidence,
+            "notes": p.notes[-2:],
+        }
+        for p in st.parts
+        if p.confidence in ("estimated", "unreadable", "medium")
+    ]
     unresolved = [k for k, v in st.verify.get("part_spec", {}).items() if not v["ok"]]
-    return {"low_confidence_bom": low_bom, "low_confidence_parts": low_parts, "failed_spec_checks": unresolved,
-            "hitl_pending": [e.model_dump() for e in st.hitl if e.answer is None],
-            "suggest": ("H1 전개 직전에 사람 확인" if low_parts or unresolved else "H4 최종 검증만으로 충분")}
+    return {
+        "low_confidence_bom": low_bom,
+        "low_confidence_parts": low_parts,
+        "failed_spec_checks": unresolved,
+        "hitl_pending": [e.model_dump() for e in st.hitl if e.answer is None],
+        "suggest": (
+            "H1 전개 직전에 사람 확인"
+            if low_parts or unresolved
+            else "H4 최종 검증만으로 충분"
+        ),
+    }
