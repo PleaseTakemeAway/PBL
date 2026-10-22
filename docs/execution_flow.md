@@ -113,7 +113,18 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
           └▶ reconstruct: (복원 가능할 때) 3D 복원 step1~5 → 후보 확인 → STEP 내보내기 (step6)
 ```
 
-모델은 두 역할로 나뉜다. OCR 모델은 글자를 읽고, 추론 모델은 그 글자와 도면으로 JSON 판단을 낸다. 모든 모델 단계에는 결정적 fallback 이 있어서 `--no-vlm` 으로 모델 없이도 끝까지 돈다 (형상은 맞히지 못한다). `reconstruct` 는 `reader` 의 모듈을 쓰지 않고, `reader` 만 `reconstruct` 를 쓴다.
+모델은 두 역할로 나뉜다. OCR 모델은 글자를 읽고, 추론 모델은 그 글자와 도면으로 JSON 판단을 낸다. reader 의 모델 호출은 모두 [`reader/vlm.py`](../cutplan_agent/reader/vlm.py) 의 `VLMClient.ask` 를 거친다. 모델이 꺼져 있거나 호출이 실패하면 `ask` 는 예외를 내지 않고 `None` 을 돌려주며, 호출한 단계는 미리 계산해 둔 결정적 결과를 쓴다. 호출 기록은 성공과 실패 모두 `trace` 에 남는다. `reconstruct` 는 `reader` 의 모듈을 쓰지 않고, `reader` 만 `reconstruct` 를 쓴다.
+
+| 판단 | 모델 | 모델이 없을 때 |
+|---|---|---|
+| 표제란 | regex 가 못 채운 필드만 OCR → 추론 모델 | regex 결과 그대로 (`dxf_adapter.regex_title_block`) |
+| 뷰 이름·투상법 | 추론 모델 (`label_with_vlm`) | 상대 위치. 양 축에 정렬된 이웃이 있는 뷰를 front 로 둔다 (`label_by_position`). 모델과 다르면 review 에 남긴다 |
+| 형상 (`part_class`) | 추론 모델 (`label_with_vlm`) | **없다.** `None` 이 된다 |
+| 전개 파라미터 | 추론 모델 (`ask_unfold_params`) | 모델이 비운 키만 전체 치수와 두께로 채운다 (`unfold.fallback_params`) |
+| 복원 후보 확인 | 추론 모델 (`confirm_candidates`) | 건너뛴다 |
+| 이미지 입력의 글자 | OCR 모델 | tesseract |
+
+그래서 `--no-vlm` 은 오류 없이 끝까지 돌고 3D 복원과 STEP 까지 만들지만, 형상이 `None` 이라 전개 파라미터와 전개도 단계는 `skipped` ("no development for part_class None") 로 끝난다. `fallback_params` 는 모델이 형상을 정하고 치수를 일부 빠뜨렸을 때만 쓰인다.
 
 ### 3.2 진입점
 
@@ -153,7 +164,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
       - `classify_sheet` — 정투상 / 네스팅(커팅플랜) / 기타. 네스팅 도면이면 판 정보만 뽑고 복원은 하지 않는다
       - `label_with_vlm` — 추론 모델이 뷰 종류, 투상법, 형상(`part_class`), 복원 가능 여부를 정한다
    2. `dxf_adapter.build_document` — 판독 결과를 `reconstruct/models.py` 의 `DrawingDocument` 로 만든다
-   3. **`unfold.run_unfold`** ([`reader/unfold.py`](../cutplan_agent/reader/unfold.py)) — `extract_params` (추론 모델 `ask_unfold_params`, 실패하면 기하 기반 `fallback_params`) → `develop` (전개 계산) → `export_flat_pattern`
+   3. **`unfold.run_unfold`** ([`reader/unfold.py`](../cutplan_agent/reader/unfold.py)) — `extract_params` (추론 모델 `ask_unfold_params`, 모델이 비운 키는 기하 기반 `fallback_params`. 형상이 없으면 건너뛴다) → `develop` (전개 계산) → `export_flat_pattern`
    4. 복원 가능하면 [`reconstruct/pipeline.py`](../cutplan_agent/reconstruct/pipeline.py) 의 `ReconstructionPipeline.run` — step1 도면 해석 → step2 뷰 매칭 → step3 후보 생성 → step4 후보 평가 → step5 모호성 정리
    5. `vision_adapter.confirm_candidates` — 추론 모델이 복원 후보를 확인한다
    6. `step6.ReconstructionExporter` — `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`
@@ -190,7 +201,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 |---|---|---|---|
 | 전개 계산 | `skills/l3_rules.unfold_part` (+ `cutplan_agent/unfold.py` 엔진) | `reader/unfold.develop` | 경판 블랭크 (ID 2600, SF 50): v2 3250, v3 3415, KDM 실제 3240. 소경 0 인 원추는 v3 에서 에러 |
 | 지식 문서 로더 | `skills/knowledge.py` → `cutplan_agent/knowledge/*.md` | `reader/knowledge.py` → `skills/**/*.md` | 두 문서 묶음은 바이트 단위로 같다 |
-| VLM 호출 | `skills/l1_perception.vlm_parse` (Anthropic SDK) | `reader/vlm.VLMClient` (requests, 여러 provider) | |
+| VLM 호출 | `skills/l1_perception.vlm_parse` (Anthropic SDK). orchestrator 는 `cutplan_agent/client.py` 의 `make_client` 로 Claude 를 부른다 | `reader/vlm.VLMClient` (requests, OpenAI 호환·Anthropic) | v2 는 Claude 전용이고 실패하면 예외를 낸다. v3 는 로컬 vLLM 도 쓰고, 실패하면 `None` 을 돌려 fallback 으로 간다 |
 | DXF 읽기 | `skills/l1_perception.dxf_read_text` (글자·치수만) | `reader/dxf_reader.read_dxf` (기하 전체) | |
 | 형상 이름 | cylinder, cone_frustum, head, pad_ring, bent_sheet, flat | cylinder, cone, press_formed, bent_sheet, flat, other | v3 에는 pad_ring 이 없고, 경판을 press_formed 라고 부른다 |
 
