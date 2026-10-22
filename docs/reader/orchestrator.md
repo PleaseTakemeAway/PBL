@@ -64,11 +64,33 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 판독�
 | `messages.json` | provider 에 보낸 대화 그대로 |
 | `answer.json` | 마지막 보고 |
 
+사람이 읽기 좋게 보려면 `uv run python scripts/reader/show_trajectory.py [실행 폴더]` 를 쓴다. 폴더를 주지 않으면 `runs/reader/agent/orchestrator/` 의 가장 최근 실행을 보여 준다. 명령과 모델, 턴마다 모델의 글 · 부른 tool 과 인자 · tool 결과 · 시간 · 토큰, 마지막 보고를 출력한다.
+
 ## 5. 확인한 것 (2026-10-23, `mlic`)
 
 - `tests/test_reader_tools.py`: 모델 없이 tool 목록, 잘못된 호출, 단계 실행·상태 조회를 확인한다. `tests/test_orchestrator.py`: 정해진 턴을 재생하는 가짜 backend 로 루프와 기록을 확인한다. schema 모드의 `anyOf` 에 tool 전부와 `finish` 가 들어가는지도 본다.
 - Qwen3.6-27B, `--tool-mode schema`, 단계 모델 DeepSeek-OCR-2 + Qwen3.6-27B 로 `"cone_0019 도면을 전개도까지 판독하고 결과를 알려줘"`: 모델이 `list_drawings(name="cone_0019")` → `run_stages(first="read", last="develop")` → `finish` 순서로 3턴 만에 끝냈다 (133초, 그중 단계 실행 92초, 마지막 턴 입력 4.3k 토큰). 보고에 쓴 숫자(지름 150/92, 높이 150, 전개 반지름 405.65/252.87, 68.33°)는 모두 tool 결과에 있는 값이다. 작은 지름 92 는 정답 100 과 다른데, 이것은 09 `unfold_params` 의 판독 결과이고 orchestrator 와는 관계없다.
 - 확인하지 않은 것: `native` 모드 (서버 재기동 필요), `--provider anthropic` (API 비용), 여러 도면을 한 명령으로 처리, 실패한 단계를 모델이 다시 부르는 경우.
+
+### 5.1 시연 기록 (발표에서 보여 줄 것)
+
+위 두 번째 항목의 실행이다. 기록은 git 에 넣지 않는다 (`runs/` 는 git 밖이다). 이 실행은 `reader-agent` worktree(`~/developer/pbl-reader-agent`)에서 했고, worktree 를 지워도 남도록 원래 clone(`~/developer/pbl`)의 같은 경로에 복사해 두었다 (2026-10-23).
+
+| 무엇 | 어디 |
+|---|---|
+| 실행한 명령 | 레포 루트에서 `. runs/vllm/ocr.env; . runs/vllm/reason.env` 후 `PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 도면을 전개도까지 판독하고 결과를 알려줘" --tool-mode schema` (orchestrator 와 추론 단계 모두 `serve.sh` 의 Qwen3.6-27B, OCR 은 DeepSeek-OCR-2) |
+| 실행 기록 | `runs/reader/agent/orchestrator/20261023-021136/` (`command.json`, `trajectory.jsonl`, `messages.json`, `answer.json`) |
+| 단계 파일 | `runs/reader/agent/cone_0019/stages/01_read.json` … `10_develop.json`, 전개도 `flat_pattern.{json,dxf,png}` |
+| 코드 | [`reader/tools.py`](../../cutplan_agent/reader/tools.py) (tool 17개), [`reader/orchestrator.py`](../../cutplan_agent/reader/orchestrator.py) (루프, 세 가지 호출 방식, 기록) |
+
+보여 주는 순서:
+
+```bash
+uv run python scripts/reader/show_trajectory.py runs/reader/agent/orchestrator/20261023-021136   # 모델이 무엇을 왜 불렀나
+uv run python scripts/reader/show_stages.py runs/reader/agent/cone_0019 9-10                   # tool 이 실제로 낸 값 (main 의 stage-viewer 스크립트)
+```
+
+"지어낸 숫자 0" 은 마지막 보고(`answer.json`)의 숫자를 `trajectory.jsonl` 의 `run_stages` 결과와 하나씩 맞춰 본 것이다. 보고의 작은 지름 92 는 09 `unfold_params` 가 낸 값이고 정답은 100 이다. 이 실행에서 모델의 판단은 세 번이고, 처음부터 끝까지 그대로 돌리는 명령이라 고정 순서 `run.py` 와 하는 일이 같다.
 
 ## 6. 설계 판단
 
