@@ -18,7 +18,7 @@ import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..config import (
+from cutplan_agent.config import (
     DEFAULT_CUT,
     DENSITY_STEEL,
     EDGE_MARGIN,
@@ -27,13 +27,11 @@ from ..config import (
     STD_WIDTHS,
     TRANSPORT_MAX,
 )
-from ..state import Piece, Placement, Sheet, get_state, logged
-from ..unfold import (
-    PartModel as EnginePartModel,
-)  # 절곡·평판 전개 엔진 (툴킷에서 이전)
-from ..unfold import (
-    unfold as engine_unfold,
+from cutplan_agent.state import Piece, Placement, Sheet, get_state, logged
+from cutplan_agent.unfold import (
+    PartModel as EnginePartModel,  # 절곡·평판 전개 엔진 (툴킷에서 이전)
 )
+from cutplan_agent.unfold import unfold as engine_unfold
 
 HEAD_BLANK_FACTOR = 1.25  # 2:1 ellip. 블랭크 ≈ 1.25 x ID (KD23002 Ø1296/1027, KD25038 Ø3240/2600 역산). TODO: part_tags HEAD 14건으로 보정
 LENGTH_SNAP = 10.0  # 맞춤 판재 길이 반올림 (실제 POR: 9150, 10270, 8870)

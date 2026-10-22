@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from ..config import SKILLS_DIR
-from ..state import PartSpec, get_state, logged
-from .l1_perception import vlm_parse
+from cutplan_agent.config import SKILLS_DIR
+from cutplan_agent.skills.l1_perception import vlm_parse
+from cutplan_agent.state import PartSpec, get_state, logged
 
 
 class DrawingClass(BaseModel):
@@ -55,7 +55,7 @@ def classify_drawing(drawing_index: int, page: int = 1) -> dict:
 @logged
 def extract_design_data(drawing_index: int, page: int = 1) -> dict:
     """GA 도면에서 설계조건·재질표·노즐표를 읽어 state.design_data 에 저장."""
-    from .l1_perception import vlm_read_page
+    from cutplan_agent.skills.l1_perception import vlm_read_page
 
     r = vlm_read_page(drawing_index, "design_data", page)
     if "error" in r:

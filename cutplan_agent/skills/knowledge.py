@@ -8,8 +8,8 @@ knowledge/<topic>.md 를 그대로 돌려준다. topic 목록은 list_topics() �
 from pathlib import Path
 from typing import Dict, List
 
-from ..config import KNOWLEDGE_DIR
-from ..state import logged
+from cutplan_agent.config import KNOWLEDGE_DIR
+from cutplan_agent.state import logged
 
 
 def list_topics() -> List[Dict[str, str]]:

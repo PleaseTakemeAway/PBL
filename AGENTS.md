@@ -22,7 +22,8 @@
 
 - Python 코드는 `ruff format` 형식에 맞춰 작성하고, import 는 ruff 의 isort 규칙(`I`)대로 정렬한다. 설정은 ruff 기본값(줄 길이 88, 큰따옴표)이다.
 - ruff 는 dev 의존성으로 0.17.1 에 고정돼 있다. 버전마다 결과가 달라질 수 있으니 `uvx ruff` 나 전역 ruff 대신 `uv run ruff` 를 쓴다.
-- 파일을 고친 뒤 `uv run ruff check --select I --fix <파일>` 로 import 를 정렬하고 `uv run ruff format <파일>` 로 포맷한다. 커밋 전에 `uv run ruff check --select I .` 와 `uv run ruff format --check .` 가 둘 다 통과해야 한다.
+- 파일을 고친 뒤 `uv run ruff check --select I --fix <파일>` 로 import 를 정렬하고 `uv run ruff format <파일>` 로 포맷한다. 커밋 전에 `uv run ruff check --select I,TID252 .` 와 `uv run ruff format --check .` 가 둘 다 통과해야 한다.
+- 상대 import(`from .x import`, `from ..x import`)는 쓰지 않는다. `from cutplan_agent.skills.l1_perception import vlm_parse` 처럼 레포 루트부터 쓴다. 파일을 직접 실행하면 상대 import 가 깨진다. `TID252` 가 이를 잡는다.
 - `.md` 는 포맷하지 않는다. ruff 가 마크다운 안의 코드 블록까지 고쳐서 `skills/` 의 sha256 일치가 깨진다. `pyproject.toml` 의 `extend-exclude` 로 제외해 두었다.
 - 포맷만 한 커밋은 `.git-blame-ignore-revs` 에 해시를 적는다. 로컬 blame 에 반영하려면 `git config blame.ignoreRevsFile .git-blame-ignore-revs` 를 한 번 설정한다.
 - 2026-10-22 에 레포의 `.py` 전체를 한 번 포맷하고 import 를 정렬했다. docstring 들여쓰기와 import 블록 안의 순서를 빼면 AST 가 같아 동작은 바뀌지 않았다. 동료 원본(`cutplan_agent_v3/`, `scripts/`)의 바이트 단위 상태는 4절 표의 커밋과 태그에서 본다.

@@ -18,23 +18,13 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, List
 
-from ..config import DATASET, MAX_TOKENS, MODEL
-from ..skills import (
-    knowledge as K,
-)
-from ..skills import (
-    l1_perception as L1,
-)
-from ..skills import (
-    l2_relation as L2,
-)
-from ..skills import (
-    l3_rules as L3,
-)
-from ..skills import (
-    l4_verify as L4,
-)
-from ..state import JobState, Trajectory, get_state, set_context
+from cutplan_agent.config import DATASET, MAX_TOKENS, MODEL
+from cutplan_agent.skills import knowledge as K
+from cutplan_agent.skills import l1_perception as L1
+from cutplan_agent.skills import l2_relation as L2
+from cutplan_agent.skills import l3_rules as L3
+from cutplan_agent.skills import l4_verify as L4
+from cutplan_agent.state import JobState, Trajectory, get_state, set_context
 
 
 def _tool(fn: Callable) -> Callable:
@@ -170,7 +160,7 @@ def run(
         state.hitl_policy.update(hitl_policy)
     traj = Trajectory(job)
     set_context(state, traj)
-    from ..client import make_client
+    from cutplan_agent.client import make_client
 
     client = make_client()
     system = (Path(__file__).parent / "system.md").read_text(encoding="utf8")

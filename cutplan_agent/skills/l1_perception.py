@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from ..config import (
+from cutplan_agent.config import (
     DWG2DXF,
     HANGUL_FONT_FILE,
     MAX_TOKENS,
@@ -31,7 +31,7 @@ from ..config import (
     UNFOLD_CLASS,
     VLM_MAX_PX,
 )
-from ..state import BomItem, get_state, logged
+from cutplan_agent.state import BomItem, get_state, logged
 
 
 # ----------------------------------------------------------------------------- 파일 → 이미지
@@ -358,9 +358,9 @@ _PROMPTS = {
 
 
 def _client():
-    from ..client import (
-        make_client,
-    )  # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
+    from cutplan_agent.client import (
+        make_client,  # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
+    )
 
     return make_client()
 
