@@ -11,7 +11,7 @@
 
 ```bash
 uv sync
-PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py   # API 없이 v2 전체 경로. 기대값 22/22 배치, 6125.0 kg
+PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py   # API 없이 v2 전체 경로. 기대값 22/22 배치, 6132.2 kg
 ```
 
 ## 문서

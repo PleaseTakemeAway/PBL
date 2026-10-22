@@ -73,7 +73,7 @@ def extract_design_data(drawing_index: int, page: int = 1) -> dict:
 # ----------------------------------------------------------------------------- 부품 모델 추출
 class PartModelOut(BaseModel):
     part_type: str = Field(
-        description="cylinder | cone_frustum | bent_sheet | flat | head | pad_ring | unknown"
+        description="cylinder | cone_frustum | eccentric_cone | bent_sheet | flat | head | pad_ring | unknown"
     )
     part_name: str = ""
     material: str = ""
@@ -93,8 +93,18 @@ class PartModelOut(BaseModel):
     large_inner_dia: float = 0
     small_inner_dia: float = 0
     cone_height: float = Field(0, description="원뿔대 수직 높이 (모선 아님)")
-    head_type: str = ""
-    straight_flange: float = 0
+    eccentricity: float = Field(
+        0,
+        description="편심 콘의 두 원 중심 거리 e. 한쪽 면이 수직이면 0 (e = (D1-D2)/2 로 계산)",
+    )
+    head_type: str = Field(
+        "",
+        description="2:1 ellipsoidal | hemispherical | torispherical (F&D) | flat flanged",
+    )
+    straight_flange: float = Field(0, description="헤드 직선부 SF (T.L 에서 끝단까지)")
+    knuckle_radius: float = Field(
+        0, description="접시형·평판형 헤드의 내측 너클 반경 IKR"
+    )
     pad_od: float = 0
     pad_id: float = 0
     width: float = 0
@@ -136,7 +146,9 @@ def extract_part_model(
         f"GA 설계조건(참고): shell_id={dd.get('shell_id', '')}, 재질표={dd.get('material_spec', {})}.\n"
         + (f"힌트: {hints}\n" if hints else "")
         + "도면에서 이 부품의 3D 형상 파라미터를 읽어라. 어느 뷰의 어느 치수를 썼는지 evidence 에 적어라. 쉘이 여러 코스면 courses 에 코스별 길이. "
-        "헤드는 part_type=head 로 두고 ID·종류·직선부를 적어라. 보강패드는 pad_ring 으로 OD/ID. 값이 없으면 0 으로 두고 confidence 를 낮춰라."
+        "헤드는 part_type=head 로 두고 ID·종류·직선부를 적어라. 접시형이면 너클 반경(IKR)도. "
+        "편심 콘은 part_type=eccentric_cone 으로 두고 큰쪽·작은쪽 안지름, 수직 높이, 편심량을 적어라. "
+        "보강패드는 pad_ring 으로 OD/ID. 값이 없으면 0 으로 두고 confidence 를 낮춰라."
     )
     out = vlm_parse(pngs, prompt, PartModelOut, system=_unfold_prompt())
     spec = PartSpec(
@@ -151,8 +163,10 @@ def extract_part_model(
         large_inner_dia=out.large_inner_dia,
         small_inner_dia=out.small_inner_dia,
         cone_height=out.cone_height,
+        eccentricity=out.eccentricity,
         head_type=out.head_type or "2:1 ellipsoidal",
         straight_flange=out.straight_flange or 50,
+        knuckle_radius=out.knuckle_radius,
         pad_od=out.pad_od,
         pad_id=out.pad_id,
         width=out.width,
@@ -183,6 +197,8 @@ def set_part_spec(
     cone_height: float = 0,
     head_type: str = "2:1 ellipsoidal",
     straight_flange: float = 50,
+    knuckle_radius: float = 0,
+    eccentricity: float = 0,
     pad_od: float = 0,
     pad_id: float = 0,
     width: float = 0,
@@ -209,8 +225,10 @@ def set_part_spec(
         large_inner_dia=large_inner_dia,
         small_inner_dia=small_inner_dia,
         cone_height=cone_height,
+        eccentricity=eccentricity,
         head_type=head_type,
         straight_flange=straight_flange,
+        knuckle_radius=knuckle_radius,
         pad_od=pad_od,
         pad_id=pad_id,
         width=width,

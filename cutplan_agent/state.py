@@ -41,9 +41,8 @@ class PartSpec(BaseModel):
 
     part_id: str
     part_name: str
-    part_type: (
-        str  # cylinder | cone_frustum | bent_sheet | flat | head | pad_ring | unknown
-    )
+    # cylinder | cone_frustum | eccentric_cone | bent_sheet | flat | head | pad_ring | unknown
+    part_type: str
     material: str = ""
     thickness: float = 0
     quantity: int = 1
@@ -54,6 +53,10 @@ class PartSpec(BaseModel):
     cone_height: float = 0
     head_type: str = "2:1 ellipsoidal"
     straight_flange: float = 50
+    # 접시형·평판형 헤드의 내측 너클 반경 IKR. 0 이면 접시형은 0.1 x OD 로 계산한다
+    knuckle_radius: float = 0
+    # 편심 콘의 두 원 중심 거리 e. 0 이면 한쪽 면이 수직이라 e = (D1 - D2) / 2
+    eccentricity: float = 0
     pad_od: float = 0
     pad_id: float = 0
     width: float = 0

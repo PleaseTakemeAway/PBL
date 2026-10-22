@@ -21,10 +21,10 @@ import re
 from pathlib import Path
 
 from cutplan_agent.config import (
-    DENSITY_STEEL,
     HANGUL_FONT_FAMILIES,
     HANGUL_FONT_FILE,
     TEST_DATA,
+    density_of,
 )
 from cutplan_agent.state import JobState, PartSpec
 
@@ -509,7 +509,7 @@ def main():
         t = float(s["thickness"])
         d = g.setdefault(k, {"sheets": 0, "kg": 0.0, "sizes": [], "ok": 0})
         d["sheets"] += q
-        d["kg"] += t * W * H * q * DENSITY_STEEL
+        d["kg"] += t * W * H * q * density_of(s["material"])
         d["sizes"].append(
             f"{min(W, H):.0f}x{max(W, H):.0f}x{q}"
             + ("" if s["quality"] == "ok" else f"({s['quality']})")
