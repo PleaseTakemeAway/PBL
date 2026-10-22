@@ -42,7 +42,7 @@
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
 | `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
 | `cutplan_agent/reader/stages/` | 이 레포에서 만들었다 (2026-10-22, `reader-stages`). `--batch --input-mode dxf` 가 부르는 판독 13단계. 사용법은 `docs/reader/stages.md` |
-| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py`, `docs/reader/stages.md` 는 이 레포에서 썼다 |
+| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py`, `docs/reader/stages.md`, `experiments/serve.sh`, `experiments/vllm_common.sh`, `experiments/run_stages.sh` 는 이 레포에서 썼다. `vllm_common.sh` 는 동료의 `experiments.sh` 에서 옮긴 코드다 (a2c06a3) |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
 | `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `harness_engineering.md`, `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md`, `reader/stages.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
