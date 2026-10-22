@@ -105,8 +105,8 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | v2 계산 도구가 끝까지 돈다 | smoke test: 손으로 넣은 부품 8개로 22/22 배치, 6132.2 kg ([AGENTS.md](../AGENTS.md) 6절) |
 | 에이전트 구조: 도구 17개 = 판독 13단계 + 4 | [reader/orchestrator.md](reader/orchestrator.md) 3절 (`list_drawings`, `stage_status`, `show_stage`, `run_<단계>` 13개, `run_stages`) |
 | AI 의 판단 세 번 (글자 그대로, 줄임표로 줄였다) | `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 의 턴 1 · 2 · 3 `text`, 경과 6.1 · 16.9 · 133.0 초, `run_stages` 92.3 초. 보는 명령은 `scripts/reader/show_trajectory.py` |
-| 결과 표 예시 (SHELL t8, TOP HEAD t10) | S-2120 정답 `parts.csv` 의 두께. tool calling 으로 만들 결과의 모양을 보이는 예시다 |
-| 다음 주에 할 일 네 가지, 목표 "몸통 두께를 8 로" | 2026-10-23 에 제안한 계획이다 (확정 아님). 근거는 5절의 실패 사례와 [harness_engineering.md](harness_engineering.md) 3절 로드맵 2 · 5 · 6번 |
-| 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, 2번 → 단계별 채점, 4 · 5번 → 하네스 장치 비교, 7번 → 뒷단 연결. "실제 도면용 도구 · 검사" 는 5절의 실패에서 나온 새 단계다. 날짜는 정하지 않았다 |
+| 결과 표 예시 (SHELL t8, TOP HEAD t10, 두께는 부품표) | S-2120 정답 `parts.csv` 의 두께, v4.md 5.2절의 부품표 대조. tool calling 으로 만들 결과의 모양을 보이는 예시다 |
+| 다음 주에 할 일: 부품표 읽기 → 부품 목록 → 채점 → 도구로 등록 | [v4.md](v4.md) 8절의 계획을 따른다. 2026-10-23 에 이 덱에 먼저 적었던 계획(글자 찾기 · 확대 도구, 대조 검사, 표준 tool calling 확인, 채점표)과 비교해 v4 쪽으로 맞췄다: v4 는 코드만으로 하고 손으로 확인한 기댓값이 있다 (S-2120 정답 품번 22/22 가 부품표에, 재질 · 두께 21/22, v4.md 5.2절). 부품 목록이 '22종 중 1개' 를 직접 풀고, 두께도 부품표 SIZE 칸의 `t8` 을 코드가 읽어 18 오독이 생기지 않는다. 앞의 계획은 효과의 근거가 없었고, 채점표는 v4 3번과 겹치며, 표준 tool calling 확인은 공유 추론 서버를 다시 띄워야 한다 (최종 목표 5번 '하네스 장치 비교' 로 옮겼다). 4번 '도구로 등록' 은 v4.md 7절의 "만나는 곳은 새 단계를 `reader/tools.py` 에 tool 로 등록하는 부분" 이다 |
+| 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵과 [v4.md](v4.md) 8절을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, v4 8절 → 부품표 단계 (채점 포함), v4 8절 '이번 범위 밖' → 판재 크기, 4 · 5번 → 하네스 장치 비교 (표준 tool calling 비교 포함), 7번 → 뒷단 연결. 날짜는 정하지 않았다 |
 
 참고: `runs/reader/data_v3_claude_batch_10141611` 은 같은 합성 30장을 Claude(Sonnet 5 추론, Haiku 4.5 OCR)로 돌려 25/30 이다 (2026-10-14). 날짜와 코드가 27/30 실행과 달라 로컬과 Claude 를 비교하는 근거로 쓰지 않았다. "로컬 AI 가 Claude 보다 작고 도면을 보는 눈이 약하다"는 팀의 판단이고, 같은 조건에서 잰 숫자는 아직 없다 ([harness_engineering.md](harness_engineering.md) 2.1절 5번).
