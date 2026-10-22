@@ -53,15 +53,24 @@ STAGE_NAMES = [
 ]
 
 
+def stage_name(step: int) -> str:
+    """0 은 DWG·DXF 를 받는 convert (STAGES 밖의 선택 단계), 1–13 은 STAGES."""
+    return "convert" if step == 0 else STAGE_NAMES[step - 1]
+
+
 def parse_steps(args: list[str]) -> list[int]:
     """단계 번호(6), 이름(view_labels), 범위(6-9, views-sheet)를 번호 목록으로 바꾼다."""
 
     def one(a: str) -> int:
-        if a.isdigit() and 1 <= int(a) <= len(STAGE_NAMES):
+        if a.isdigit() and 0 <= int(a) <= len(STAGE_NAMES):
             return int(a)
+        if a == "convert":
+            return 0
         if a in STAGE_NAMES:
             return STAGE_NAMES.index(a) + 1
-        raise SystemExit(f"단계를 모른다: {a}  (1–13 또는 {', '.join(STAGE_NAMES)})")
+        raise SystemExit(
+            f"단계를 모른다: {a}  (0–13 또는 convert, {', '.join(STAGE_NAMES)})"
+        )
 
     steps: list[int] = []
     for a in args:
@@ -213,6 +222,25 @@ def truth_title(ctx: Ctx) -> dict[str, list]:
 
 
 # ---- 단계별 출력 ----
+
+
+def s00(d: dict, ctx: Ctx) -> None:
+    print(
+        f"  원본: {d.get('source')}  ({d.get('source_kind')}, sha256 {str(d.get('source_sha256'))[:12]}…)"
+    )
+    conv = d.get("converter")
+    if conv is None:
+        print("  변환: 없음 (DXF 를 그대로 쓴다)")
+    else:
+        print(
+            f"  변환: {conv.get('version') or conv.get('program')}  종료 코드 {conv.get('exit_code')}"
+        )
+        for line in conv.get("stderr_tail") or []:
+            print(f"    | {short(line, 150)}")
+    print(
+        f"  01 이 읽을 DXF: {d.get('dxf')}  (sha256 {str(d.get('dxf_sha256'))[:12]}…)"
+    )
+    print(f"  모델 공간 엔티티: {d.get('modelspace_entities')}개")
 
 
 def s01(d: dict, ctx: Ctx) -> None:
@@ -599,6 +627,7 @@ def s13(d: dict, ctx: Ctx) -> None:
 
 
 SHOW = {
+    0: s00,
     1: s01,
     2: s02,
     3: s03,
@@ -1499,7 +1528,7 @@ def report(
     )
     for step in steps or sorted(ctx.files):
         if step not in ctx.files:
-            print(f"\n=== {step:02d} {STAGE_NAMES[step - 1]}: 아직 실행하지 않았다 ===")
+            print(f"\n=== {step:02d} {stage_name(step)}: 아직 실행하지 않았다 ===")
             continue
         show(step, ctx)
         if figures:

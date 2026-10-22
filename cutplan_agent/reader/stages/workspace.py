@@ -44,6 +44,15 @@ STAGES = (
     "confirm",
     "export",
 )
+# Optional stage before the DXF chain (stages/convert.py): DWG or DXF -> the DXF that read opens.
+# Its file is 00_convert.json. It is not in STAGES, so main.py --batch and stages/run.py, which
+# start at read with a DXF, do not run it.
+CONVERT = "convert"
+
+
+def step_number(stage: str) -> int:
+    """0 for convert, 1-13 for the DXF stages."""
+    return 0 if stage == CONVERT else STAGES.index(stage) + 1
 
 
 class StageNotReady(RuntimeError):
@@ -58,7 +67,7 @@ class Workspace:
         self._inputs: list[str] = []
 
     def path(self, stage: str) -> Path:
-        return self.stages_dir / f"{STAGES.index(stage) + 1:02d}_{stage}.json"
+        return self.stages_dir / f"{step_number(stage):02d}_{stage}.json"
 
     def has(self, stage: str) -> bool:
         return self.path(stage).is_file()
@@ -85,7 +94,7 @@ class Workspace:
         return record
 
     def save(self, stage: str, data: dict) -> dict:
-        index = STAGES.index(stage)
+        index = step_number(stage) - 1
         record = {
             "stage": stage,
             "step": index + 1,

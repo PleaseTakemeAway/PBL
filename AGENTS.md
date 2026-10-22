@@ -20,6 +20,7 @@
 - 사용자는 동료의 작업을 먼저 그대로 돌려 보고 필요한 것을 파악한 뒤에 바꾸길 원한다. 리팩터링은 별도 브랜치나 분리된 커밋으로 한다.
 - 결과가 바뀌면 안 되는 변경은 전후를 비교해 확인하고, 그 근거를 커밋 메시지에 적는다. 비교 대상은 smoke test 출력 전체, v3 단위 테스트의 실패 목록, 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir <폴더> data_v3/synthetic` 의 출력이다. 이 출력은 출력 폴더 경로와 시각을 빼면 실행마다 같다. 입력 경로는 출력에 그대로 기록되므로 비교할 두 실행은 같은 경로 표기로 돌린다. 2026-10-22 (`reader-stages`) 부터 이 출력에는 도면마다 `stages/` 가 생기므로, 그 전 출력과 비교할 때는 `stages/` 를 뺀다.
 - git 밖에서 가져온 파일은 출처와 동일하다는 근거를 함께 남긴다. 예를 들면 diff 결과나 sha256 이다.
+- 사용자는 에이전트의 세션 기록을 다시 볼 수 없다. 사용법, 실행 명령, 옵션이 왜 그렇게 동작하는지, 판단 근거와 확인한 결과는 대화로만 답하지 말고 `docs/` 의 해당 문서에 적는다. 명령은 그대로 붙여 넣어 돌 수 있게 쓴다 (reader 는 `docs/reader/quickstart.md`, 실행 일반은 `docs/getting_started.md`). 실행 방법을 바꾸는 커밋에는 문서 수정을 같이 넣는다.
 
 ## 3. 코드 스타일
 
@@ -41,7 +42,7 @@
 | `cutplan_agent/` | 제품 패키지. 바로 아래의 `agent/`, `skills/`, `eval/`, `config.py` 등은 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐고, 패키지로 설치하지 않는다. `eval/cp_parse.py`, `eval/drawing_refs.py` 는 이 레포에서 썼다 (2026-10-23) |
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
 | `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
-| `cutplan_agent/reader/stages/` | 이 레포에서 만들었다 (2026-10-22, `reader-stages`). `--batch --input-mode dxf` 가 부르는 판독 13단계. 사용법은 `docs/reader/stages.md` |
+| `cutplan_agent/reader/stages/` | 이 레포에서 만들었다 (2026-10-22, `reader-stages`). `--batch --input-mode dxf` 가 부르는 판독 13단계와, 그 앞에서 DWG 를 DXF 로 바꾸는 선택 단계 00 `convert` (2026-10-23, `dwg-input`). 사용법은 `docs/reader/stages.md` |
 | `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py`, `tests/test_cp_parse.py`, `docs/reader/stages.md`, `experiments/serve.sh`, `experiments/vllm_common.sh` 는 이 레포에서 썼다. `vllm_common.sh` 는 동료의 `experiments.sh` 에서 옮긴 코드다 (a2c06a3) |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts`. `scripts/reader/` 는 이 레포에서 썼다 (2026-10-23): reader 단계를 번호로 골라 돌리고 (`run_stages.py`) 결과를 표와 그림으로 보여 준다 (`show_stages.py`) |
 | `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. `01_core_knowledge/` 는 2026-10-23 에 회사 담당자의 계산 문서 `shell_cone_head_unfold.md` 를 더하고 (녹음 정리본 원문은 b399b4d, 같은 날 기준 문서 형식으로 다시 썼다) `unfold_rules.md`·`site_constants.md` 를 그 문서에 맞춰 고쳤다. 그 전 상태는 5a710f6, 동료 실행 기록과 sha256 이 맞는 판이다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |

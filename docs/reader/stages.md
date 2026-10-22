@@ -14,7 +14,9 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 
 ```
 <work>/
+  stages/00_convert.json                 DWG 를 넣었을 때만 (선택 단계 00)
   stages/01_read.json … 13_export.json   단계마다 하나. 이번에 새로 생긴 것
+  input/<이름>.dxf                        00 이 DWG 에서 만든 DXF
   analysis/                               그림과 sheet_analysis.json (예전과 같은 위치·내용)
     title_block.png      ③ OCR 에 넣은 표제란 그림
     sheet_labeled.png    ⑥ 추론 모델에 넣은 그림 (빨간 번호 상자 = 뷰 후보)
@@ -41,7 +43,8 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 
 | # | 단계 | 하는 일 | 모델 | 읽는 것 | 남기는 것 | 코드 |
 |---|---|---|---|---|---|---|
-| 01 | `read` | DXF 엔티티를 레이어와 상관없이 모두 읽는다 | | DXF | 엔티티 목록, 파일 단위, 원본 sha256 | `dxf_reader.read_dxf` |
+| 00 | `convert` | (선택) DWG 를 LibreDWG `dwg2dxf` 로 DXF 로 바꾸고, ezdxf 로 열어 모델 공간이 비지 않았는지 검사한다. DXF 는 그대로 쓴다 | | DWG 또는 DXF | 원본과 DXF 의 경로·sha256, 변환기 버전·종료 코드·경고, 모델 공간 엔티티 수, `input/<이름>.dxf` | `stages/convert.py` |
+| 01 | `read` | DXF 엔티티를 레이어와 상관없이 모두 읽는다 | | DXF (주지 않으면 00 의 DXF) | 엔티티 목록, 파일 단위, 원본 sha256 | `dxf_reader.read_dxf` |
 | 02 | `title_regex` | 표제란 위치를 찾고 정규식으로 필드를 읽는다 | | 01 | 표제란 영역, 필드와 출처, 못 읽은 필드(`missing`) | `dxf_adapter.find_title_region`, `regex_title_block` |
 | 03 | `title_ocr` | 표제란 그림을 OCR 모델이 받아쓴다 | OCR | 01, 02 | 받아쓴 원문(`text`), `title_block.png` | `dxf_adapter.render_title_block`, `vlm.ocr_text` |
 | 04 | `title_fields` | 추론 모델이 OCR 원문을 표제란 필드로 정리하고, 02 가 못 읽은 필드만 채운다 | 추론 | 02, 03 | 모델 답(`fields`), 최종 표제란 | `vlm.structure_ocr_text`, `dxf_adapter.apply_title_fields` |
@@ -122,6 +125,7 @@ PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1-5 --no-vlm   # 모�
 
 - 이어지는 단계는 `run.py --from <첫 단계> --to <끝 단계>` 한 번으로 돈다. 결과는 단계 파일을 직접 실행한 것과 같다.
 - 01 을 다시 돌릴 때 `--dxf` 가 없으면 `01_read.json` 에 기록된 도면을 다시 읽는다. 단계 없이 주면 01–13 전부다.
+- DWG 는 `0 --drawing <도면.dwg>` 로 00 을 먼저 돌린다. 00 이 있으면 01 은 00 이 만든 DXF 를 읽는다. 00 을 다시 돌리면 01–13 파일이 모두 지워진다. 00 은 `STAGES` 밖의 선택 단계라 `main.py --batch` 와 `stages/run.py` 는 지금처럼 DXF 를 받아 01 부터 돈다.
 - 단계를 다시 돌리면 그 뒤 단계 파일이 지워진다. `1 3` 처럼 떨어진 단계를 주면 01 이 02 를 지워서 03 은 돌지 않는다.
 - 모델 옵션(`--ocr-model`, `--reason-model` 등)과 `--no-vlm`, `--analyze-only`, `--tolerance` 같은 옵션은 `run.py` 에 그대로 넘긴다. 옵션은 단계 번호 앞에 써도 된다.
 - 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록된다. 돌리기 전에 `curl -s http://127.0.0.1:8000/v1/models` (OCR), `:8001` (추론) 으로 서버를 확인하고, 돌린 뒤 `show_stages.py` 의 모델 호출 줄을 본다.

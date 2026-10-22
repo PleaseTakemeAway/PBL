@@ -39,23 +39,24 @@ DXF=data_v3/synthetic/cone_0019/cone_0019.dxf
 W=runs/reader/check/cone_0019                    # 결과를 쓸 작업 폴더
 ```
 
-실도면은 DWG 라서 먼저 DXF 로 바꾼다 (D-1203 의 DWG 는 바꿔도 열리지 않는다).
+실도면은 DWG 다. 00 단계(convert)가 DXF 로 바꾸고 열리는지 검사한다. 01 부터는 바꾼 DXF 를 읽으므로 `--dxf` 가 필요 없다.
 
 ```zsh
-mkdir -p runs/reader/cases/S-2120/dxf
-for f in test_data/cases/S-2120/input_drawings/*.dwg; do n=${${f:t:r}%%_R0*}; ~/.local/bin/dwg2dxf -y -o runs/reader/cases/S-2120/dxf/$n.dxf $f; done
-DXF=runs/reader/cases/S-2120/dxf/VP-S-2120-DWG-003.dxf
+DWG="test_data/cases/S-2120/input_drawings/VP-S-2120-DWG-003_R0 (DETAIL OF MANHOLE).dwg"
 W=runs/reader/cases/S-2120/DWG-003
+uv run python scripts/reader/run_stages.py $W 0 --drawing "$DWG" --show   # 00 → $W/input/*.dxf
 ```
 
-(`${f:t:r}` 은 zsh 문법이다. bash 에서는 `n=$(basename "$f" .dwg); n=${n%%_R0*}`.)
+- reader 는 DXF 만 읽는다. DWG 는 AutoCAD 전용 바이너리 형식이라 도면을 읽는 파이썬 라이브러리(ezdxf)가 열지 못한다. DXF 는 같은 내용을 공개된 텍스트 형식으로 쓴 것이다. (v2 의 `ingest_drawing` 은 안에서 같은 `dwg2dxf` 로 바꾼다.)
+- AutoCAD 에서 저장한 DXF 가 있으면 그것이 가장 정확하다. 원본 프로그램이 썼으니 빠지거나 깨지는 것이 없다. `--drawing` 에 DXF 를 주면 바꾸지 않고 그대로 쓴다. DWG 만 받았으면 회사에 DXF 로 달라고 하는 것이 가장 좋다 ([company_questions.md](../domain/company_questions.md) Q12).
+- DWG 는 GNU LibreDWG `dwg2dxf` 로 바꾼다 (`~/.local/bin/dwg2dxf`, 없으면 `scripts/install_libredwg.sh`). LibreDWG 는 DWG 형식을 역설계한 오픈소스라, R2007 DWG 일부를 읽지 못하면서도 종료 코드 0 으로 빈 DXF 를 쓰고, 일부 도면에서는 글자 뒤에 실행마다 다른 바이트를 붙인다 ([AGENTS.md](../../AGENTS.md) 6절). 그래서 00 은 바꾼 DXF 를 ezdxf 로 열어 보고 모델 공간이 비지 않았는지 검사한다. 일부 DWG 는 LibreDWG 가 읽지 못한다. 그러면 00 이 failed 로 남고 01 은 돌지 않는다 (D-1203 의 DWG 6개가 그렇다). 이때는 AutoCAD DXF 를 받거나 PDF 를 쓴다.
 
 ## 3. 한 단계씩 실행하고 보기
 
-단계는 번호(6), 이름(view_labels), 범위(6-9)로 고른다. 처음에는 01 부터 순서대로 돌린다. 각 단계는 앞 단계가 남긴 파일을 읽고, 한 단계를 다시 돌리면 그 뒤 단계 파일은 지워진다.
+단계는 번호(6), 이름(view_labels), 범위(6-9)로 고른다. 처음에는 01 부터 (DWG 는 00 부터) 순서대로 돌린다. 각 단계는 앞 단계가 남긴 파일을 읽고, 한 단계를 다시 돌리면 그 뒤 단계 파일은 지워진다.
 
 ```zsh
-uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 도면 읽기 (처음 한 번만 --dxf)
+uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 도면 읽기 (처음 한 번만 --dxf, 00 을 돌렸으면 생략)
 uv run python scripts/reader/show_stages.py $W 1             # 01 결과: 표 출력 + 그림
 
 uv run python scripts/reader/run_stages.py $W 2              # 02
@@ -65,8 +66,11 @@ uv run python scripts/reader/run_stages.py $W 3 --show       # 돌리고 바로 
 uv run python scripts/reader/run_stages.py $W 4-6 --show     # 여러 단계를 한 번에
 ```
 
+**`--dxf` 를 처음 한 번만 주는 이유.** 도면 파일을 직접 여는 단계는 01(read) 하나다. 01 은 DXF 의 엔티티·글자·위치를 모두 읽어 `$W/stages/01_read.json` 에 쓰고, 원본 경로와 sha256 도 적는다. 02–13 은 DXF 를 다시 열지 않고 작업 폴더의 앞 단계 파일만 읽는다. 그래서 새 작업 폴더에서 01 을 처음 돌릴 때만 `--dxf` 가 필요하다. 합성 도면이든 실도면이든 같다. 01 을 다시 돌릴 때 `--dxf` 를 빼면 `01_read.json` 에 적힌 도면을 다시 읽고, 다른 도면으로 바꾸려면 `--dxf` 를 새로 주거나 새 작업 폴더를 쓴다. 00 을 돌린 작업 폴더에서는 01 이 00 이 만든 DXF 를 읽는다.
+
 | # | 단계 | 하는 일 |
 |---|---|---|
+| 0 | convert | (DWG 만, 선택) DWG → DXF, 열리는지 검사. DXF 는 그대로 |
 | 1 | read | DXF 요소 모두 읽기 |
 | 2 | title_regex | 표제란 찾기 + 정규식 |
 | 3 | title_ocr | **[OCR 모델]** 표제란 받아쓰기 |
@@ -103,6 +107,7 @@ uv run python scripts/reader/show_stages.py $W --no-figures # 표만 (그림 안
 
 ```zsh
 uv run python scripts/reader/run_stages.py $W --dxf $DXF            # 01–13 전부
+uv run python scripts/reader/run_stages.py $W --drawing "$DWG"      # DWG: 00–13 전부
 uv run python scripts/reader/run_stages.py $W --dxf $DXF --no-vlm   # 모델 없이
 uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 끝까지 다시
 ```
@@ -126,7 +131,11 @@ uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 
 | `ModuleNotFoundError: No module named 'cutplan_agent'` | `export PYTHONPATH=.` 를 안 했다 (1절) |
 | 모델 단계가 `skipped (no OCR model configured)` | env 를 source 하지 않았다 (1절) |
 | 모델 단계가 `done` 인데 결과가 비어 있다 | 서버가 꺼졌거나 응답하지 않는다. `show_stages.py $W <단계>` 의 모델 호출 줄에 오류가 나온다. 0절의 `curl` 로 확인 |
-| `01(read) 을 돌리려면 --dxf <도면.dxf> 를 준다` | 새 작업 폴더에서는 01 에 `--dxf $DXF` 를 준다 |
+| `01(read) 을 돌리려면 --dxf <도면.dxf> 를 주거나 ...` | 새 작업 폴더에서는 01 에 `--dxf $DXF` 를 주거나, DWG 는 `0 --drawing "$DWG"` 로 00 을 먼저 돌린다 |
+| `00 convert: failed` ... `ezdxf cannot open` 또는 `empty model space` | LibreDWG 가 이 DWG 를 읽지 못했다 (D-1203 의 DWG 6개). AutoCAD 에서 저장한 DXF 를 받거나 같은 이름의 PDF 를 쓴다 |
+| 도면 경로에 공백·괄호가 있어 명령이 깨진다 | `DWG="..."` 처럼 따옴표로 담고 `"$DWG"` 로 쓴다 |
 | `runs/vllm/ocr.env: no such file` | 서버가 안 떠 있다 (0절) |
 | 다음 단계가 `종료 코드 2` 로 멈춘다 | 앞 단계 파일이 없거나 `failed` 다. 앞 단계부터 다시 |
+| 끝까지 `done` 인데 `flat_pattern.*` 이 없다 (09·10 `skipped`) | 06 에서 형상(`part_class`)이 없거나 `other` 다. 모델 없이(`--no-vlm`) 돌리면 늘 없다. 모델을 붙여도 실도면은 한 장에 부품이 여럿이라 `other` 가 나온다 (S-2120 DWG-003: `other` 0.9998). 13 의 `no_valid_candidate` 도 같은 이유다. `show_stages.py $W 6` 으로 모델 답을 본다 |
+| 00 을 다시 돌렸더니 01–13 결과가 사라졌다 | 00 을 저장하면 01–13 파일을 지운다 (다른 단계도 저장하면 뒤 단계를 지운다). 결과를 남기려면 새 작업 폴더에서 돌린다. 지워졌으면 `run_stages.py $W 1-13` 으로 다시 만든다 (모델 답은 실행마다 같다, [stages.md](stages.md) 6절) |
 | `08 document: failed`, `11 reconstruct: failed` (실도면) | 고장이 아니라 reader 의 한계다. 한 장에 부품이 여러 개인 도면은 뷰를 front/top/right 하나씩으로 나누지 못한다 |

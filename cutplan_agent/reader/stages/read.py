@@ -1,9 +1,10 @@
 """Stage 01 read: every DXF entity, layer-agnostic. No model.
 
-in : the DXF file
+in : the DXF file, or when none is given the DXF recorded in stages/00_convert.json
 out: stages/01_read.json (entities, file units, reader, source sha256)
 
 PYTHONPATH=. python cutplan_agent/reader/stages/read.py <drawing.dxf> <work>
+(a DWG goes through convert.py first; run.py <work> then reads the converted DXF)
 """
 
 import hashlib
@@ -12,6 +13,7 @@ from pathlib import Path
 from cutplan_agent.reader.dxf_adapter import _count
 from cutplan_agent.reader.dxf_reader import read_dxf
 from cutplan_agent.reader.stages.workspace import (
+    CONVERT,
     Workspace,
     cli,
     entities_to_json,
@@ -23,7 +25,9 @@ STAGE = "read"
 
 
 @stage_function(STAGE)
-def run(ws: Workspace, drawing: str | Path) -> dict:
+def run(ws: Workspace, drawing: str | Path | None = None) -> dict:
+    if drawing is None:
+        drawing = ws.load(CONVERT)["dxf"]
     path = Path(drawing)
     entities, info = read_dxf(path)
     return ws.save(
