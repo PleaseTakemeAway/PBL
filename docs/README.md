@@ -28,6 +28,7 @@
 | `data/` | [overview.md](data/overview.md) | 데이터 지도, 스크립트 ①~⑥ 의 입출력, 정답과 평가 |
 | | [dataset_structure.md](data/dataset_structure.md) | `Data/dataset/` 의 폴더 구조와 Drive 원본의 의미 |
 | | [part_class_rules.md](data/part_class_rules.md) | 부품 이름 정규화와 형상 class 결정 규칙 |
+| | [cutplan_cases.md](data/cutplan_cases.md) | 회사에서 받은 설비 2개의 테스트셋 (`test_data/cases/`): 정답 형식, 읽는 규칙, 알려진 문제, 기존 데이터와 비교 |
 | `domain/` | [glossary_kr.md](domain/glossary_kr.md) | 도면·제작 용어, AI 구조·skill 용어, 실험 용어 |
 | | [unfold_pipeline_tools.md](domain/unfold_pipeline_tools.md) | 형상별 전개 판정과 전개 공식, 툴킷 설명 |
 | | [unfold_classification_table.md](domain/unfold_classification_table.md) | KDM 도면 부품 라벨 779건의 전개 분류표 |
@@ -51,6 +52,8 @@ cutplan_agent/
   eval/smoke_kd25038.py  API 없이 L2(B경로)→L3→L4 전체 경로 실행
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
+  eval/cp_parse.py       커팅플랜 DXF → 판재·부품·조각 정답 (test_data/cases 를 만들 때 쓴다)
+  eval/drawing_refs.py   부품 라벨의 도면 번호 → 입력 도면 파일
   reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
   reader/stages/       DXF 판독 13단계. 단계마다 따로 실행되고, main.py --batch 가 차례로 부른다
   reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
@@ -63,6 +66,8 @@ docs/                  사람이 읽는 문서 (이 폴더)
 # 아래는 git 제외 (data/overview.md)
 Data/                  원본·정제 데이터 (dataset, _dataset, part_class_dataset, 연도별 cutting plan)
 test_data/             scripts/build_test_data.py 가 Data/dataset 에서 만든 평가 세트
+  cutting_plan/        회사 담당자에게 받은 설비 2개 원본 (다시 만들 수 없다)
+  cases/               scripts/build_cutplan_cases.py 가 cutting_plan/ 으로 만든 테스트셋
 data_v3/synthetic/     reader 입력: 합성 DXF + label.json 30개
 tools/dwg2png/         이전 세션 툴킷 (Windows 용 libredwg, cp_extract 등). 코드는 Windows 의 dwg2dxf.exe 만 쓴다
 runs/                  실행 결과. v2 는 runs/<job>/, v3 는 runs/reader/
@@ -76,4 +81,4 @@ runs/                  실행 결과. v2 는 runs/<job>/, v3 는 runs/reader/
 | `cutplan_agent/knowledge/*.md`, `cutplan_agent/agent/system.md` | v2 가 읽는다. `skills/01_core_knowledge/` 와 바이트 단위로 같은 복사본이다 |
 | `AGENTS.md`, `CLAUDE.md` | 코딩 에이전트 도구가 레포 루트에서 찾는다 |
 | `README.md` (루트) | GitHub 첫 화면. 짧은 소개와 이 폴더로 가는 링크만 둔다 |
-| `Data/dataset/README.md`, `Data/part_class_dataset/README.md`, `test_data/README.md`·`README.html` | 데이터를 만드는 스크립트가 데이터와 함께 만든다 (git 제외) |
+| `Data/dataset/README.md`, `Data/part_class_dataset/README.md`, `test_data/README.md`·`README.html`, `test_data/cases/README.md` | 데이터를 만드는 스크립트가 데이터와 함께 만든다 (git 제외) |
