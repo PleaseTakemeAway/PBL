@@ -61,10 +61,10 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 
 ## 3. 실행
 
-모든 명령은 레포 루트에서 실행한다. v3 의존성은 아직 uv 환경에 없어서 `--with` 로 붙인다. 아래에서는 줄여서 `$PY` 로 쓴다.
+모든 명령은 레포 루트에서 실행한다. v3 의존성은 아직 uv 환경에 없어서 `--with` 로 붙인다. 아래에서는 줄여서 `"${PY[@]}"` 로 쓴다. 배열이라 bash 와 zsh 에서 똑같이 돈다 (문자열 `PY="uv run ..."` 은 zsh 에서 단어로 나뉘지 않아 `$PY` 가 명령 하나로 읽힌다).
 
 ```bash
-PY="uv run --with requests --with opencv-python-headless --with pytesseract python"
+PY=(uv run --with requests --with opencv-python-headless --with pytesseract python)
 DXF=data_v3/synthetic/cone_0019/cone_0019.dxf
 W=runs/reader/check/cone_0019
 ```
@@ -81,14 +81,14 @@ W=runs/reader/check/cone_0019
 
 ```bash
 # 배치 (도면 1장도 된다). 결과는 runs/reader/check/cone_0019/ 와 집계 파일
-PYTHONPATH=. $PY cutplan_agent/reader/main.py --batch --input-mode dxf \
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/main.py --batch --input-mode dxf \
   --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1 \
   --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1 \
   --output-dir runs/reader/check $DXF
 
 # 도면 1장, 단계마다 한 줄씩 결과를 출력한다. 집계 파일과 prediction.json 은 만들지 않는다
-PYTHONPATH=. $PY cutplan_agent/reader/stages/run.py $DXF $W --no-vlm
-PYTHONPATH=. $PY cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 옵션>   # 07 까지만
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $DXF $W --no-vlm
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 옵션>   # 07 까지만
 ```
 
 `run.py` 는 `main.py --batch` 의 `--analyze-only`, `--no-unfold`, `--no-confirm`, `--units`, `--tolerance`, `--max-candidates`, `--projection` 을 그대로 받는다. 옵션으로 건너뛴 단계도 `skipped` 파일을 남긴다.
@@ -96,19 +96,19 @@ PYTHONPATH=. $PY cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 �
 ### 3.2 한 단계씩
 
 ```bash
-PYTHONPATH=. $PY cutplan_agent/reader/stages/read.py $DXF $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/title_regex.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/title_ocr.py $W --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1
-PYTHONPATH=. $PY cutplan_agent/reader/stages/title_fields.py $W --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1
-PYTHONPATH=. $PY cutplan_agent/reader/stages/views.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/view_labels.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. $PY cutplan_agent/reader/stages/sheet.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/document.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/unfold_params.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. $PY cutplan_agent/reader/stages/develop.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/reconstruct.py $W
-PYTHONPATH=. $PY cutplan_agent/reader/stages/confirm.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. $PY cutplan_agent/reader/stages/export.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/read.py $DXF $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_regex.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_ocr.py $W --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_fields.py $W --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/views.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/view_labels.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/sheet.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/document.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/unfold_params.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/develop.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/reconstruct.py $W
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/confirm.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/export.py $W
 ```
 
 각 스크립트는 상태, 핵심 결과 몇 줄, 단계 파일 경로를 출력한다. 단계별 옵션은 `--help` 로 본다 (`views.py --gap-ratio`, `view_labels.py --projection`, `document.py --units`, `reconstruct.py --tolerance --max-candidates`).
@@ -117,8 +117,8 @@ PYTHONPATH=. $PY cutplan_agent/reader/stages/export.py $W
 
 ```bash
 # OCR 모델만 바꿔서 03 을 다시 → 04 부터 다시
-PYTHONPATH=. $PY cutplan_agent/reader/stages/title_ocr.py $W --ocr-model <다른 OCR 모델> --ocr-base-url ...
-PYTHONPATH=. $PY cutplan_agent/reader/stages/run.py $W --from title_fields <모델 옵션>
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_ocr.py $W --ocr-model <다른 OCR 모델> --ocr-base-url ...
+PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $W --from title_fields <모델 옵션>
 ```
 
 `run.py <work> --from <단계>` 는 그 단계부터 끝까지(또는 `--to` 까지) 돈다. 앞 단계는 작업 폴더에 있는 파일을 그대로 쓰므로 DXF 경로를 주지 않아도 된다.
