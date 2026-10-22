@@ -19,7 +19,7 @@
 | `docs/` | [harness_engineering.md](harness_engineering.md) | 목표: 로컬 LLM 으로 orchestration 과 작업을 모두 하는 하네스. 지금 상태 판단과 로드맵 |
 | | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
-| | [presentation.md](presentation.md) | 발표 슬라이드(`presentation/`)를 만드는 스크립트, 미리보기, 여러 브랜치에서 고칠 때의 규칙 |
+| | [presentation.md](presentation.md) | 발표 슬라이드(`presentation/`)를 만드는 스크립트, 미리보기, 여러 브랜치에서 고치는 법, 슬라이드 숫자의 출처 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
 | `reader/` (v3) | [stages.md](reader/stages.md) | DXF 판독 13단계: 단계별 실행 명령, 단계마다 남는 파일, 한 단계만 다시 돌리기 |
@@ -64,7 +64,7 @@ experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + �
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (data/overview.md)
 skills/                reader 와 v2 가 프롬프트로 읽는 지식·프롬프트 문서 (01_core_knowledge, 02_prompts)
 docs/                  사람이 읽는 문서 (이 폴더)
-presentation/          발표 슬라이드와 그것을 만드는 스크립트 (presentation.md)
+presentation/          발표 슬라이드를 만드는 스크립트. pptx 는 실행해서 만든다 (presentation.md)
 
 # 아래는 git 제외 (data/overview.md)
 Data/                  원본·정제 데이터 (dataset, _dataset, part_class_dataset, 연도별 cutting plan)

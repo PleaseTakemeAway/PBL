@@ -3,8 +3,8 @@
 PYTHONPATH=. uv run --with python-pptx python presentation/build_reader_orchestrator.py
 
 The slides are written here, not edited in PowerPoint, so a change shows up as a text diff
-and branches can be merged; rebuild the .pptx after a merge. Speaker notes are in
-slide.notes. Every number on the slides comes from docs/reader/orchestrator.md (reader-agent
+and branches can be merged. The .pptx is build output and is not committed. Speaker notes
+are in slide.notes. Every number on the slides comes from docs/reader/orchestrator.md (reader-agent
 branch) and the 2026-10-23 cone_0019 run on mlic.
 """
 
