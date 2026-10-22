@@ -606,7 +606,11 @@ def export_flat_pattern(record: dict, pattern: dict, out_dir: Path) -> dict:
 
 def run_unfold(analysis: dict, drawing, reason, out_dir: str | Path) -> dict:
     """Stages 1→4 for one drawing. Never raises: failures are reported in the returned record."""
-    out_dir = Path(out_dir)
+    return develop_unfold(read_unfold_params(analysis, drawing, reason), Path(out_dir))
+
+
+def read_unfold_params(analysis: dict, drawing, reason) -> dict:
+    """Stages 1→2. status "params_read" means develop_unfold can run; otherwise the record is final."""
     part_class = analysis.get("part_class")
     record: dict[str, Any] = {"status": "skipped", "part_class": part_class}
     if part_class not in CLASS_TO_PART_TYPE:
@@ -614,6 +618,18 @@ def run_unfold(analysis: dict, drawing, reason, out_dir: str | Path) -> dict:
         return record
     try:
         record.update(extract_params(part_class, analysis, drawing, reason))
+        record["status"] = "params_read"
+    except (ValueError, TypeError, OSError) as exc:
+        record["status"] = "failed"
+        record["error"] = f"{type(exc).__name__}: {exc}"
+    return record
+
+
+def develop_unfold(record: dict, out_dir: Path) -> dict:
+    """Stages 3→4 on a read_unfold_params record: formulas in code, then flat_pattern.* files."""
+    if record.get("status") != "params_read":
+        return record
+    try:
         pattern = develop(record["part_type"], record["params"])
         record["status"] = "developed"
         record["blank"] = pattern["blank"]
