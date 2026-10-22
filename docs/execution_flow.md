@@ -213,13 +213,10 @@ PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py                  
 PYTHONPATH=. uv run python cutplan_agent/agent/orchestrator.py --job KD23002 --eval  # API 필요
 PYTHONPATH=. uv run python cutplan_agent/eval/status.py --job KD23002 --watch       # 다른 터미널에서 진행 확인
 
-# v3. uv 환경에는 아직 v3 의존성이 없어 --with 로 붙인다
-PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
-  python -m unittest discover -s tests
-PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
-  python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir /tmp/reader_novlm data_v3/synthetic
+# v3
+PYTHONPATH=. uv run python -m unittest discover -s tests
+PYTHONPATH=. uv run python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir /tmp/reader_novlm data_v3/synthetic
 ./experiments/experiments.sh --dry-run                                               # 설정만 출력
 ./experiments/serve.sh --vllm-bin ~/venvs/vllm-0.31/bin/vllm                         # 서버만 띄워 두기. 다른 셸에서 . runs/vllm/ocr.env; . runs/vllm/reason.env
-PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
-  python cutplan_agent/reader/stages/run.py <도면.dxf> runs/reader/check/<도면> --no-vlm   # 도면 1장 단계별 (reader/stages.md)
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py <도면.dxf> runs/reader/check/<도면> --no-vlm   # 도면 1장 단계별 (reader/stages.md)
 ```

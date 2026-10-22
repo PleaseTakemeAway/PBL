@@ -23,11 +23,11 @@ PYTHONPATH=. uv run python cutplan_agent/agent/orchestrator.py --job KD23002 --e
 PYTHONPATH=. uv run python cutplan_agent/eval/run_eval.py --jobs KD23002,KD23015,KD23022
 ```
 
-도면 판독기(v3, `cutplan_agent/reader/`)는 uv 환경에 아직 의존성이 없어 `--with` 로 붙인다. 로컬 모델 실험은 vllm 이 깔린 파이썬으로 `./experiments/experiments.sh --python <파이썬>` 을 쓴다. 서버를 띄워 두고 여러 번 돌릴 때는 `./experiments/serve.sh` 를 쓴다 (3절 로컬 모델).
+도면 판독기(v3, `cutplan_agent/reader/`)도 같은 uv 환경으로 돈다. 로컬 모델 실험은 vllm 이 깔린 파이썬으로 `./experiments/experiments.sh --python <파이썬>` 을 쓴다. 서버를 띄워 두고 여러 번 돌릴 때는 `./experiments/serve.sh` 를 쓴다 (3절 로컬 모델).
 
 ```bash
-PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
-  python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir runs/reader/novlm data_v3/synthetic
+PYTHONPATH=. uv run python \
+  cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir runs/reader/novlm data_v3/synthetic
 ./experiments/experiments.sh --dry-run   # 서버를 띄우지 않고 설정만 출력
 ```
 
@@ -48,7 +48,7 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
   Drive 원본은 `Data/drive/8. Data/` 에 푼다. 원본 없이 `manifest.csv` 만 갱신하려면 빈 `Data/drive/8. Data/` 폴더를 만들고 `ingest_drive_inputs.py` 를 실행한다.
 - DWG 변환: v2 에이전트는 `tools/dwg2png/libredwg/` 의 `dwg2dxf` 가 있으면 그것을, 없으면 PATH 의 `dwg2dxf` 를 쓴다. Linux 는 `scripts/install_libredwg.sh` 로 GNU LibreDWG 0.14 를 sudo 없이 `~/.local/bin` 에 빌드한다 (Ubuntu 22.04·24.04 apt 에는 없다). 동료 툴킷의 Windows `dwg2dxf.exe` 도 0.14 다.
 - 도면 보기: `uv run python scripts/render_drawings.py <DWG·DXF 파일 또는 폴더>` 가 사람이 볼 PDF 와 PNG 를 `runs/render_drawings/` 에 입력 폴더 구조대로 만든다. 에이전트와 따로 돈다. 한글은 맑은 고딕, Noto Sans CJK KR, 나눔고딕 중 설치된 폰트로 그린다.
-- reader·reconstruct 테스트: `PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
+- reader·reconstruct 테스트: `PYTHONPATH=. uv run python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
 ### 로컬 모델 (vLLM)
 
@@ -83,7 +83,7 @@ HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download Qwen/Qwen3.6-27B
 
 # 창 2: 레포 루트에서. 서버가 뜨면 생기는 파일을 읽는다
 . runs/vllm/ocr.env; . runs/vllm/reason.env
-PYTHONPATH=. ~/venvs/vllm-0.31/bin/python cutplan_agent/reader/stages/run.py \
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py \
   data_v3/synthetic/cone_0019/cone_0019.dxf runs/reader/check/cone_0019 --to sheet
 ./experiments/experiments.sh --python ~/venvs/vllm-0.31/bin/python --output-dir runs/reader/<새 폴더>
 ```
