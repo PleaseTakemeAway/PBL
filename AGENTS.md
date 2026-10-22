@@ -46,7 +46,8 @@
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
 | `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `harness_engineering.md`, `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md`, `reader/stages.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
-| 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
+| 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태. 브랜치 `cutplan_v3`·`data_script`·`refactor` 는 2026-10-22 에 원격에서 지웠다 (`refactor` 는 main 에 다 들어 있다) |
+| 태그 `archive/reader-stages-7stage` | 다른 서버에서 같은 요청으로 만든 7단계 판 `reader-stages` (46fd37a). main 에는 13단계 판을 머지했다 |
 
 - 사람이 읽는 문서는 `docs/` 아래에만 둔다. 예외는 코드가 실행 중에 읽는 문서(`skills/`, `cutplan_agent/knowledge/`, `cutplan_agent/agent/system.md`), 도구가 루트에서 찾는 `AGENTS.md`·`CLAUDE.md`, 짧은 소개만 두는 루트 `README.md` 다.
 - 폴더는 하는 일로 이름을 짓고, 버전은 git 으로 관리한다. `_v3` 같은 버전 폴더나 복사본을 만들지 않는다. 옛 상태는 커밋과 태그로 꺼낸다. 동료의 v3 원본은 253020c, 폴더를 옮기기 직전은 ca142a8 이다.
@@ -82,8 +83,8 @@
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
-- v3 단위 테스트 83건 중 11건이 실패한다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 가 없으면 8건이 더 실패한다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
+- v3 단위 테스트 88건 중 11건이 실패한다. `tests/test_stages.py` 의 5건은 통과한다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 와 tesseract 가 둘 다 없는 `mlic` 에서는 17건이 실패한다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.
-- 할 일: `docs/harness_engineering.md` 3절의 로드맵 (단계별 평가 → 작업별 모델 설정 → Claude 대 로컬 비교 → 보완 장치 → 로컬 orchestrator), v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.
+- 할 일: `docs/harness_engineering.md` 3절의 로드맵 (단계별 평가 → 작업별 모델 설정 → Claude 대 로컬 비교 → 보완 장치 → 로컬 orchestrator), v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리.
