@@ -44,7 +44,8 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
 - `Data/` 를 처음부터 다시 만들 때는 아래 순서로 `PYTHONPATH=. uv run python scripts/<이름>.py` 를 실행한다. 경로는 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이라 Windows 와 Linux 에서 같다.
   `build_dataset.py` → `extract_part_unfolds.py` → `ingest_drive_inputs.py` → `build_part_class_dataset.py` → `build_test_data.py` → `build_test_data_html.py`
   Drive 원본은 `Data/drive/8. Data/` 에 푼다. 원본 없이 `manifest.csv` 만 갱신하려면 빈 `Data/drive/8. Data/` 폴더를 만들고 `ingest_drive_inputs.py` 를 실행한다.
-- DWG 변환: Windows 는 `tools/dwg2png/libredwg/dwg2dxf.exe` 를, 그 밖에는 PATH 의 `dwg2dxf` 를 쓴다. Ubuntu 24.04 apt 에는 libredwg 패키지가 없으므로 GNU LibreDWG 를 소스에서 빌드해 설치한다.
+- DWG 변환: v2 에이전트는 `tools/dwg2png/libredwg/` 의 `dwg2dxf` 가 있으면 그것을, 없으면 PATH 의 `dwg2dxf` 를 쓴다. Linux 는 `scripts/install_libredwg.sh` 로 GNU LibreDWG 0.14 를 sudo 없이 `~/.local/bin` 에 빌드한다 (Ubuntu 22.04·24.04 apt 에는 없다). 동료 툴킷의 Windows `dwg2dxf.exe` 도 0.14 다.
+- 도면 보기: `uv run python scripts/render_drawings.py <DWG·DXF 파일 또는 폴더>` 가 사람이 볼 PDF 와 PNG 를 `runs/render_drawings/` 에 입력 폴더 구조대로 만든다. 에이전트와 따로 돈다. 한글은 맑은 고딕, Noto Sans CJK KR, 나눔고딕 중 설치된 폰트로 그린다.
 - reader·reconstruct 테스트: `PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
 ### 로컬 모델 (vLLM)
