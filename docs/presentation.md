@@ -7,7 +7,7 @@
 | 파일 | 내용 |
 |---|---|
 | `presentation/slides.py` | 모든 덱이 같이 쓰는 색, 글꼴, 도형, 슬라이드 틀(`Deck`) |
-| `presentation/build_roadmap.py` | "우리는 지금 어디쯤 왔나" 파트 (19장, 약 20분) → `roadmap.pptx`. v2 → v3 → 지금 → 다음 순서로 프로젝트의 위치를 AI 를 모르는 청중에게 보인다. 2026-10-23 에 "도면 판독 orchestrator" 덱(`build_reader_orchestrator.py`, 14장, 커밋 7f543c2 까지)을 이 구성으로 바꿨다 |
+| `presentation/build_roadmap.py` | "우리는 지금 어디쯤 왔나" 파트 (20장, 약 20분) → `roadmap.pptx`. v2 → v3 → 지금 → 다음 순서로 프로젝트의 위치를 AI 를 모르는 청중에게 보인다. 2026-10-23 에 "도면 판독 orchestrator" 덱(`build_reader_orchestrator.py`, 14장, 커밋 7f543c2 까지)을 이 구성으로 바꿨다 |
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
@@ -60,7 +60,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 
 ## 5. 로드맵 파트의 숫자 출처 (2026-10-23, `mlic`)
 
-이야기 순서: 전체 지도(도면 읽기 → 전개도 → 커팅플랜 → 구매의뢰) → v2 는 Claude 에게 전부 맡겼다 → skill 이란 (메뉴판과 주방) → Claude 가 skill 을 부르는 반복 → 잘 안 됐다 → v3 는 로컬 AI 로 도면 읽기에 집중 → 서버와 두 모델 → 13단계 중 AI 5곳 → 연습(합성) 도면부터 → 27/30 (지금) → 할 일 둘: 하네스, 실제 도면 → tool calling (v2 에서 본 그 방식) → 실제 도면에 적용 → 함수로 만들 수 있으면 AI 가 쓴다.
+이야기 순서: 전체 지도(도면 읽기 → 전개도 → 커팅플랜 → 구매의뢰) → v2 는 Claude 에게 전부 맡겼다 → skill 이란 (메뉴판과 주방) → Claude 가 skill 을 부르는 반복 → 잘 안 됐다 → 왜 옮겼나 → v3 는 로컬 AI 로 도면 읽기에 집중 → 서버와 두 모델 → 13단계 중 AI 5곳 → 연습(합성) 도면부터 → 27/30 (지금) → 할 일 둘: 하네스, 실제 도면 → tool calling (v2 에서 본 그 방식) → 실제 도면에 적용 → 함수로 만들 수 있으면 AI 가 쓴다.
 
 MCP 는 청중에게 소개한 적이 없어서 넣지 않았다.
 
@@ -69,7 +69,9 @@ MCP 는 청중에게 소개한 적이 없어서 넣지 않았다.
 | v2: Claude Opus, skill 25개 (보기 · 읽기 4, 판단 7, 계산 6, 검사 6, 상태 2), 참고서 7권 | `cutplan_agent/agent/orchestrator.py` 의 `SKILLS`, `config.py` 의 `MODEL = "claude-opus-5-5"` (동료 원본 f51473f 도 같다), `cutplan_agent/knowledge/*.md` 7개. 분류는 [agent/skills.md](agent/skills.md) 1절. `load_domain_prompt` 를 판단에 셌다 |
 | v2 의 대상은 실제 회사 도면 | [agent/skill_agent_framework.md](agent/skill_agent_framework.md) 의 대상 데이터 (`Data/data_v2` HCE 판금 스캔 PDF, KDM 압력용기 커팅플랜). v2 는 합성 도면을 쓰지 않았다 |
 | v2 결과: 잘 안 됐다 | 팀의 경험. **이 레포에는 v2 를 Claude 로 끝까지 돌린 기록이나 숫자가 없다** ([agent/skills.md](agent/skills.md) 는 VLM 경로를 미실행으로 적는다). 슬라이드에 숫자를 넣지 않았다 |
-| 지름 10 mm → 둘레 31 mm → 폐기 | `cutplan_agent/agent/system.md` 원칙 2 ("지름 10mm 오차는 원주 31mm 오차이고 그 판은 폐기된다"). π × 10 = 31.4 |
+| 지름 10 mm → 둘레 31 mm → 폐기 | v2 에서 실제로 일어난 일이 아니라 예시다. `cutplan_agent/agent/system.md` 원칙 2 ("지름 10mm 오차는 원주 31mm 오차이고 그 판은 폐기된다", 동료가 AI 에게 준 지침). π × 10 = 31.4. 슬라이드에 "예" 와 출처 한 줄을 붙였다 |
+| 왜 옮겼나: 수업의 목표, v2 의 교훈, 비용과 보안 | 목표와 "Claude 는 시행착오용" 은 [harness_engineering.md](harness_engineering.md) 1절. 교훈은 앞 슬라이드. 비용과 보안은 클라우드 API 의 일반적인 성질이고, 동료가 이유로 적어 둔 기록은 없다 |
+| 보이려는 것 (가설): 작은 로컬 AI 라도 하네스를 잘 만들면 쓸 만한 결과 | [harness_engineering.md](harness_engineering.md) 1절의 목표 문장. 아직 증명 전이라 "주장" 대신 "가설" 로 적었다 |
 | 서버: RTX A5000 24 GB × 4, Xeon Gold 6336Y 48코어, 메모리 128 GB (`free` 125 GiB) | `nvidia-smi`, `lscpu`, `free` |
 | OCR 모델 6 GB, 추론 모델 52 GB, 추론 모델은 GPU 1–3 | `~/.cache/huggingface/hub` 의 모델 폴더 크기 (`du -shL`). 배치는 `experiments/vllm_common.sh` 기본값. Qwen3.6-27B 는 `vision_config` 가 있는 VLM 이다 |
 | 동료는 90 GB 급 GPU 두 장 (발표자 노트) | [AGENTS.md](../AGENTS.md) 6절 |
@@ -79,8 +81,8 @@ MCP 는 청중에게 소개한 적이 없어서 넣지 않았다.
 | 27/30, 모양별 6 · 6 · 6 · 5 · 4 | `runs/reader/deepseek_ocr_qwen_reasoning_skills/accuracy.md` (동료, 2026-10-18) |
 | 시제품: AI 판단 3번, 133초, 지어낸 숫자 0 | `reader-agent` 브랜치의 orchestrator 를 cone_0019 에 돌린 실행 (2026-10-23, schema 모드). 아직 main 에 없다 |
 | S-2120: 정답 부품 22종 (라벨 51개), 입력 도면 4장 | `test_data/cases/S-2120/output_cutting_plan/parts.csv`: 행 51개, (도면 번호, 아이템) 쌍 22개 |
-| 실제 도면을 로컬 모델로 판독한 결과 | 2026-10-23 05:00 에 떠 있던 서버(DeepSeek-OCR-2 + Qwen3.6-27B)로 `scripts/reader/run_stages.py <작업 폴더> --dxf <도면>` 을 `runs/reader/real_drawings/*/dxf/` 의 S-2120 4장에 돌렸다 (출력은 세션 임시 폴더). DWG-001(조립도): 원통, 두께 18, 안지름 1500, 길이 1877 → 펼친 길이 π(1500+18) = 4,768.9. DWG-002·004: 08 document 에서 `views with unique IDs` 오류. DWG-003: `part_class` other 라 전개 안 함 |
-| 두께 정답 8, 펼친 길이 정답 4,738 | 같은 `parts.csv` 의 SHELL (A240-S31803, 두께 8, 외곽 4738 × 1823). π(1500+8) = 4,737.6. 조립도 DXF 의 글자에도 `USED TH'K : t8` 이 있다. 모델의 근거 문장은 "t=18 mm in the front view" 였다 |
+| 실제 도면을 로컬 모델로 판독한 결과 | 2026-10-23 05:00 에 떠 있던 서버(DeepSeek-OCR-2 + Qwen3.6-27B)로 `scripts/reader/run_stages.py <작업 폴더> --dxf <도면>` 을 `runs/reader/real_drawings/*/dxf/` 의 S-2120 4장에 돌렸다 . 실행 스크립트·로그·단계 파일은 `runs/reader/real_drawings_vlm/` (`run.sh`, `run.log`, `<도면>/stages/NN_*.json`, git 제외). 단계 파일 안의 그림 경로는 처음 돌린 임시 폴더를 가리킨다. DWG-001(조립도): 원통, 두께 18, 안지름 1500, 길이 1877 → 펼친 길이 π(1500+18) = 4,768.9. DWG-002·004: 08 document 에서 `views with unique IDs` 오류. DWG-003: `part_class` other 라 전개 안 함 |
+| 두께 정답 8, 펼친 길이 정답 4,738, "두께가 틀리면 철판을 잘못 산다" | 같은 `parts.csv` 의 SHELL (A240-S31803, 두께 8, 외곽 4738 × 1823). π(1500+8) = 4,737.6. 조립도 DXF 의 글자에도 `USED TH'K : t8` 이 있다. 모델의 근거 문장은 "t=18 mm in the front view" 였다 (`VP-S-2120-DWG-001/stages/09_unfold_params.json` 의 `record.notes`). 길이가 31 mm 긴 판은 잘라 맞출 수도 있어 이 슬라이드에서는 "폐기" 대신 두께(구매할 철판)가 틀린다는 점을 결과로 적었다. 폭도 1,877 (모델이 읽은 T.L 길이) 과 정답 1,823 이 다르다 |
 | 부품별 결과 표 예시 (SHELL 4738 × 1823, TOP HEAD Ø1890) | 같은 `parts.csv` 의 정답 외곽. 슬라이드에서는 tool calling 으로 만들 결과의 모양을 보이는 예시로 썼다 |
 | v2 계산 도구가 끝까지 돈다 | smoke test: 손으로 넣은 부품 8개로 22/22 배치, 6132.2 kg ([AGENTS.md](../AGENTS.md) 6절) |
 
