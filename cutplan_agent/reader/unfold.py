@@ -17,7 +17,7 @@ from math import cos, degrees, isfinite, pi, radians, sin, sqrt, tan
 from pathlib import Path
 from typing import Any
 
-from knowledge import STAGE_TOPICS
+from cutplan_agent.reader.knowledge import STAGE_TOPICS
 
 # part_class (view-labelling task, data_v3 labels) → part_type (skills/02_prompts/unfold_extract.md)
 CLASS_TO_PART_TYPE = {

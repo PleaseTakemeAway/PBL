@@ -7,15 +7,15 @@ from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from drawing_io import load_drawing
-from geometry import segment_covered
-from main import main
-from models import DrawingDocument, ReconstructionCandidate
-from pipeline import ReconstructionPipeline
-from step4 import CandidateEvaluator
-from step6 import ReconstructionExporter
+from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.main import main
+from cutplan_agent.reconstruct.geometry import segment_covered
+from cutplan_agent.reconstruct.models import DrawingDocument, ReconstructionCandidate
+from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
+from cutplan_agent.reconstruct.step4 import CandidateEvaluator
+from cutplan_agent.reconstruct.step6 import ReconstructionExporter
 
-EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "box.json"
+EXAMPLE = Path(__file__).resolve().parent / "fixtures" / "box.json"
 
 
 class ReconstructionTests(unittest.TestCase):

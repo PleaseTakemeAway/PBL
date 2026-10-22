@@ -13,7 +13,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-DEFAULT_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+DEFAULT_SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
 
 # unfold_rules.md: "부품 유형을 정하기 전에 unfold_rules" (00_system_role_and_procedure.md 원칙 4)
 STAGE_TOPICS = {

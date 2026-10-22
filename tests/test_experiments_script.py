@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-SCRIPT = Path(__file__).resolve().parents[1] / "experiments.sh"
+SCRIPT = Path(__file__).resolve().parents[1] / "experiments" / "experiments.sh"
 
 
 class ExperimentsScriptTests(unittest.TestCase):
@@ -153,7 +153,7 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
         self.assertEqual(capture["config"]["REASON"]["OUTPUT_FORMAT"], "json_schema")
         self.assertNotIn("--ocr-output-format", capture["argv"])
         self.assertNotIn("--reason-output-format", capture["argv"])
-        self.assertIn(str(SCRIPT.parent / "../data_v3/synthetic"), capture["argv"])
+        self.assertIn(str(SCRIPT.parents[1] / "data_v3" / "synthetic"), capture["argv"])
         self.assertFalse((self.directory / "8000.json").exists())
         self.assertFalse((self.directory / "8001.json").exists())
 

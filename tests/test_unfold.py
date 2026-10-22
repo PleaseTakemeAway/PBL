@@ -9,10 +9,20 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from knowledge import STAGE_TOPICS, load_domain_prompt, skill_system_prompt, topics
-from unfold import develop, evaluate_against_label, extract_params, run_unfold
-from vlm import VLMClient, VLMConfig
-from vlm_output import normalize_response, response_schema
+from cutplan_agent.reader.knowledge import (
+    STAGE_TOPICS,
+    load_domain_prompt,
+    skill_system_prompt,
+    topics,
+)
+from cutplan_agent.reader.unfold import (
+    develop,
+    evaluate_against_label,
+    extract_params,
+    run_unfold,
+)
+from cutplan_agent.reader.vlm import VLMClient, VLMConfig
+from cutplan_agent.reader.vlm_output import normalize_response, response_schema
 
 
 def unfold_reply(**fields):
@@ -127,7 +137,7 @@ class SkillLoadingTests(unittest.TestCase):
                 )
 
     def test_view_labels_request_part_class_skills(self):
-        from vision_adapter import label_views_vlm
+        from cutplan_agent.reader.vision_adapter import label_views_vlm
 
         reason = Mock(enabled=True, config=SimpleNamespace(model="m"))
         reason.ask.return_value = None
@@ -137,7 +147,10 @@ class SkillLoadingTests(unittest.TestCase):
         title = SimpleNamespace(as_dict=lambda: {})
         with (
             TemporaryDirectory() as tmp,
-            patch("vision_adapter.save_debug", return_value=Path(tmp) / "x.png"),
+            patch(
+                "cutplan_agent.reader.vision_adapter.save_debug",
+                return_value=Path(tmp) / "x.png",
+            ),
         ):
             label_views_vlm(
                 [view], SimpleNamespace(width=10, height=10), title, reason, Path(tmp)

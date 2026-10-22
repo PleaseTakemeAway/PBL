@@ -3,12 +3,12 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from drawing_io import load_drawing
-from main import main
-from pipeline import ReconstructionPipeline
-from vision_adapter import analyze_image, confirm_candidates
-from vision_reader import TextItem, classify_text
-from vlm import VLMClient, VLMConfig
+from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.main import main
+from cutplan_agent.reader.vision_adapter import analyze_image, confirm_candidates
+from cutplan_agent.reader.vision_reader import TextItem, classify_text
+from cutplan_agent.reader.vlm import VLMClient, VLMConfig
+from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
 
 
 def synthetic_scan(
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-SCANS = Path(__file__).resolve().parents[1] / "examples"
+SCANS = Path(__file__).resolve().parent / "fixtures"
 
 
 @unittest.skipUnless(

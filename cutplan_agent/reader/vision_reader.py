@@ -18,7 +18,8 @@ from math import atan2, cos, degrees, hypot, sin
 from pathlib import Path
 
 import numpy as np
-from vlm import VLMClient, read_ocr_task
+
+from cutplan_agent.reader.vlm import VLMClient, read_ocr_task
 
 PxBox = tuple[float, float, float, float]  # x0, y0, x1, y1 in pixels
 
@@ -102,8 +103,8 @@ def load_sheet(
         img_path, source = cands[-1], "pdf"
     elif suffix == ".dxf":
         # rasterize only; no entity semantics are taken from the DXF in vision mode
-        from dxf_adapter import render
-        from dxf_reader import read_dxf
+        from cutplan_agent.reader.dxf_adapter import render
+        from cutplan_agent.reader.dxf_reader import read_dxf
 
         ents, _ = read_dxf(path)
         img_path = render(

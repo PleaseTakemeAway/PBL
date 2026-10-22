@@ -15,7 +15,7 @@ from math import hypot
 from pathlib import Path
 from typing import Any
 
-from dxf_adapter import (
+from cutplan_agent.reader.dxf_adapter import (
     ORIENTATIONS,
     VIEW_TYPES,
     ViewCandidate,
@@ -23,9 +23,8 @@ from dxf_adapter import (
     _expand,
     label_by_position,
 )
-from knowledge import STAGE_TOPICS
-from models import DrawingDocument, ReconstructionResult
-from vision_reader import (
+from cutplan_agent.reader.knowledge import STAGE_TOPICS
+from cutplan_agent.reader.vision_reader import (
     PxBox,
     PxPrimitive,
     SheetImage,
@@ -40,7 +39,13 @@ from vision_reader import (
     snap,
     stroke_width,
 )
-from vlm import VLMClient, final_part_class, read_ocr_task, softmax_class_scores
+from cutplan_agent.reader.vlm import (
+    VLMClient,
+    final_part_class,
+    read_ocr_task,
+    softmax_class_scores,
+)
+from cutplan_agent.reconstruct.models import DrawingDocument, ReconstructionResult
 
 _SCALE = re.compile(r"(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)")
 _THICK = re.compile(r"(\d+(?:\.\d+)?)\s*t\b|\bt\s*(\d+(?:\.\d+)?)\b", re.I)
@@ -856,7 +861,8 @@ def confirm_candidates(
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from geometry import project
+
+    from cutplan_agent.reconstruct.geometry import project
 
     work_dir = Path(work_dir)
     fig, axes = plt.subplots(

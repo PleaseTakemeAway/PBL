@@ -1,14 +1,17 @@
-"""CLI: python main.py examples/box.json --output-dir output
-python main.py part.dxf --analyze-only --reason-model qwen2.5vl:32b"""
+"""CLI. 레포 루트에서 실행한다.
+
+PYTHONPATH=. python cutplan_agent/reader/main.py tests/fixtures/box.json --output-dir output
+PYTHONPATH=. python cutplan_agent/reader/main.py part.dxf --analyze-only --reason-model qwen2.5vl:32b
+"""
 
 import argparse
 import sys
 from pathlib import Path
 
-from drawing_io import load_drawing
-from pipeline import ReconstructionPipeline
-from step6 import ReconstructionExporter
-from unfold import run_unfold
+from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.unfold import run_unfold
+from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
+from cutplan_agent.reconstruct.step6 import ReconstructionExporter
 
 
 def _print_unfold(record: dict) -> None:
@@ -137,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
-    from vlm import make_clients
+    from cutplan_agent.reader.vlm import make_clients
 
     clients = make_clients(
         disabled=args.no_vlm,
@@ -150,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     inputs = args.drawing
     batch_mode = args.batch or len(inputs) > 1 or any(path.is_dir() for path in inputs)
     if batch_mode:
-        from batch import run_batch
+        from cutplan_agent.reader.batch import run_batch
 
         try:
             result = run_batch(
@@ -217,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         try:
             if suffix == ".dxf" and args.input_mode == "dxf":
-                from dxf_adapter import analyze_dxf
+                from cutplan_agent.reader.dxf_adapter import analyze_dxf
 
                 a = analyze_dxf(
                     args.drawing,
@@ -227,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:
                     projection_default=args.projection,
                 )["analysis"]
             else:
-                from vision_adapter import analyze_image
+                from cutplan_agent.reader.vision_adapter import analyze_image
 
                 a = analyze_image(
                     args.drawing,
@@ -314,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         result = ReconstructionPipeline(tolerance, args.max_candidates).run(drawing)
         if not args.no_confirm and clients[1].enabled:
-            from vision_adapter import confirm_candidates
+            from cutplan_agent.reader.vision_adapter import confirm_candidates
 
             confirm_candidates(result, clients[1], work_dir)
 
@@ -343,8 +346,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     except (ValueError, RuntimeError, OSError) as exc:
-        from dxf_adapter import NotOrthographicSheet as _A
-        from vision_adapter import NotOrthographicSheet as _B
+        from cutplan_agent.reader.dxf_adapter import NotOrthographicSheet as _A
+        from cutplan_agent.reader.vision_adapter import NotOrthographicSheet as _B
 
         if isinstance(exc, (_A, _B)):
             print(

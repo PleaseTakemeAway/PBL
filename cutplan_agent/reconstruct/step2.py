@@ -3,14 +3,14 @@
 from itertools import combinations
 from math import dist, isfinite
 
-from geometry import (
+from cutplan_agent.reconstruct.geometry import (
     geometry_lines,
     point_on_segment,
     project,
     segment_covered,
     supports_point,
 )
-from models import DrawingView, ReconstructionCandidate
+from cutplan_agent.reconstruct.models import DrawingView, ReconstructionCandidate
 
 
 class ViewMatcher:

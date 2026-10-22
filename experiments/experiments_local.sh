@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+main_py="$repo_root/cutplan_agent/reader/main.py"
+# cutplan_agent 는 설치하지 않는 패키지라 레포 루트를 import 경로에 넣는다
+export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
+
 # Local OpenAI-compatible VLM server settings (vLLM by default).
 # Existing environment variables take precedence over these defaults.
 : "${CUTPLAN_OCR_PROVIDER:=openai}"
@@ -9,7 +15,7 @@ set -euo pipefail
 : "${CUTPLAN_REASON_PROVIDER:=openai}"
 : "${CUTPLAN_REASON_BASE_URL:=http://localhost:8001/v1}"
 : "${CUTPLAN_REASON_MODEL:=Qwen/Qwen3.6-27B}"
-: "${CUTPLAN_BATCH_OUTPUT:=${CUTPLAN_LOCAL_OUTPUT:-output/data_v3_local_batch}}"
+: "${CUTPLAN_BATCH_OUTPUT:=${CUTPLAN_LOCAL_OUTPUT:-$repo_root/runs/reader/data_v3_local_batch}}"
 : "${CUTPLAN_PYTHON:=python}"
 : "${CUTPLAN_VLLM_BIN:=vllm}"
 : "${CUTPLAN_VLLM_STARTUP_TIMEOUT:=1800}"
@@ -24,7 +30,6 @@ set -euo pipefail
 # kernel, while Triton 3.7 rejects non-constexpr globals by default.
 : "${CUTPLAN_TRITON_ALLOW_NON_CONSTEXPR_GLOBALS:=1}"
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ocr_gpu="$CUTPLAN_OCR_GPU"
 reason_gpu="$CUTPLAN_REASON_GPU"
 main_args=()
@@ -103,7 +108,7 @@ while (( $# > 0 )); do
     -h|--help)
       usage
       echo
-      "$CUTPLAN_PYTHON" "$script_dir/main.py" --help
+      "$CUTPLAN_PYTHON" "$main_py" --help
       exit 0
       ;;
     --)
@@ -247,10 +252,10 @@ export CUTPLAN_REASON_OUTPUT_FORMAT="${CUTPLAN_REASON_OUTPUT_FORMAT:-json_schema
 # With no arguments, process the complete synthetic DXF dataset. Otherwise,
 # every supplied DXF file/directory is discovered and processed as one batch.
 if (( ${#main_args[@]} == 0 )); then
-  main_args=("$script_dir/../data_v3/synthetic")
+  main_args=("$repo_root/data_v3/synthetic")
 fi
 
-"$CUTPLAN_PYTHON" "$script_dir/main.py" \
+"$CUTPLAN_PYTHON" "$main_py" \
   "${main_args[@]}" \
   --batch \
   --input-mode dxf \

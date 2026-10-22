@@ -3,7 +3,7 @@
 from copy import deepcopy
 from math import dist, isfinite
 
-from models import VIEW_AXES, DrawingDocument, DrawingView
+from cutplan_agent.reconstruct.models import VIEW_AXES, DrawingDocument, DrawingView
 
 
 class DrawingInterpreter:

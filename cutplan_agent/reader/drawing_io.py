@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from models import DrawingDocument
+from cutplan_agent.reconstruct.models import DrawingDocument
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".pdf"}
 
@@ -35,8 +35,8 @@ def load_drawing(
         except (KeyError, TypeError, AttributeError) as exc:
             raise ValueError(f"Invalid drawing JSON structure: {exc}") from exc
     elif suffix in IMAGE_SUFFIXES or (suffix == ".dxf" and input_mode == "vision"):
-        from vision_adapter import load_image_document
-        from vlm import make_clients
+        from cutplan_agent.reader.vision_adapter import load_image_document
+        from cutplan_agent.reader.vlm import make_clients
 
         ocr, reason = vlm_clients or make_clients(disabled=True)
         document = load_image_document(
@@ -48,12 +48,12 @@ def load_drawing(
         )
     elif suffix == ".dxf":
         if dxf_mode == "layers":
-            from drawing_io_legacy_layers import load_dxf_by_layers
+            from cutplan_agent.reader.drawing_io_legacy_layers import load_dxf_by_layers
 
             document = load_dxf_by_layers(path)
         else:
-            from dxf_adapter import load_dxf_document
-            from vlm import make_clients
+            from cutplan_agent.reader.dxf_adapter import load_dxf_document
+            from cutplan_agent.reader.vlm import make_clients
 
             ocr, reason = vlm_clients or make_clients(disabled=True)
             document = load_dxf_document(

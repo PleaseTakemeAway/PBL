@@ -19,10 +19,15 @@ from math import acos, ceil, hypot
 from pathlib import Path
 from typing import Any
 
-from dxf_reader import RawEntity, arc_points, read_dxf
-from knowledge import STAGE_TOPICS
-from models import DrawingDocument
-from vlm import VLMClient, final_part_class, read_ocr_task, softmax_class_scores
+from cutplan_agent.reader.dxf_reader import RawEntity, arc_points, read_dxf
+from cutplan_agent.reader.knowledge import STAGE_TOPICS
+from cutplan_agent.reader.vlm import (
+    VLMClient,
+    final_part_class,
+    read_ocr_task,
+    softmax_class_scores,
+)
+from cutplan_agent.reconstruct.models import DrawingDocument
 
 BBox = tuple[float, float, float, float]
 TITLE_KEYS = (

@@ -5,11 +5,17 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from drawing_io import load_drawing
-from dxf_adapter import analyze_dxf
-from main import main
-from pipeline import ReconstructionPipeline
-from vlm import PART_CLASSES, VLMClient, VLMConfig, extract_json, softmax_class_scores
+from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.dxf_adapter import analyze_dxf
+from cutplan_agent.reader.main import main
+from cutplan_agent.reader.vlm import (
+    PART_CLASSES,
+    VLMClient,
+    VLMConfig,
+    extract_json,
+    softmax_class_scores,
+)
+from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
 
 
 def _pair(code, value):
@@ -199,7 +205,7 @@ class DxfAdapterTests(unittest.TestCase):
         )
         ocr = VLMClient(VLMConfig(model="mock-ocr", output_format="json_schema"), "ocr")
         reason = VLMClient(VLMConfig(model="mock-reason"), "reason")
-        from vlm_output import normalize_response
+        from cutplan_agent.reader.vlm_output import normalize_response
 
         title_reply, _ = normalize_response(
             {"part_name": "PLATE", "projection": "third"}, "reason", "title_block"
@@ -251,7 +257,8 @@ class DxfAdapterTests(unittest.TestCase):
     )
     def test_ezdxf_reader_handles_text_mtext_and_ellipse(self):
         import ezdxf
-        from dxf_reader import _read_with_ezdxf
+
+        from cutplan_agent.reader.dxf_reader import _read_with_ezdxf
 
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "entities.dxf"
@@ -424,7 +431,7 @@ class DxfAdapterTests(unittest.TestCase):
             self.assertFalse(invalid["vlm_trace"][-1]["ok"])
 
     def test_shared_envelope_drives_dxf_view_labels(self):
-        from vlm_output import normalize_response
+        from cutplan_agent.reader.vlm_output import normalize_response
 
         with TemporaryDirectory() as tmp:
             dxf = synthetic_sheet(Path(tmp) / "sheet.dxf", with_arc_detail=False)
@@ -557,7 +564,7 @@ class DxfAdapterTests(unittest.TestCase):
             )
 
     def test_batch_accuracy_uses_sibling_labels_after_prediction(self):
-        from batch import run_batch
+        from cutplan_agent.reader.batch import run_batch
 
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -622,7 +629,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-REAL_NESTING = Path(__file__).resolve().parents[1] / "examples" / "KD23041_CP.dxf"
+REAL_NESTING = Path(__file__).resolve().parent / "fixtures" / "KD23041_CP.dxf"
 
 
 @unittest.skipUnless(REAL_NESTING.exists(), "real nesting sample not present")

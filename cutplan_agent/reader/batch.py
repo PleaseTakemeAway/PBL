@@ -12,11 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from drawing_io import load_drawing
-from pipeline import ReconstructionPipeline
-from step6 import ReconstructionExporter
-from unfold import evaluate_against_label, run_unfold
-from vlm import PART_CLASSES, VLMClient
+from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.unfold import evaluate_against_label, run_unfold
+from cutplan_agent.reader.vlm import PART_CLASSES, VLMClient
+from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
+from cutplan_agent.reconstruct.step6 import ReconstructionExporter
 
 
 def discover_dxf(inputs: Iterable[str | Path], *, recursive: bool = True) -> list[Path]:
@@ -356,13 +356,13 @@ def run_batch(
                 adapter_kw["dpi"] = dpi
             if analyze_only:
                 if input_mode == "dxf":
-                    from dxf_adapter import analyze_dxf
+                    from cutplan_agent.reader.dxf_adapter import analyze_dxf
 
                     analysis = analyze_dxf(path, ocr, reason, work_dir, **adapter_kw)[
                         "analysis"
                     ]
                 else:
-                    from vision_adapter import analyze_image
+                    from cutplan_agent.reader.vision_adapter import analyze_image
 
                     analysis = analyze_image(path, ocr, reason, work_dir, **adapter_kw)[
                         "analysis"
@@ -404,7 +404,7 @@ def run_batch(
                     effective_tolerance, max_candidates
                 ).run(drawing)
                 if confirm and reason.enabled:
-                    from vision_adapter import confirm_candidates
+                    from cutplan_agent.reader.vision_adapter import confirm_candidates
 
                     confirm_candidates(result, reason, work_dir)
                 exporter = ReconstructionExporter(effective_tolerance)
@@ -452,8 +452,12 @@ def run_batch(
                         **_candidate_record(best, evaluation, item_dir),
                     }
         except Exception as exc:
-            from dxf_adapter import NotOrthographicSheet as DxfNotOrthographic
-            from vision_adapter import NotOrthographicSheet as VisionNotOrthographic
+            from cutplan_agent.reader.dxf_adapter import (
+                NotOrthographicSheet as DxfNotOrthographic,
+            )
+            from cutplan_agent.reader.vision_adapter import (
+                NotOrthographicSheet as VisionNotOrthographic,
+            )
 
             if isinstance(exc, (DxfNotOrthographic, VisionNotOrthographic)):
                 record["status"] = "prediction_only"

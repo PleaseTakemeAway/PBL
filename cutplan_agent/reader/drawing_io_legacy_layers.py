@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from models import DrawingDocument
+from cutplan_agent.reconstruct.models import DrawingDocument
 
 
 def load_dxf_by_layers(path: Path) -> DrawingDocument:

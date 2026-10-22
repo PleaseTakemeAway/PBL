@@ -19,7 +19,6 @@ import os
 import re
 import signal
 import subprocess
-import sys
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -27,10 +26,10 @@ from pathlib import Path
 
 import requests
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from vlm import extract_json
-from vlm_output import normalize_response, output_instructions
+from cutplan_agent.reader.vlm import extract_json
+from cutplan_agent.reader.vlm_output import normalize_response, output_instructions
+
+ROOT = Path(__file__).resolve().parents[1] / "cutplan_agent" / "reader"
 
 
 def title_prompt() -> str:

@@ -27,7 +27,7 @@ from math import exp, isfinite
 from pathlib import Path
 from typing import Any
 
-from vlm_output import (
+from cutplan_agent.reader.vlm_output import (
     PART_CLASSES,
     normalize_response,
     output_instructions,
@@ -200,7 +200,7 @@ class VLMClient:
         t0 = time.time()
         try:
             if skills:
-                from knowledge import skill_system_prompt
+                from cutplan_agent.reader.knowledge import skill_system_prompt
 
                 guide, rec["skills"] = skill_system_prompt(skills)
                 system = guide + ("\n\n" + system if system else "")

@@ -4,6 +4,10 @@ set -euo pipefail
 # Edit these two blocks, use CUTPLAN_* environment variables, or pass CLI flags.
 # Precedence: CLI > environment > defaults below. API keys stay in the environment.
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+main_py="$repo_root/cutplan_agent/reader/main.py"
+# cutplan_agent 는 설치하지 않는 패키지라 레포 루트를 import 경로에 넣는다
+export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
 declare -A ocr=(
   [mode]="${CUTPLAN_OCR_MODE:-local}"
   [model]="${CUTPLAN_OCR_MODEL:-deepseek-ai/DeepSeek-OCR-2}"
@@ -24,7 +28,7 @@ declare -A reason=(
   [api_key_env]=""
   [output_format]="${CUTPLAN_REASON_OUTPUT_FORMAT:-json_schema}"
 )
-output_dir="${CUTPLAN_BATCH_OUTPUT:-$script_dir/output/deepseek_ocr_qwen_reasoning_skills}"
+output_dir="${CUTPLAN_BATCH_OUTPUT:-$repo_root/runs/reader/deepseek_ocr_qwen_reasoning_skills}"
 python_bin="${CUTPLAN_PYTHON:-python}"
 vllm_bin="${CUTPLAN_VLLM_BIN:-vllm}"
 startup_timeout="${CUTPLAN_VLLM_STARTUP_TIMEOUT:-7200}"
@@ -44,7 +48,7 @@ usage() {
   cat <<'EOF'
 Usage: bash experiments.sh [options] [DXF files/directories]
 No arguments: local OCR on GPU 0 + local Qwen3.6-27B on GPU 1;
-             process ../data_v3/synthetic as one batch.
+             process data_v3/synthetic as one batch.
 
 Role options (replace ROLE with ocr or reason):
   --ROLE-mode local|api         local starts vLLM; api uses an existing endpoint.
@@ -212,7 +216,7 @@ if [[ "${ocr[mode]}" == local && "${reason[mode]}" == local ]]; then
     fi
   done
 fi
-(( ${#inputs[@]} )) || inputs=("$script_dir/../data_v3/synthetic")
+(( ${#inputs[@]} )) || inputs=("$repo_root/data_v3/synthetic")
 
 for role in ocr reason; do
   declare -n config="$role"
@@ -227,7 +231,7 @@ unset -n config
 if (( dry_run )); then
   echo "Dry run: no servers, API calls, or output files will be created."
   printf 'Batch command: '
-  printf '%q ' "$python_bin" "$script_dir/main.py" --batch --input-mode dxf --output-dir "$output_dir" "${main_args[@]}" "${inputs[@]}"
+  printf '%q ' "$python_bin" "$main_py" --batch --input-mode dxf --output-dir "$output_dir" "${main_args[@]}" "${inputs[@]}"
   printf '\n'
   exit 0
 fi
@@ -305,4 +309,4 @@ for role in ocr reason; do
   fi
 done
 
-"$python_bin" "$script_dir/main.py" --batch --input-mode dxf --output-dir "$output_dir" "${main_args[@]}" "${inputs[@]}"
+"$python_bin" "$main_py" --batch --input-mode dxf --output-dir "$output_dir" "${main_args[@]}" "${inputs[@]}"

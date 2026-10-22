@@ -8,8 +8,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
-from vlm import VLMClient, VLMConfig, extract_json, read_ocr_task
-from vlm_output import PART_CLASSES, normalize_response, response_schema
+from cutplan_agent.reader.vlm import VLMClient, VLMConfig, extract_json, read_ocr_task
+from cutplan_agent.reader.vlm_output import (
+    PART_CLASSES,
+    normalize_response,
+    response_schema,
+)
 
 
 def title_response():
@@ -178,7 +182,7 @@ class SharedVLMOutputTests(unittest.TestCase):
                     with (
                         patch("requests.post", return_value=reply) as post,
                         patch(
-                            "vlm.extract_json",
+                            "cutplan_agent.reader.vlm.extract_json",
                             side_effect=AssertionError("OCR must not parse JSON"),
                         ),
                     ):
@@ -247,7 +251,7 @@ class SharedVLMOutputTests(unittest.TestCase):
         self.assertIn("complete task envelope", reason.trace[-1]["error"])
 
     def test_unavailable_reasoner_uses_tesseract_not_fabricated_text_positions(self):
-        from vision_reader import TextItem, read_texts
+        from cutplan_agent.reader.vision_reader import TextItem, read_texts
 
         for reason in (None, VLMClient(VLMConfig(model=""), "reason")):
             with self.subTest(reason=reason):
@@ -255,10 +259,17 @@ class SharedVLMOutputTests(unittest.TestCase):
                 fallback = [TextItem("100", (1, 2, 30, 12), "dimension")]
                 with (
                     patch.object(ocr, "_call_openai", return_value="100"),
-                    patch("vision_reader.tiles", return_value=[(0, 0, 100, 100)]),
-                    patch("vision_reader.crop", return_value=Path("tile.png")),
                     patch(
-                        "vision_reader.ocr_tesseract", return_value=fallback
+                        "cutplan_agent.reader.vision_reader.tiles",
+                        return_value=[(0, 0, 100, 100)],
+                    ),
+                    patch(
+                        "cutplan_agent.reader.vision_reader.crop",
+                        return_value=Path("tile.png"),
+                    ),
+                    patch(
+                        "cutplan_agent.reader.vision_reader.ocr_tesseract",
+                        return_value=fallback,
                     ) as tesseract,
                 ):
                     texts, source = read_texts(
@@ -270,7 +281,7 @@ class SharedVLMOutputTests(unittest.TestCase):
                 tesseract.assert_called_once()
 
     def test_reasoning_text_boxes_outside_tile_are_not_used(self):
-        from vision_reader import ocr_vlm
+        from cutplan_agent.reader.vision_reader import ocr_vlm
 
         response, _ = normalize_response(
             [
@@ -285,8 +296,13 @@ class SharedVLMOutputTests(unittest.TestCase):
         with (
             patch.object(ocr, "_call_openai", return_value="100 200"),
             patch.object(reason, "_call_openai", return_value=json.dumps(response)),
-            patch("vision_reader.tiles", return_value=[(100, 200, 200, 300)]),
-            patch("vision_reader.crop", return_value=Path("tile.png")),
+            patch(
+                "cutplan_agent.reader.vision_reader.tiles",
+                return_value=[(100, 200, 200, 300)],
+            ),
+            patch(
+                "cutplan_agent.reader.vision_reader.crop", return_value=Path("tile.png")
+            ),
         ):
             items = ocr_vlm(Mock(), ocr, Path("unused"), reason=reason)
         self.assertEqual([item.text for item in items], ["100"])
@@ -325,7 +341,7 @@ class SharedVLMOutputTests(unittest.TestCase):
     def test_vision_ocr_raw_is_structured_by_reasoner_and_offsets_tile_coordinates(
         self,
     ):
-        from vision_reader import ocr_vlm
+        from cutplan_agent.reader.vision_reader import ocr_vlm
 
         response, _ = normalize_response(
             [{"text": "100", "bbox": [1, 2, 30, 12], "kind": "dimension"}],
@@ -339,8 +355,13 @@ class SharedVLMOutputTests(unittest.TestCase):
             patch.object(
                 reason, "_call_openai", return_value=json.dumps(response)
             ) as reason_call,
-            patch("vision_reader.tiles", return_value=[(100, 200, 200, 300)]),
-            patch("vision_reader.crop", return_value=Path("tile.png")),
+            patch(
+                "cutplan_agent.reader.vision_reader.tiles",
+                return_value=[(100, 200, 200, 300)],
+            ),
+            patch(
+                "cutplan_agent.reader.vision_reader.crop", return_value=Path("tile.png")
+            ),
         ):
             items = ocr_vlm(Mock(), client, Path("unused"), reason=reason)
         self.assertEqual(len(items), 1)
@@ -351,9 +372,9 @@ class SharedVLMOutputTests(unittest.TestCase):
         self.assertEqual(reason.trace[-1]["response"], response)
 
     def test_title_adapters_structure_raw_ocr_with_reasoning_model(self):
-        from dxf_adapter import parse_title_block
-        from vision_adapter import parse_title
-        from vision_reader import TextItem
+        from cutplan_agent.reader.dxf_adapter import parse_title_block
+        from cutplan_agent.reader.vision_adapter import parse_title
+        from cutplan_agent.reader.vision_reader import TextItem
 
         response = title_response()
         for adapter in ("dxf", "vision"):
@@ -369,7 +390,8 @@ class SharedVLMOutputTests(unittest.TestCase):
                 ):
                     if adapter == "dxf":
                         with patch(
-                            "dxf_adapter.render", return_value=Path("title.png")
+                            "cutplan_agent.reader.dxf_adapter.render",
+                            return_value=Path("title.png"),
                         ):
                             title = parse_title_block(
                                 [], None, client, Path("unused"), reason=reason
@@ -377,7 +399,8 @@ class SharedVLMOutputTests(unittest.TestCase):
                     else:
                         sheet = Mock(width=1000, height=1000)
                         with patch(
-                            "vision_adapter.crop", return_value=Path("title.png")
+                            "cutplan_agent.reader.vision_adapter.crop",
+                            return_value=Path("title.png"),
                         ):
                             title = parse_title(
                                 [TextItem("PART NAME", (10, 10, 100, 30), "title")],
@@ -397,14 +420,14 @@ class SharedVLMOutputTests(unittest.TestCase):
                 self.assertIn("vlm_reason:test-reason", title.sources["drawing_no"])
 
     def test_vision_reasoning_and_confirmation_consume_common_envelopes(self):
-        from drawing_io import load_drawing
-        from pipeline import ReconstructionPipeline
-        from vision_adapter import (
+        from cutplan_agent.reader.drawing_io import load_drawing
+        from cutplan_agent.reader.vision_adapter import (
             TitleInfo,
             VisionView,
             confirm_candidates,
             label_views_vlm,
         )
+        from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
 
         response = reason_response()
         response["reasoning"]["views"][0]["overall_width_mm"] = 120.0
@@ -413,7 +436,10 @@ class SharedVLMOutputTests(unittest.TestCase):
         view = VisionView(1, (10, 20, 200, 300), 1000)
         with (
             patch.object(client, "_call_openai", return_value=json.dumps(response)),
-            patch("vision_adapter.save_debug", return_value=Path("views.png")),
+            patch(
+                "cutplan_agent.reader.vision_adapter.save_debug",
+                return_value=Path("views.png"),
+            ),
         ):
             decision = label_views_vlm(
                 [view],
@@ -430,7 +456,7 @@ class SharedVLMOutputTests(unittest.TestCase):
             "candidate_confirmation",
         )
         result = ReconstructionPipeline().run(
-            load_drawing(Path(__file__).resolve().parents[1] / "examples" / "box.json")
+            load_drawing(Path(__file__).resolve().parent / "fixtures" / "box.json")
         )
         with (
             TemporaryDirectory() as tmp,

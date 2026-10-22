@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from models import ReconstructionCandidate
+from cutplan_agent.reconstruct.models import ReconstructionCandidate
 
 
 class CandidateGenerator:

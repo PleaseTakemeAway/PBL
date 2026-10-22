@@ -2,7 +2,7 @@
 
 from math import dist
 
-from models import DrawingView, Point2D, Point3D
+from cutplan_agent.reconstruct.models import DrawingView, Point2D, Point3D
 
 
 def project(point: Point3D, view: DrawingView) -> Point2D:
