@@ -30,6 +30,7 @@ from cutplan_agent.reader.stages import (
     views,
 )
 from cutplan_agent.reader.stages.workspace import (
+    CONVERT,
     STAGES,
     StageNotReady,
     Workspace,
@@ -160,8 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     if len(args.paths) > 2:
         parser.error("give at most a DXF and a workspace")
     drawing, work = (None, *args.paths) if len(args.paths) == 1 else args.paths
-    if drawing is None and args.first == "read":
-        parser.error("the read stage needs the DXF: run.py <drawing.dxf> <work>")
+    if drawing is None and args.first == "read" and not Workspace(work).has(CONVERT):
+        parser.error(
+            "the read stage needs the DXF: run.py <drawing.dxf> <work>, "
+            "or convert.py <drawing.dwg> <work> first"
+        )
 
     def show(stage: str, record: dict) -> None:
         print(headline(record))

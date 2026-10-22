@@ -12,6 +12,7 @@ from test_dxf_adapter import synthetic_sheet
 from cutplan_agent.reader.batch import run_batch
 from cutplan_agent.reader.stages import (
     confirm,
+    convert,
     develop,
     document,
     export,
@@ -183,6 +184,30 @@ class StageTests(unittest.TestCase):
             )
             with self.assertRaises(StageNotReady):
                 title_regex.run(ws)
+
+    def test_convert_stage_feeds_read_and_rejects_unreadable_files(self):
+        with TemporaryDirectory() as tmp:
+            dxf = synthetic_sheet(Path(tmp) / "sheet.dxf", with_arc_detail=False)
+            ws = Workspace(Path(tmp) / "work")
+            record = convert.run(ws, dxf)
+            self.assertEqual(record["step"], 0)
+            self.assertEqual(ws.path("convert").name, "00_convert.json")
+            self.assertIsNone(record["converter"])
+            self.assertEqual(read.run(ws)["source"], str(dxf))
+            self.assertIn("stages/00_convert.json", ws.load("read")["inputs"])
+            # saving 00 again drops 01-13, as any stage drops the stages after it
+            convert.run(ws, dxf)
+            self.assertFalse(ws.has("read"))
+
+            broken = Path(tmp) / "broken.dxf"
+            broken.write_text("0\nSECTION\n")
+            with self.assertRaises(RuntimeError):
+                convert.run(ws, broken)
+            self.assertEqual(
+                json.loads(ws.path("convert").read_text())["status"], "failed"
+            )
+            with self.assertRaises(ValueError):
+                convert.run(ws, Path(tmp) / "sheet.pdf")
 
 
 if __name__ == "__main__":

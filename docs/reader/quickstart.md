@@ -39,23 +39,23 @@ DXF=data_v3/synthetic/cone_0019/cone_0019.dxf
 W=runs/reader/check/cone_0019                    # 결과를 쓸 작업 폴더
 ```
 
-실도면은 DWG 라서 먼저 DXF 로 바꾼다 (D-1203 의 DWG 는 바꿔도 열리지 않는다).
+실도면은 DWG 다. 00 단계(convert)가 DXF 로 바꾸고 열리는지 검사한다. 01 부터는 바꾼 DXF 를 읽으므로 `--dxf` 가 필요 없다.
 
 ```zsh
-mkdir -p runs/reader/cases/S-2120/dxf
-for f in test_data/cases/S-2120/input_drawings/*.dwg; do n=${${f:t:r}%%_R0*}; ~/.local/bin/dwg2dxf -y -o runs/reader/cases/S-2120/dxf/$n.dxf $f; done
-DXF=runs/reader/cases/S-2120/dxf/VP-S-2120-DWG-003.dxf
+DWG="test_data/cases/S-2120/input_drawings/VP-S-2120-DWG-003_R0 (DETAIL OF MANHOLE).dwg"
 W=runs/reader/cases/S-2120/DWG-003
+uv run python scripts/reader/run_stages.py $W 0 --drawing "$DWG" --show   # 00 → $W/input/*.dxf
 ```
 
-(`${f:t:r}` 은 zsh 문법이다. bash 에서는 `n=$(basename "$f" .dwg); n=${n%%_R0*}`.)
+- AutoCAD 에서 저장한 DXF 가 있으면 그것이 가장 정확하다. `--drawing` 에 DXF 를 주면 바꾸지 않고 그대로 쓴다.
+- DWG 는 GNU LibreDWG `dwg2dxf` 로 바꾼다 (`~/.local/bin/dwg2dxf`, 없으면 `scripts/install_libredwg.sh`). 일부 DWG 는 LibreDWG 가 읽지 못한다. 그러면 00 이 failed 로 남고 01 은 돌지 않는다 (D-1203 의 DWG 6개가 그렇다). 이때는 AutoCAD DXF 를 받거나 PDF 를 쓴다.
 
 ## 3. 한 단계씩 실행하고 보기
 
-단계는 번호(6), 이름(view_labels), 범위(6-9)로 고른다. 처음에는 01 부터 순서대로 돌린다. 각 단계는 앞 단계가 남긴 파일을 읽고, 한 단계를 다시 돌리면 그 뒤 단계 파일은 지워진다.
+단계는 번호(6), 이름(view_labels), 범위(6-9)로 고른다. 처음에는 01 부터 (DWG 는 00 부터) 순서대로 돌린다. 각 단계는 앞 단계가 남긴 파일을 읽고, 한 단계를 다시 돌리면 그 뒤 단계 파일은 지워진다.
 
 ```zsh
-uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 도면 읽기 (처음 한 번만 --dxf)
+uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 도면 읽기 (처음 한 번만 --dxf, 00 을 돌렸으면 생략)
 uv run python scripts/reader/show_stages.py $W 1             # 01 결과: 표 출력 + 그림
 
 uv run python scripts/reader/run_stages.py $W 2              # 02
@@ -67,6 +67,7 @@ uv run python scripts/reader/run_stages.py $W 4-6 --show     # 여러 단계를 
 
 | # | 단계 | 하는 일 |
 |---|---|---|
+| 0 | convert | (DWG 만, 선택) DWG → DXF, 열리는지 검사. DXF 는 그대로 |
 | 1 | read | DXF 요소 모두 읽기 |
 | 2 | title_regex | 표제란 찾기 + 정규식 |
 | 3 | title_ocr | **[OCR 모델]** 표제란 받아쓰기 |
@@ -103,6 +104,7 @@ uv run python scripts/reader/show_stages.py $W --no-figures # 표만 (그림 안
 
 ```zsh
 uv run python scripts/reader/run_stages.py $W --dxf $DXF            # 01–13 전부
+uv run python scripts/reader/run_stages.py $W --drawing "$DWG"      # DWG: 00–13 전부
 uv run python scripts/reader/run_stages.py $W --dxf $DXF --no-vlm   # 모델 없이
 uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 끝까지 다시
 ```
