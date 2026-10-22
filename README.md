@@ -47,6 +47,7 @@ cutplan_agent/
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
 cutplan_agent_v3/      v3 정투영 복원 파이프라인 (step1~6, OCR·추론 VLM). 자체 README.md, code_v3.md 참조
+docs/execution_flow.md  v2·v3 의 진입점과 함수 호출 순서. 코드를 처음 읽을 때 여기서 시작
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (프로젝트 루트 기준 경로, OS 무관)
 skills/                v3 와 cutplan_agent 가 읽는 도메인 문서·프롬프트 (04_reading_records 는 git 제외)
 

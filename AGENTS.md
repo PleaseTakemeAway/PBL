@@ -42,6 +42,7 @@
 | `cutplan_agent_v3/` | 동료 커밋 253020c (subtree merge 1ea7cc6). 이후 정리 내역은 `git log -- cutplan_agent_v3` |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 그대로 (5f45c38). 동료 실행 기록의 sha256 과 일치 |
+| `docs/` | 이 레포에서 작성. `execution_flow.md` 는 v2·v3 의 진입점과 호출 순서. 진입점이나 호출 순서를 바꾸면 같이 고친다 |
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
 - `cutplan_agent_v3/` 는 패키지가 아니다. `python cutplan_agent_v3/main.py` 처럼 파일로 실행한다. 한 단계 위의 `skills/` 와 `data_v3/` 를 읽으므로, 레포 루트가 동료 서버의 `PBL_2026/` 폴더 역할을 한다.
