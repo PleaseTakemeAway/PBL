@@ -5,6 +5,8 @@
 - **v2 워크오더 에이전트** (`cutplan_agent/agent/`, `skills/`, `eval/`): 워크오더 하나의 도면 세트 → 자재목록 → 전개·분할 → 네스팅 → POR. Claude 가 skill 함수를 tool 로 부른다.
 - **v3 도면 판독기** (`cutplan_agent/reader/`, `reconstruct/`): 도면 1장 → 형상 분류 → 전개도 (+3D 복원). 로컬 vLLM 또는 Anthropic 모델을 쓴다. 단계마다 따로 돌 수 있다 (`cutplan_agent/reader/stages/`).
 
+목표는 값싼 로컬 모델 여러 개와 잘 만든 하네스로 이 일 전체를 해내는 것이다 ([docs/harness.md](docs/harness.md)).
+
 ## 빠른 시작
 
 ```bash

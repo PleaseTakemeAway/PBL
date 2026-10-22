@@ -14,6 +14,7 @@
 
 ## 2. 작업 원칙
 
+- 프로젝트 목표는 값싼 로컬 모델 여러 개와 잘 만든 하네스로 워크오더 전체(도면 세트 → POR)를 처리하는 것이다. Claude 는 하네스를 만들고 기준선을 재는 데 쓰고, 최종 경로는 조율까지 로컬 모델로 간다. 설계를 고를 때는 `docs/harness.md` 3절의 원칙을 따른다: 계산은 코드가 하고 모델은 판단만 한다, 단계는 파일로 입출력을 주고받아 혼자 돌 수 있게 한다, 모델 호출은 모두 기록하고 OpenAI 호환 엔드포인트로 바꿀 수 있게 한다.
 - "정리"는 git 구조만이 아니라 이 환경에서 실제로 돌게 만드는 리팩터링까지 포함한다. 하드코딩 경로, 역슬래시 경로, 빠진 의존성이 대상이다.
 - 동료와 협업하는 프로젝트다. 동료가 출장 중인 동안 사용자가 이어서 개발하고, 지금은 인수인계를 겸해 코드 정리와 리팩터링을 하고 있다. 동료가 돌아와 무엇이 바뀌었는지 볼 수 있게 동료의 원래 상태는 커밋과 태그로 재현할 수 있게 둔다.
 - 사용자는 동료의 작업을 먼저 그대로 돌려 보고 필요한 것을 파악한 뒤에 바꾸길 원한다. 리팩터링은 별도 브랜치나 분리된 커밋으로 한다.
@@ -43,7 +44,7 @@
 | `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py` 와 `docs/reader/stages.md` 는 이 레포에서 썼다 |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
-| `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
+| `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `harness.md`, `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
 - 사람이 읽는 문서는 `docs/` 아래에만 둔다. 예외는 코드가 실행 중에 읽는 문서(`skills/`, `cutplan_agent/knowledge/`, `cutplan_agent/agent/system.md`), 도구가 루트에서 찾는 `AGENTS.md`·`CLAUDE.md`, 짧은 소개만 두는 루트 `README.md` 다.
@@ -81,4 +82,4 @@
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.
-- 할 일: v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.
+- 할 일: `docs/harness.md` 5절의 다음 단계, v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.

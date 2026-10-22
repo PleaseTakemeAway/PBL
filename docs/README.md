@@ -4,10 +4,11 @@
 
 ## 1. 처음 읽는 순서
 
-1. [getting_started.md](getting_started.md) — 설치, 실행, 자주 나는 문제
-2. [execution_flow.md](execution_flow.md) — 두 에이전트(v2 워크오더 에이전트, v3 도면 판독기)의 진입점과 함수 호출 순서
-3. [data/overview.md](data/overview.md) — 데이터가 어디 있고 어떤 스크립트가 만들며 누가 쓰는지
-4. [domain/glossary_kr.md](domain/glossary_kr.md) — 도면·제작 용어 (쉘, 코스, 경판, 네스팅, POR …)
+1. [harness.md](harness.md) — 프로젝트 목표(값싼 로컬 모델 + 하네스), 지금 상태, 다음 단계
+2. [getting_started.md](getting_started.md) — 설치, 실행, 자주 나는 문제
+3. [execution_flow.md](execution_flow.md) — 두 에이전트(v2 워크오더 에이전트, v3 도면 판독기)의 진입점과 함수 호출 순서
+4. [data/overview.md](data/overview.md) — 데이터가 어디 있고 어떤 스크립트가 만들며 누가 쓰는지
+5. [domain/glossary_kr.md](domain/glossary_kr.md) — 도면·제작 용어 (쉘, 코스, 경판, 네스팅, POR …)
 
 그다음은 보려는 쪽에 따라 `agent/` (v2) 또는 `reader/` (v3) 로 간다.
 
@@ -15,7 +16,8 @@
 
 | 폴더 | 문서 | 내용 |
 |---|---|---|
-| `docs/` | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
+| `docs/` | [harness.md](harness.md) | 목표, Claude 에서 로컬로 가는 순서, 하네스 원칙, 요소별 현재 상태, 다음 단계 |
+| | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
