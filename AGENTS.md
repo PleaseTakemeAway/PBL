@@ -74,6 +74,7 @@
 - cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
 - 작업 서버(호스트 `mlic`)는 RTX A5000 24GB 4장(GPU 0–3)이고 NVIDIA 드라이버는 535(CUDA 12.2)다. PyPI 기본 vLLM·torch 는 CUDA 13 용이라 이 드라이버에서 돌지 않는다. vLLM 0.31.0+cu129 환경을 `~/venvs/vllm-0.31` 에 만들어 두었고, 만드는 법은 `docs/getting_started.md` 3절에 있다.
 - v3 (reader): `experiments/requirements.txt` 와 vllm 이 깔린 파이썬으로 레포 루트에서 `./experiments/experiments.sh --python <파이썬> --vllm-bin <vllm>`. 기본값은 DeepSeek-OCR-2 (GPU 0, 포트 8000) 와 Qwen3.6-27B (GPU 1,2,3 pipeline parallel, 포트 8001) 로, 작업 서버에 맞춘 것이다. 동료는 90GB 급 GPU 한 장씩(GPU 4, 5)을 썼다.
+- 서버를 띄워 두고 여러 번 돌릴 때는 `./experiments/serve.sh --vllm-bin <vllm>` 로 서버만 띄운다 (Ctrl-C 까지 유지). 다른 셸에서 `. runs/vllm/ocr.env; . runs/vllm/reason.env` 를 하면 `main.py`, 단계 스크립트, `experiments.sh` 가 그 서버를 쓴다. `experiments.sh` 와 `serve.sh` 의 역할 설정과 서버 기동 코드는 `experiments/vllm_common.sh` 에 한 벌만 있다.
 - v3 기준값: 동료의 2026-10-18 실행 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.
 - 이미지 입력의 `--no-vlm` 과 OCR 폴백 테스트는 tesseract 바이너리가 필요하다. DXF 입력의 `--no-vlm` 배치는 tesseract 없이 돈다.

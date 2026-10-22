@@ -71,6 +71,12 @@ W=runs/reader/check/cone_0019
 
 모델은 `main.py` 와 같은 옵션(`--ocr-model`, `--ocr-base-url`, `--reason-model`, `--reason-base-url`, `--*-provider`)이나 환경변수 `CUTPLAN_OCR_*`, `CUTPLAN_REASON_*` 로 정한다 ([`reader/vlm.py`](../../cutplan_agent/reader/vlm.py) 머리말). 둘 다 없으면 모델 단계는 `skipped` 가 된다.
 
+로컬 vLLM 서버는 `./experiments/serve.sh --vllm-bin <vllm>` 로 띄워 둔다. 서버가 뜨면 생기는 `runs/vllm/ocr.env`, `runs/vllm/reason.env` 를 source 하면 아래 명령에서 모델 옵션을 빼도 된다 ([getting_started.md](../getting_started.md) 3절). 03 처럼 OCR 단계만 볼 때는 `serve.sh ocr` 로 OCR 서버(GPU 0)만 띄운다.
+
+```bash
+. runs/vllm/ocr.env; . runs/vllm/reason.env
+```
+
 ### 3.1 한 번에
 
 ```bash

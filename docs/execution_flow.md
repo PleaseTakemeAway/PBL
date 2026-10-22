@@ -120,6 +120,7 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 | 파일 | 하는 일 |
 |---|---|
 | [`experiments/experiments.sh`](../experiments/experiments.sh) | 동료가 27/30 을 낸 실험. vLLM 서버 두 개를 띄우고 (OCR DeepSeek-OCR-2: GPU 0, 포트 8000 / 추론 Qwen3.6-27B: GPU 1,2,3 pipeline parallel, 포트 8001. 동료는 GPU 4, 5 를 썼다) `reader/main.py --batch --input-mode dxf` 로 `data_v3/synthetic` 30장을 돈 뒤 서버를 끈다. 변형: `experiments_local.sh` (GPU 0/1), `experiments_claude.sh` (Anthropic) |
+| [`experiments/serve.sh`](../experiments/serve.sh) | `experiments.sh` 와 같은 설정으로 vLLM 서버만 띄우고 Ctrl-C 까지 둔다. 서버가 뜨면 `runs/vllm/<역할>.env` 를 쓴다. 다른 셸에서 이것을 source 하면 `main.py`, 단계 스크립트, `experiments.sh` 가 떠 있는 서버를 쓴다 ([getting_started.md](getting_started.md) 3절). 두 스크립트는 역할 설정과 서버 관리를 [`experiments/vllm_common.sh`](../experiments/vllm_common.sh) 에서 함께 쓴다 |
 | [`cutplan_agent/reader/main.py`](../cutplan_agent/reader/main.py) | CLI. 아래 세 모드 |
 | `tests/` | 단위 테스트. `PYTHONPATH=. python -m unittest discover -s tests` |
 
@@ -207,6 +208,7 @@ PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesse
 PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
   python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir /tmp/reader_novlm data_v3/synthetic
 ./experiments/experiments.sh --dry-run                                               # 설정만 출력
+./experiments/serve.sh --vllm-bin ~/venvs/vllm-0.31/bin/vllm                         # 서버만 띄워 두기. 다른 셸에서 . runs/vllm/ocr.env; . runs/vllm/reason.env
 PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract \
   python cutplan_agent/reader/stages/run.py <도면.dxf> runs/reader/check/<도면> --no-vlm   # 도면 1장 단계별 (reader/stages.md)
 ```

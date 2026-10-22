@@ -1,17 +1,21 @@
-"""Exercise the launcher with fake servers; no GPU or network is used."""
+"""Exercise the launchers with fake servers; no GPU or network is used."""
 
 import json
 import os
+import shutil
+import signal
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 SCRIPT = Path(__file__).resolve().parents[1] / "experiments" / "experiments.sh"
+SERVE = SCRIPT.with_name("serve.sh")
 
 
-class ExperimentsScriptTests(unittest.TestCase):
+class LauncherTestCase(unittest.TestCase):
     def setUp(self):
         self.temporary = TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -53,6 +57,8 @@ if os.environ.get("CUTPLAN_TEST_FAIL_PORT") == port:
 signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
 try:
     for _ in range(1000):
+        if (root / (port + ".exit")).exists():
+            sys.exit(3)
         time.sleep(0.01)
 finally:
     (root / (port + ".stopped")).touch()
@@ -79,6 +85,11 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
         path.chmod(0o755)
         return path
 
+    def captured(self):
+        return json.loads((self.directory / "main.json").read_text())
+
+
+class ExperimentsScriptTests(LauncherTestCase):
     def run_script(self, *args):
         return subprocess.run(
             ["bash", str(SCRIPT), *args],
@@ -88,9 +99,6 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
             capture_output=True,
             timeout=15,
         )
-
-    def captured(self):
-        return json.loads((self.directory / "main.json").read_text())
 
     def test_unset_gpu_environment_has_defaults_and_dry_run_does_not_start_servers(
         self,
@@ -258,6 +266,139 @@ sys.exit(0 if pathlib.Path(os.environ["CUTPLAN_TEST_DIRECTORY"], str(port) + ".r
         self.assertIn("reason vLLM exited during startup", result.stderr)
         self.assertTrue((self.directory / "8000.stopped").exists())
         self.assertFalse((self.directory / "main.json").exists())
+
+
+class ServeScriptTests(LauncherTestCase):
+    def setUp(self):
+        super().setUp()
+        self.serve_dir = self.directory / "serve"
+        self.env["CUTPLAN_SERVE_DIR"] = str(self.serve_dir)
+
+    def start(self, *args):
+        process = subprocess.Popen(
+            ["bash", str(SERVE), *args],
+            cwd=self.directory,
+            env=self.env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        return process
+
+    def wait_for(self, process, path):
+        deadline = time.monotonic() + 10
+        while not path.exists():
+            if process.poll() is not None or time.monotonic() > deadline:
+                process.kill()
+                self.fail(f"{path.name} never appeared: {process.communicate()}")
+            time.sleep(0.05)
+
+    def stop(self, process, sig):
+        process.send_signal(sig)
+        return process.communicate(timeout=10)
+
+    def test_dry_run_prints_vllm_commands_and_starts_nothing(self):
+        result = subprocess.run(
+            ["bash", str(SERVE), "--dry-run"],
+            cwd=self.directory,
+            env=self.env,
+            text=True,
+            capture_output=True,
+            timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--tensor-parallel-size 1", result.stdout)
+        self.assertIn("--pipeline-parallel-size 3", result.stdout)
+        self.assertIn("--structured-outputs-config.backend=xgrammar", result.stdout)
+        self.assertFalse((self.directory / "8000.json").exists())
+        self.assertFalse(self.serve_dir.exists())
+
+    def test_servers_stay_up_and_env_files_point_experiments_at_them(self):
+        process = self.start()
+        self.wait_for(process, self.serve_dir / "reason.env")
+        self.assertTrue((self.serve_dir / "ocr.env").exists())
+        self.assertFalse((self.directory / "8000.stopped").exists())
+        # experiments.sh would refuse to start a server on a used port, so a
+        # zero exit means it used the running servers through api mode.
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                '. serve/ocr.env; . serve/reason.env; exec bash "$0" sample.dxf',
+                str(SCRIPT),
+            ],
+            cwd=self.directory,
+            env=self.env,
+            text=True,
+            capture_output=True,
+            timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        config = self.captured()["config"]
+        self.assertEqual(config["OCR"]["BASE_URL"], "http://127.0.0.1:8000/v1")
+        self.assertEqual(config["OCR"]["MODEL"], "deepseek-ai/DeepSeek-OCR-2")
+        self.assertEqual(config["REASON"]["BASE_URL"], "http://127.0.0.1:8001/v1")
+        self.assertEqual(config["REASON"]["OUTPUT_FORMAT"], "json_schema")
+        self.assertEqual(config["REASON"]["API_KEY"], "")
+        if shutil.which("zsh"):
+            zsh = subprocess.run(
+                ["zsh", "-fc", ". serve/reason.env; print -r -- $CUTPLAN_REASON_MODEL"],
+                cwd=self.directory,
+                text=True,
+                capture_output=True,
+                timeout=15,
+            )
+            self.assertEqual(zsh.stdout.strip(), "Qwen/Qwen3.6-27B", zsh.stderr)
+        self.stop(process, signal.SIGINT)
+        self.assertEqual(process.returncode, 130)
+        self.assertTrue((self.directory / "8000.stopped").exists())
+        self.assertTrue((self.directory / "8001.stopped").exists())
+        self.assertEqual(sorted(self.serve_dir.glob("*.env")), [])
+
+    def test_only_named_role_starts_and_mode_variable_is_ignored(self):
+        self.env["CUTPLAN_OCR_MODE"] = "api"
+        process = self.start("ocr", "--ocr-gpu", "2")
+        self.wait_for(process, self.serve_dir / "ocr.env")
+        self.stop(process, signal.SIGTERM)
+        self.assertEqual(process.returncode, 143)
+        self.assertEqual(
+            json.loads((self.directory / "8000.json").read_text())["gpu"], "2"
+        )
+        self.assertFalse((self.directory / "8001.json").exists())
+        self.assertTrue((self.serve_dir / "ocr_vllm.log").exists())
+        self.assertFalse((self.serve_dir / "ocr.env").exists())
+
+    def test_a_server_that_stops_stops_the_other_and_fails(self):
+        process = self.start()
+        self.wait_for(process, self.serve_dir / "reason.env")
+        (self.directory / "8000.exit").touch()
+        _, stderr = process.communicate(timeout=10)
+        self.assertEqual(process.returncode, 2, stderr)
+        self.assertIn("ocr vLLM stopped (exit status 3)", stderr)
+        self.assertTrue((self.directory / "8001.stopped").exists())
+        self.assertEqual(sorted(self.serve_dir.glob("*.env")), [])
+
+    def test_client_options_and_overlaps_fail_before_starting_servers(self):
+        for args in (
+            ("--ocr-mode", "api"),
+            ("--reason-base-url", "http://127.0.0.1:9/v1"),
+            ("--reason-api-key-env", "KEY"),
+            ("--ocr-gpu", "1"),
+            ("--ocr-port", "8001"),
+            ("both",),
+        ):
+            with self.subTest(args=args):
+                result = subprocess.run(
+                    ["bash", str(SERVE), *args],
+                    cwd=self.directory,
+                    env=self.env,
+                    text=True,
+                    capture_output=True,
+                    timeout=15,
+                )
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertFalse((self.directory / "8000.json").exists())
 
 
 if __name__ == "__main__":
