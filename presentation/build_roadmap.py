@@ -1346,7 +1346,7 @@ def prototype_slide(d: Deck):
         [
             [
                 {"text": "명령  ", "bold": True, "color": ORANGE},
-                {"text": "“cone_0019 를 전개도까지 판독하고 결과를 알려줘”"},
+                {"text": "“cone_0019 도면을 전개도까지 판독하고 결과를 알려줘”"},
             ]
         ],
         fill=ORANGE_TINT,
