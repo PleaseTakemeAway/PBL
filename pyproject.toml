@@ -29,6 +29,10 @@ dev = [
 # 마크다운 안의 코드 블록은 포맷하지 않는다. skills/ 는 동료 원본과 sha256 이 같아야 한다.
 extend-exclude = ["*.md"]
 
+[tool.ruff.lint]
+# 이 레포가 지키는 규칙. F: 안 쓰는 import·변수 등, I: import 정렬, TID252: 상대 import 금지,
+# UP009: coding 선언 금지. ruff 0.17 의 나머지 기본 규칙은 아직 정리하지 않았다.
+select = ["F", "I", "TID252", "UP009"]
+
 [tool.ruff.lint.flake8-tidy-imports]
-# 상대 import 를 금지한다. `uv run ruff check --select I,TID252 .` 로 확인한다.
 ban-relative-imports = "all"

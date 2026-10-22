@@ -20,9 +20,9 @@
 
 ## 3. 코드 스타일
 
-- Python 코드는 `ruff format` 형식에 맞춰 작성하고, import 는 ruff 의 isort 규칙(`I`)대로 정렬한다. 설정은 ruff 기본값(줄 길이 88, 큰따옴표)이다.
+- Python 코드는 `ruff format` 형식에 맞춰 작성하고, `ruff check` 를 통과하게 한다. 검사하는 규칙은 `pyproject.toml` 의 `[tool.ruff.lint] select` 에 있다: F(안 쓰는 import·변수 등), I(import 정렬), TID252(상대 import 금지), UP009(coding 선언 금지). 포맷은 ruff 기본값(줄 길이 88, 큰따옴표)이다.
 - ruff 는 dev 의존성으로 0.17.1 에 고정돼 있다. 버전마다 결과가 달라질 수 있으니 `uvx ruff` 나 전역 ruff 대신 `uv run ruff` 를 쓴다.
-- 파일을 고친 뒤 `uv run ruff check --select I --fix <파일>` 로 import 를 정렬하고 `uv run ruff format <파일>` 로 포맷한다. 커밋 전에 `uv run ruff check --select I,TID252 .` 와 `uv run ruff format --check .` 가 둘 다 통과해야 한다.
+- 파일을 고친 뒤 `uv run ruff check --fix <파일>` 와 `uv run ruff format <파일>` 를 차례로 돌린다. 커밋 전에 `uv run ruff check .` 와 `uv run ruff format --check .` 가 둘 다 통과해야 한다.
 - 상대 import(`from .x import`, `from ..x import`)는 쓰지 않는다. `from cutplan_agent.skills.l1_perception import vlm_parse` 처럼 레포 루트부터 쓴다. 파일을 직접 실행하면 상대 import 가 깨진다. `TID252` 가 이를 잡는다.
 - `__init__.py` 를 만들지 않는다. `cutplan_agent` 는 설치하지 않는 namespace package 이고, 레포 루트에서 `PYTHONPATH=. uv run python <파일 경로>` 로 실행한다. `python -m` 은 쓰지 않는다.
 - `cutplan_agent/skills/` 의 skill 함수는 JSON 직렬화 가능한 인자를 받아 dict 를 돌려준다. orchestrator 가 이 함수를 그대로 Claude tool 로 노출한다.
