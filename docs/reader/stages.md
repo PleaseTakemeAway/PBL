@@ -116,6 +116,22 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/export.py $W
 - 서버는 띄우지 않는다. `./experiments/serve.sh` 로 띄워 두고, `runs/vllm/*.env` 를 source 했으면 그 모델과 주소를 쓴다. 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록되므로, 스크립트가 먼저 두 서버가 응답하는지 확인하고 응답이 없으면 멈춘다. `NO_VLM=1` 이면 모델 없이 돈다.
 - 한 단계만 돌릴 때는 스크립트의 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고(`ocr ok`, `reason ok` 가 둘 다 나와야 한다) 그 단계 줄을 실행한다. 스크립트도 배열(`"${PY[@]}"`, `"${O[@]}"`)을 써서 bash 와 zsh 에서 모두 된다.
 
+단계 파일 이름 대신 번호로 고르려면 [`scripts/reader/run_stages.py`](../../scripts/reader/run_stages.py) 를 쓴다. 4절의 `show_stages.py` 와 같은 방식(번호, 이름, 범위)으로 단계를 고른다.
+
+```bash
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 (도면을 처음 읽을 때만 --dxf)
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 6              # 06 하나
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 2-7            # 02–07
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 6 --show       # 돌리고 바로 표와 그림
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1-5 --no-vlm   # 모델 없이
+```
+
+- 이어지는 단계는 `run.py --from <첫 단계> --to <끝 단계>` 한 번으로 돈다. 결과는 단계 파일을 직접 실행한 것과 같다.
+- 01 을 다시 돌릴 때 `--dxf` 가 없으면 `01_read.json` 에 기록된 도면을 다시 읽는다. 단계 없이 주면 01–13 전부다.
+- 단계를 다시 돌리면 그 뒤 단계 파일이 지워진다. `1 3` 처럼 떨어진 단계를 주면 01 이 02 를 지워서 03 은 돌지 않는다.
+- 모델 옵션(`--ocr-model`, `--reason-model` 등)과 `--no-vlm`, `--analyze-only`, `--tolerance` 같은 옵션은 `run.py` 에 그대로 넘긴다. 옵션은 단계 번호 앞에 써도 된다.
+- `experiments/run_stages.sh` 와 이름이 비슷하지만 다르다. 셸 스크립트는 서버 응답을 확인하고 13단계를 모두 돌린다.
+
 각 스크립트는 상태, 핵심 결과 몇 줄, 단계 파일 경로를 출력한다. 단계별 옵션은 `--help` 로 본다 (`views.py --gap-ratio`, `view_labels.py --projection`, `document.py --units`, `reconstruct.py --tolerance --max-candidates`).
 
 ### 3.3 한 단계만 다시
