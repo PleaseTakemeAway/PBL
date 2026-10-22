@@ -11,9 +11,9 @@ part_tags.csv 의 part_name 을 정규화해 형상 class 라벨을 붙이고,
   README.md
 
 실행:
-  uv run python scripts/build_part_class_dataset.py --dry      # 분류만, 이미지 없음
-  uv run python scripts/build_part_class_dataset.py            # 전체
-  uv run python scripts/build_part_class_dataset.py --only-ok  # match=ok 만 렌더
+  PYTHONPATH=. uv run python scripts/build_part_class_dataset.py --dry      # 분류만, 이미지 없음
+  PYTHONPATH=. uv run python scripts/build_part_class_dataset.py            # 전체
+  PYTHONPATH=. uv run python scripts/build_part_class_dataset.py --only-ok  # match=ok 만 렌더
 """
 
 import argparse

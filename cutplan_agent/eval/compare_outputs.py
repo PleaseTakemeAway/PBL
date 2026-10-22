@@ -2,8 +2,8 @@
 """
 우리 결과(runs/<run>) 를 정답 파일(test_data/<job>/output_unfold, output_cutting_plan) 과 나란히 비교.
 
-    uv run python -m cutplan_agent.eval.compare_outputs --job KD23002 --run runs/KD23002_vlm
-    uv run python -m cutplan_agent.eval.compare_outputs --job KD23002 --run runs/KD23002_manual
+    PYTHONPATH=. uv run python cutplan_agent/eval/compare_outputs.py --job KD23002 --run runs/KD23002_vlm
+    PYTHONPATH=. uv run python cutplan_agent/eval/compare_outputs.py --job KD23002 --run runs/KD23002_manual
 
 출력 (runs/<run>/compare/):
   cp_compare.md / cp_compare.csv   (재질, 두께) 그룹별 판 규격·수량·중량  사람 vs 우리, 총계·비율

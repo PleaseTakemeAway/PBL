@@ -24,6 +24,8 @@
 - ruff 는 dev 의존성으로 0.17.1 에 고정돼 있다. 버전마다 결과가 달라질 수 있으니 `uvx ruff` 나 전역 ruff 대신 `uv run ruff` 를 쓴다.
 - 파일을 고친 뒤 `uv run ruff check --select I --fix <파일>` 로 import 를 정렬하고 `uv run ruff format <파일>` 로 포맷한다. 커밋 전에 `uv run ruff check --select I,TID252 .` 와 `uv run ruff format --check .` 가 둘 다 통과해야 한다.
 - 상대 import(`from .x import`, `from ..x import`)는 쓰지 않는다. `from cutplan_agent.skills.l1_perception import vlm_parse` 처럼 레포 루트부터 쓴다. 파일을 직접 실행하면 상대 import 가 깨진다. `TID252` 가 이를 잡는다.
+- `__init__.py` 를 만들지 않는다. `cutplan_agent` 는 설치하지 않는 namespace package 이고, 레포 루트에서 `PYTHONPATH=. uv run python <파일 경로>` 로 실행한다. `python -m` 은 쓰지 않는다.
+- `cutplan_agent/skills/` 의 skill 함수는 JSON 직렬화 가능한 인자를 받아 dict 를 돌려준다. orchestrator 가 이 함수를 그대로 Claude tool 로 노출한다.
 - `.md` 는 포맷하지 않는다. ruff 가 마크다운 안의 코드 블록까지 고쳐서 `skills/` 의 sha256 일치가 깨진다. `pyproject.toml` 의 `extend-exclude` 로 제외해 두었다.
 - 포맷만 한 커밋은 `.git-blame-ignore-revs` 에 해시를 적는다. 로컬 blame 에 반영하려면 `git config blame.ignoreRevsFile .git-blame-ignore-revs` 를 한 번 설정한다.
 - 2026-10-22 에 레포의 `.py` 전체를 한 번 포맷하고 import 를 정렬했다. docstring 들여쓰기와 import 블록 안의 순서를 빼면 AST 가 같아 동작은 바뀌지 않았다. 동료 원본(`cutplan_agent_v3/`, `scripts/`)의 바이트 단위 상태는 4절 표의 커밋과 태그에서 본다.
@@ -33,7 +35,7 @@
 
 | 경로 | 출처 |
 |---|---|
-| `cutplan_agent/` | 전임자의 v2 skill 에이전트. refactor 작업으로 uv 패키지가 됐다 |
+| `cutplan_agent/` | 전임자의 v2 skill 에이전트. refactor 작업으로 uv 프로젝트가 됐다. 패키지로 설치하지 않는다 |
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
 | `cutplan_agent_v3/` | 동료 커밋 253020c 그대로 (subtree merge 1ea7cc6) |
 | `scripts/` | 동료 커밋 148e703 그대로, pyc 만 제외 (b82ebe8) |
@@ -41,7 +43,7 @@
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
 - `cutplan_agent_v3/` 는 패키지가 아니다. `python cutplan_agent_v3/main.py` 처럼 파일로 실행한다. 한 단계 위의 `skills/` 와 `data_v3/` 를 읽으므로, 레포 루트가 동료 서버의 `PBL_2026/` 폴더 역할을 한다.
-- `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. Windows 와 Linux 모두 `uv run python scripts/<이름>.py` 로 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
+- `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. 레포 루트에서 `PYTHONPATH=. uv run python scripts/<이름>.py` 로 실행한다. Windows PowerShell 은 먼저 `$env:PYTHONPATH = "."` 를 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
 
 ## 5. git 제외 데이터 (레포 루트 기준)
 
@@ -60,7 +62,7 @@
 ## 6. 실행 환경
 
 - 2026-10-21 부터 작업은 GPU 가 있는 원격 서버에서 한다. 그 전 정리는 로컬 `/home/unist/developer/pbl` 에서 했다.
-- cutplan_agent: Python 3.12 이상, `uv sync` 후 `uv run python -m cutplan_agent.eval.smoke_kd25038`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
+- cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
 - v3: `cutplan_agent_v3/requirements.txt` 와 vllm 이 깔린 파이썬으로 `cd cutplan_agent_v3 && ./experiments.sh --python <파이썬>`. 기본값은 DeepSeek-OCR-2 (GPU 4, 포트 8000) 와 Qwen3.6-27B (GPU 5, 포트 8001) 이다.
 - v3 기준값: 동료의 2026-10-18 실행 `cutplan_agent_v3/output/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.

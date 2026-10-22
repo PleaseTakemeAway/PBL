@@ -2,7 +2,7 @@
 """
 dataset 워크오더에 대해 에이전트를 평가 모드로 돌리고 사람 커팅플랜(gt/sheets.csv)과 비교한다.
 
-    uv run python -m cutplan_agent.eval.run_eval --jobs KD23002,KD23015,KD23022 [--max-steps 80]
+    PYTHONPATH=. uv run python cutplan_agent/eval/run_eval.py --jobs KD23002,KD23015,KD23022 [--max-steps 80]
 
 결과: runs/<job>/state.json, trajectory.json, final.md, runs/_eval_summary.csv
 ANTHROPIC_API_KEY 필요.

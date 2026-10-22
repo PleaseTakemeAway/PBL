@@ -11,7 +11,7 @@ test_data/ 구축: 워크오더마다 (입력 도면, 출력 전개도, 출력 �
         output_cutting_plan/         *_CP.dwg + png + dxf  +  sheets.csv / parts.csv / part_tags.csv (판재·배치·부품표 정답)
       HCE_76K3-40022/                현대건설기계 판금 샘플 (정답 완비)
 
-사용:  uv run python scripts/build_test_data.py [--link]    --link 이면 복사 대신 하드링크(같은 드라이브, 용량 절약)
+사용:  PYTHONPATH=. uv run python scripts/build_test_data.py [--link]    --link 이면 복사 대신 하드링크(같은 드라이브, 용량 절약)
 원본(Data/dataset)은 건드리지 않는다.
 """
 

@@ -2,7 +2,7 @@
 """
 수동 판독(또는 VLM) 실행들의 compare 결과를 한 표로 모은다.
 
-    uv run python -m cutplan_agent.eval.aggregate_manual --runs KD23002_manual,KD23022_manual,... [--out runs/experiments/E7_manual_5samples.md]
+    PYTHONPATH=. uv run python cutplan_agent/eval/aggregate_manual.py --runs KD23002_manual,KD23022_manual,... [--out runs/experiments/E7_manual_5samples.md]
 각 run 의 compare/cp_compare.csv, unfold_compare.csv 를 읽어 kg 비율·판 수·부품 일치율을 집계.
 """
 

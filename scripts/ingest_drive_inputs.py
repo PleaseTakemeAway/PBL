@@ -2,7 +2,7 @@
 """
 Google Drive 공유폴더('8. Data') 내려받은 것을 워크오더별 input/ 폴더로 분류.
 
-사용:  uv run python scripts/ingest_drive_inputs.py [스테이징폴더]   (기본 Data/drive/8. Data)
+사용:  PYTHONPATH=. uv run python scripts/ingest_drive_inputs.py [스테이징폴더]   (기본 Data/drive/8. Data)
        여러 번 실행해도 안전 (이미 복사된 파일은 건너뜀). zip 파트를 추가로 풀 때마다 다시 실행.
 
 Drive 구조 (2026-10-01 확인):

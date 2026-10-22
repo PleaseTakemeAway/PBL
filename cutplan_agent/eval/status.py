@@ -2,8 +2,8 @@
 """
 실행 중인(또는 끝난) job 의 진행 상황 조회. 다른 터미널에서:
 
-    uv run python -m cutplan_agent.eval.status --job KD23002          # 한 번
-    uv run python -m cutplan_agent.eval.status --job KD23002 --watch  # 10초마다 갱신
+    PYTHONPATH=. uv run python cutplan_agent/eval/status.py --job KD23002          # 한 번
+    PYTHONPATH=. uv run python cutplan_agent/eval/status.py --job KD23002 --watch  # 10초마다 갱신
 
 읽는 것: runs/<job>/state.json (매 턴 저장), trajectory.json (skill 호출 로그), pages/ (렌더된 도면), final.md (끝났을 때)
 """

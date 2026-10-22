@@ -3,8 +3,8 @@
 오케스트레이터: Claude tool_runner 가 skill 들을 도구로 호출한다. 모든 호출은 trajectory 로 남는다.
 
 사용
-    uv run python -m cutplan_agent.agent.orchestrator --job KD23002 [--eval] [--max-steps 80]
-    uv run python -m cutplan_agent.agent.orchestrator --job KD23002 --inputs "a.pdf;b.dwg"
+    PYTHONPATH=. uv run python cutplan_agent/agent/orchestrator.py --job KD23002 [--eval] [--max-steps 80]
+    PYTHONPATH=. uv run python cutplan_agent/agent/orchestrator.py --job KD23002 --inputs "a.pdf;b.dwg"
 
 ANTHROPIC_API_KEY 가 필요하다. 없으면 eval/smoke_kd25038.py (L3/L4 만, API 불필요) 를 먼저 돌려라.
 """

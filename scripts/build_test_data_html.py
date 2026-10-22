@@ -2,7 +2,7 @@
 """
 test_data/README.html 생성 — 단일 파일(썸네일 base64 내장), 브라우저에서 바로 열림.
 
-    uv run python scripts/build_test_data_html.py
+    PYTHONPATH=. uv run python scripts/build_test_data_html.py
 
 내용: KPI 타일 → 파이프라인 → 연도·등급 분포 → 워크오더 표(정렬·필터·행 펼침: 도면/커팅플랜 썸네일, 도면 목록, 판재 그룹)
       → 폴더 구조 → 사용법 → 제외 목록
@@ -421,7 +421,7 @@ footer{color:var(--fg-3);font-size:12.5px}
   <div class="card">
     <h2>사용법과 주의</h2>
     <ul class="notes">
-      <li><b>다시 만들기</b>: Drive zip 나머지 파트를 <code>Data/drive/8. Data/</code> 에 풀고 <code>uv run python scripts/ingest_drive_inputs.py</code> → <code>uv run python scripts/build_test_data.py</code> → <code>uv run python scripts/build_test_data_html.py</code>.</li>
+      <li><b>다시 만들기</b>: Drive zip 나머지 파트를 <code>Data/drive/8. Data/</code> 에 풀고 <code>PYTHONPATH=. uv run python scripts/ingest_drive_inputs.py</code> → <code>PYTHONPATH=. uv run python scripts/build_test_data.py</code> → <code>PYTHONPATH=. uv run python scripts/build_test_data_html.py</code>.</li>
       <li><b>원본</b>은 <code>Data\dataset\</code>. 여기는 그 중 3종이 모두 있는 워크오더의 복사본이다. 강도계산서·POR PDF 는 원본의 <code>input/calculation</code>, <code>input/por</code> 에 있다.</li>
       <li><b>전개 공식</b>: 쉘 L = π(ID+t) (KDM 태그 44건 역산). 헤드 블랭크 ≈ 1.25×ID 는 경험계수. 콘은 중립면 기준 부채꼴.</li>
       <li><b>정답의 한계</b>: parts.csv 의 부품 bbox 는 곡선을 꼭짓점 기준으로 근사해 ARC 가 큰 부품은 작게 잡혀 있다. 풍선 원(부재번호)이 부품으로 잡힌 행은 none 으로 자동 제외됨.</li>
