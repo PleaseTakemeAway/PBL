@@ -152,7 +152,6 @@ def run(
     max_steps: int = 80,
     hitl_policy: dict | None = None,
 ) -> JobState:
-
     state = JobState(job=job, inputs=inputs, eval_mode=eval_mode)
     if hitl_policy:
         state.hitl_policy.update(hitl_policy)

@@ -355,9 +355,8 @@ _PROMPTS = {
 
 
 def _client():
-    from cutplan_agent.client import (
-        make_client,  # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
-    )
+    # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
+    from cutplan_agent.client import make_client
 
     return make_client()
 

@@ -27,9 +27,9 @@ from cutplan_agent.config import (
     TRANSPORT_MAX,
 )
 from cutplan_agent.state import Piece, Placement, Sheet, get_state, logged
-from cutplan_agent.unfold import (
-    PartModel as EnginePartModel,  # 절곡·평판 전개 엔진 (툴킷에서 이전)
-)
+
+# 절곡·평판 전개 엔진 (툴킷에서 이전)
+from cutplan_agent.unfold import PartModel as EnginePartModel
 from cutplan_agent.unfold import unfold as engine_unfold
 
 HEAD_BLANK_FACTOR = 1.25  # 2:1 ellip. 블랭크 ≈ 1.25 x ID (KD23002 Ø1296/1027, KD25038 Ø3240/2600 역산). TODO: part_tags HEAD 14건으로 보정

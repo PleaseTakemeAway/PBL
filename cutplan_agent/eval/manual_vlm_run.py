@@ -26,18 +26,10 @@ from pathlib import Path
 
 from cutplan_agent.agent.orchestrator import job_inputs
 from cutplan_agent.config import RUNS_DIR, TEST_DATA
-from cutplan_agent.skills import (
-    l1_perception as L1,
-)
-from cutplan_agent.skills import (
-    l2_relation as L2,
-)
-from cutplan_agent.skills import (
-    l3_rules as L3,
-)
-from cutplan_agent.skills import (
-    l4_verify as L4,
-)
+from cutplan_agent.skills import l1_perception as L1
+from cutplan_agent.skills import l2_relation as L2
+from cutplan_agent.skills import l3_rules as L3
+from cutplan_agent.skills import l4_verify as L4
 from cutplan_agent.state import JobState, Trajectory, set_context
 
 
