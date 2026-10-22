@@ -110,12 +110,6 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/confirm.py $W --reason-mo
 PYTHONPATH=. uv run python cutplan_agent/reader/stages/export.py $W
 ```
 
-같은 명령을 단계마다 주석 한 줄과 함께 [`experiments/run_stages.sh`](../../experiments/run_stages.sh) 에 묶어 두었다.
-
-- `./experiments/run_stages.sh [DXF] [작업 폴더]` 는 13단계를 차례로 돌리고 끝에 단계별 상태를 출력한다. 파이썬은 기본으로 `uv run python` 을 쓰고, `CUTPLAN_PYTHON=<파이썬 경로>` 로 바꾼다.
-- 서버는 띄우지 않는다. `./experiments/serve.sh` 로 띄워 두고, `runs/vllm/*.env` 를 source 했으면 그 모델과 주소를 쓴다. 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록되므로, 스크립트가 먼저 두 서버가 응답하는지 확인하고 응답이 없으면 멈춘다. `NO_VLM=1` 이면 모델 없이 돈다.
-- 한 단계만 돌릴 때는 스크립트의 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고(`ocr ok`, `reason ok` 가 둘 다 나와야 한다) 그 단계 줄을 실행한다. 스크립트도 배열(`"${PY[@]}"`, `"${O[@]}"`)을 써서 bash 와 zsh 에서 모두 된다.
-
 단계 파일 이름 대신 번호로 고르려면 [`scripts/reader/run_stages.py`](../../scripts/reader/run_stages.py) 를 쓴다. 4절의 `show_stages.py` 와 같은 방식(번호, 이름, 범위)으로 단계를 고른다.
 
 ```bash
@@ -130,7 +124,7 @@ PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1-5 --no-vlm   # 모�
 - 01 을 다시 돌릴 때 `--dxf` 가 없으면 `01_read.json` 에 기록된 도면을 다시 읽는다. 단계 없이 주면 01–13 전부다.
 - 단계를 다시 돌리면 그 뒤 단계 파일이 지워진다. `1 3` 처럼 떨어진 단계를 주면 01 이 02 를 지워서 03 은 돌지 않는다.
 - 모델 옵션(`--ocr-model`, `--reason-model` 등)과 `--no-vlm`, `--analyze-only`, `--tolerance` 같은 옵션은 `run.py` 에 그대로 넘긴다. 옵션은 단계 번호 앞에 써도 된다.
-- `experiments/run_stages.sh` 와 이름이 비슷하지만 다르다. 셸 스크립트는 서버 응답을 확인하고 13단계를 모두 돌린다.
+- 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록된다. 돌리기 전에 `curl -s http://127.0.0.1:8000/v1/models` (OCR), `:8001` (추론) 으로 서버를 확인하고, 돌린 뒤 `show_stages.py` 의 모델 호출 줄을 본다.
 
 각 스크립트는 상태, 핵심 결과 몇 줄, 단계 파일 경로를 출력한다. 단계별 옵션은 `--help` 로 본다 (`views.py --gap-ratio`, `view_labels.py --projection`, `document.py --units`, `reconstruct.py --tolerance --max-candidates`).
 
@@ -221,3 +215,11 @@ run.run_drawing(dxf, work, (ocr, reason), last="sheet")   # 여러 단계
 ```
 
 단계 안의 함수(`regex_title_block`, `find_views`, `label_with_vlm`, `read_unfold_params` 등)도 따로 import 해서 부를 수 있다. 단계 사이에 넘기는 객체를 JSON 으로 바꾸는 함수는 [`stages/workspace.py`](../../cutplan_agent/reader/stages/workspace.py) 에 있다.
+
+## 6. 모델 답의 재현성 (2026-10-23 확인)
+
+모델 호출은 `temperature` 0 (greedy) 이라, 같은 서버에 같은 입력을 주면 답이 같다. `mlic` (Qwen3.6-27B, GPU 1–3 pipeline parallel) 에서 06 을 `cylinder_0013`, `cylinder_0018`, `flat_0005` 에 세 번씩 돌렸더니 원문 응답이 세 번 모두 바이트 단위로 같았다.
+
+이 세 도면은 동료의 2026-10-18 실행(`runs/reader/deepseek_ocr_qwen_reasoning_skills`, 30장 중 27장)에서 06 의 모델 답이 검증을 통과하지 못해(`invalid reply`) 형상이 비었던 도면이다. 이번에는 셋 다 맞혔다. 그러니 차이는 실행마다 달라지는 무작위성이 아니라 실행 환경 차이에서 왔다. 다른 점은 GPU 와 병렬 방식(동료는 90GB 급 GPU 한 장, 여기는 A5000 3장 pipeline parallel), vLLM 버전(동료 것은 모른다), 06 에 붙는 skill 문서(`unfold_rules.md` 를 2026-10-23 에 고쳤다)다. 이 중 무엇이 원인인지는 아직 가리지 않았다.
+
+정확도를 비교할 때는 같은 환경에서 다시 돌린 결과끼리 비교하고, 비교표에 GPU·병렬 방식·vLLM 버전·skill 문서 sha256 (단계 파일 `trace` 의 `skills`) 을 함께 적는다.

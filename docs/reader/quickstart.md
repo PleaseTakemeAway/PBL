@@ -105,10 +105,6 @@ uv run python scripts/reader/show_stages.py $W --no-figures # 표만 (그림 안
 uv run python scripts/reader/run_stages.py $W --dxf $DXF            # 01–13 전부
 uv run python scripts/reader/run_stages.py $W --dxf $DXF --no-vlm   # 모델 없이
 uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 끝까지 다시
-
-# 서버 응답을 먼저 확인하고 13단계를 돌린 뒤 상태를 출력하는 셸 스크립트
-./experiments/run_stages.sh $DXF $W
-NO_VLM=1 ./experiments/run_stages.sh $DXF $W
 ```
 
 ## 6. 무엇이 어디에 남나
