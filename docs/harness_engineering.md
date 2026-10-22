@@ -72,7 +72,7 @@ v3 판독기는 고정 순서 workflow 의 하네스로는 갖춰진 편이다. 
 | 3 | 작업별 모델 설정: 단계마다 모델, 엔드포인트, `max_tokens`, `temperature`, skill 문서를 설정 파일로 정한다 | |
 | 4 | Claude 대 로컬 비교표: 같은 하네스로 합성 30장을 돌려 단계별로 비교한다 | |
 | 5 | 보완 장치: 검증 오류를 붙여 다시 묻기, N회 샘플 다수결(형상 분류), 두 번째 모델 확인. 하나씩 켜고 끄며 효과를 잰다 | |
-| 6 | 로컬 orchestrator: 단계 함수(`stages/*.py` 의 `run`)를 tool 로 노출하고, 로컬 모델이 tool 호출 루프로 단계를 고르고 다시 부른다 (vLLM 의 OpenAI 호환 tool calling). 고정 순서 `run.py` 가 기준선이다 | 2026-10-23 `reader-agent` 브랜치에 첫 판. 로컬 Qwen3.6-27B 가 schema 모드로 cone_0019 를 끝까지 돌렸다. `native` 모드와 30장 비교는 아직. [reader/orchestrator.md](reader/orchestrator.md) |
+| 6 | 로컬 orchestrator: 단계 함수(`stages/*.py` 의 `run`)를 tool 로 노출하고, 로컬 모델이 tool 호출 루프로 단계를 고르고 다시 부른다 (vLLM 의 OpenAI 호환 tool calling). 고정 순서 `run.py` 가 기준선이다 | 2026-10-23 첫 판 (`reader-agent`, main 에 머지). 로컬 Qwen3.6-27B 가 schema 모드로 cone_0019 를 끝까지 돌렸다. `native` 모드와 30장 비교는 아직. [reader/orchestrator.md](reader/orchestrator.md) |
 | 7 | v2 뒷단(전개 → 분할 → 네스팅 → POR)을 v3 단계 뒤에 잇고, 최종 산출물까지 로컬로 돈다 | |
 
 ## 4. 하네스를 만들 때 지킬 것

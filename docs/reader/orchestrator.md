@@ -1,6 +1,6 @@
 # 도면 판독 orchestrator
 
-자연어 명령 한 줄을 받아, 모델이 판독 13단계([stages.md](stages.md))를 tool 로 골라 부르는 실행기다. 2026-10-23 에 `reader-agent` 브랜치에서 만들었다. [harness_engineering.md](../harness_engineering.md) 로드맵 6번(로컬 orchestrator)의 첫 판이다.
+자연어 명령 한 줄을 받아, 모델이 판독 13단계([stages.md](stages.md))를 tool 로 골라 부르는 실행기다. 2026-10-23 에 `reader-agent` 브랜치에서 만들어 main 에 머지했다. [harness_engineering.md](../harness_engineering.md) 로드맵 6번(로컬 orchestrator)의 첫 판이다.
 
 - 단계 순서를 코드가 정하는 [`stages/run.py`](../../cutplan_agent/reader/stages/run.py) 와 달리, 어떤 단계를 언제 다시 부를지를 모델이 정한다. `run.py` 가 비교 기준선이다.
 - 모델이 하는 일은 다음 tool 고르기뿐이다. 판독과 계산은 단계 함수(`stages/*.py` 의 `run`)가 하고, 결과도 단계 스크립트와 같은 파일로 남는다.
@@ -8,19 +8,18 @@
 
 ## 1. 실행
 
-레포 루트에서 실행한다. `PY` 는 [stages.md](stages.md) 3절과 같다.
+레포 루트에서 실행한다. 판독기 의존성은 pyproject 에 있으므로 `uv run python` 이면 된다 ([getting_started.md](../getting_started.md)).
 
 ```bash
-PY=(uv run --with requests --with opencv-python-headless --with pytesseract python)
 . runs/vllm/ocr.env; . runs/vllm/reason.env      # serve.sh 로 띄운 서버. 단계 모델과 orchestrator 가 같이 쓴다
 
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 를 전개도까지 판독하고 결과를 알려줘" --tool-mode schema
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 의 view_labels 부터 다시 돌려줘" --tool-mode schema
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 판독해줘" --provider anthropic   # Claude 가 orchestration
+PYTHONPATH=. uv run python cutplan_agent/reader/orchestrator.py "cone_0019 를 전개도까지 판독하고 결과를 알려줘" --tool-mode schema
+PYTHONPATH=. uv run python cutplan_agent/reader/orchestrator.py "cone_0019 의 view_labels 부터 다시 돌려줘" --tool-mode schema
+PYTHONPATH=. uv run python cutplan_agent/reader/orchestrator.py "cone_0019 판독해줘" --provider anthropic   # Claude 가 orchestration
 ```
 
 - 명령 하나를 처리하고 끝난다 (대화형이 아니다). 상태는 작업 폴더의 단계 파일에 남으므로, 다음 명령은 `stage_status` 로 이어서 일한다.
-- 작업 폴더는 `--output-dir`(기본 `runs/reader/agent`) 아래 `<도면 이름>/` 이다. 입력 도면은 `--input-dir`(기본 `data_v3/synthetic`) 에서 찾는다.
+- 작업 폴더는 `--output-dir`(기본 `runs/reader/agent`) 아래 `<도면 이름>/` 이다. 입력 도면은 `--input-dir`(기본 `data_v3/synthetic`) 의 DXF 에서 찾는다. DWG 는 tool 이 없으므로 먼저 00 `convert` 로 바꿔 둔다 ([stages.md](stages.md)).
 - 단계 모델은 `stages/run.py` 와 같은 옵션(`--ocr-*`, `--reason-*`, `--no-vlm`)이나 `CUTPLAN_OCR_*`, `CUTPLAN_REASON_*` 로 정한다.
 - orchestrator 모델은 `--provider`, `--model`, `--base-url` 이나 `CUTPLAN_ORCH_{PROVIDER,MODEL,BASE_URL,API_KEY}` 로 정한다. openai 이면서 따로 정하지 않으면 추론 모델(`CUTPLAN_REASON_*`)을 쓴다.
 
@@ -96,7 +95,7 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 판독�
 
 | 무엇 | 어디 |
 |---|---|
-| 실행한 명령 | 레포 루트에서 `. runs/vllm/ocr.env; . runs/vllm/reason.env` 후 `PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 도면을 전개도까지 판독하고 결과를 알려줘" --tool-mode schema` (orchestrator 와 추론 단계 모두 `serve.sh` 의 Qwen3.6-27B, OCR 은 DeepSeek-OCR-2) |
+| 실행한 명령 | 레포 루트에서 `. runs/vllm/ocr.env; . runs/vllm/reason.env` 후 `PYTHONPATH=. uv run python cutplan_agent/reader/orchestrator.py "cone_0019 도면을 전개도까지 판독하고 결과를 알려줘" --tool-mode schema` (당시는 판독기 의존성이 pyproject 에 없어 `uv run --with requests --with opencv-python-headless --with pytesseract python` 으로 돌렸다. orchestrator 와 추론 단계 모두 `serve.sh` 의 Qwen3.6-27B, OCR 은 DeepSeek-OCR-2) |
 | 실행 기록 | `runs/reader/agent/orchestrator/20261023-021136/` (`command.json`, `trajectory.jsonl`, `messages.json`, `answer.json`) |
 | 단계 파일 | `runs/reader/agent/cone_0019/stages/01_read.json` … `10_develop.json`, 전개도 `flat_pattern.{json,dxf,png}` |
 | 코드 | [`reader/tools.py`](../../cutplan_agent/reader/tools.py) (tool 17개), [`reader/orchestrator.py`](../../cutplan_agent/reader/orchestrator.py) (루프, 세 가지 호출 방식, 기록) |
