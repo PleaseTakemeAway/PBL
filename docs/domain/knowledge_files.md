@@ -10,10 +10,10 @@
 | 파일 | 내용 | 읽는 시점 |
 |---|---|---|
 | 00_system_role_and_procedure.md | 역할(KDM 생산기술), 원칙 5개, 절차 ①도면 읽기 ~ ⑥검증 | 항상 (시스템 프롬프트) |
-| drawing_conventions_kr.md | 도면 종류별 내용(GA 에는 판재 치수 없음, BODY 에 BOM), BOM 열 읽기, 치수 표기(T.L, I.D, `2-Ø13`, △) | BOM 읽기 전 |
+| drawing_conventions_kr.md | 도면 종류별 내용(GA 에는 판재 치수 없음, BODY 에 BOM), BOM 열 읽기, 품번과 커팅플랜 부품 라벨의 대응, 판재가 아닌 행(형강·파이프·볼트·와셔), 치수 표기(T.L, I.D, `2-Ø13`, △) | BOM 읽기 전 |
 | unfold_rules.md | 전개 판정표, 파라미터 읽기 규칙(안지름 기준), 원통·원뿔·절곡 공식 | 부품 유형 결정 전 |
 | split_and_margin.md | 분할 이유(운반 상한 12000×3050, 용접선), 쉘·헤드·콘 분할 규칙, 커팅 여유(가스 20), 표준폭 | 네스팅 전 |
-| nesting_rules.md | 그룹 키(재질, 두께), 회전, 판 크기 선택, 목표 지표, 라벨 형식 | 네스팅 전 |
+| nesting_rules.md | 그룹 키(재질, 두께), 회전, 판 크기 선택, 목표 지표, 판재·부품 라벨 형식 | 네스팅 전 |
 | material_mapping.md | 재질 정규화(SA516-70 = A516-70, N 유지, SS400 ↔ St37, 클래드), 판재 여부 판정 | BOM 정규화 |
 | design_data_ga.md | GA DESIGN DATA·MATERIAL SPEC·NOZZLE LIST 용도, 보강패드 지름 결정 순서 | GA 읽을 때 |
 | por_format.md | POR 열 구조, 판재 행 예, 중량 t×W×L×7.85e-6, 품명 규칙 | POR 작성 전 |
