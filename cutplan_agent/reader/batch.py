@@ -1,4 +1,9 @@
-"""Batch prediction and per-drawing reconstruction for folders of DXF files."""
+"""Batch prediction and per-drawing reconstruction for folders of DXF files.
+
+With --input-mode dxf (and the default --dxf-mode auto) every drawing runs through the stage
+scripts in cutplan_agent/reader/stages/ (stages/run.py: run_drawing), which leave one file per
+stage under <output-dir>/<drawing id>/stages/. Other input modes keep the single-call path.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +18,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.stages.export import candidate_record as _candidate_record
+from cutplan_agent.reader.stages.run import run_drawing
 from cutplan_agent.reader.unfold import evaluate_against_label, run_unfold
 from cutplan_agent.reader.vlm import PART_CLASSES, VLMClient
 from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
@@ -247,27 +254,6 @@ def _accuracy_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _candidate_record(candidate, evaluation, item_dir: Path) -> dict[str, Any]:
-    return {
-        "candidate_id": candidate.id,
-        "valid": evaluation.valid,
-        "score": evaluation.score,
-        "extents_mm": dict(zip("xyz", candidate.extents)),
-        "vertices": len(candidate.vertices),
-        "edges": len(candidate.edges),
-        "features": candidate.features,
-        "parameters": candidate.parameters,
-        "artifacts": {
-            "step": str(item_dir / "reconstruction.step") if evaluation.valid else None,
-            "parameters": str(item_dir / "parameters.json")
-            if evaluation.valid
-            else None,
-            "provenance": str(item_dir / "provenance.json"),
-            "report": str(item_dir / "report.md"),
-        },
-    }
-
-
 def _item_id(path: Path, used: set[str]) -> str:
     base = re.sub(r"[^0-9A-Za-z._-]+", "_", path.stem).strip("._") or "drawing"
     value, index = base, 2
@@ -276,6 +262,61 @@ def _item_id(path: Path, used: set[str]) -> str:
         index += 1
     used.add(value.lower())
     return value
+
+
+def _run_dxf_stages(
+    path: Path,
+    item_dir: Path,
+    clients: tuple[VLMClient, VLMClient],
+    record: dict[str, Any],
+    *,
+    analyze_only: bool,
+    unfold: bool,
+    confirm: bool,
+    units: str | None,
+    tolerance: float | None,
+    max_candidates: int,
+    projection_default: str,
+) -> None:
+    """Fill `record` as the stages finish, at the same points the single-call path did."""
+
+    def analysis() -> dict[str, Any]:
+        return json.loads(
+            (item_dir / "analysis" / "sheet_analysis.json").read_text(encoding="utf-8")
+        )
+
+    def fill(stage: str, out: dict[str, Any]) -> None:
+        if stage == "sheet" and analyze_only:
+            record["prediction"] = _prediction(analysis())
+            record["status"] = "predicted"
+        elif stage == "document" and out["status"] == "done":
+            record["prediction"] = _prediction(analysis())
+        elif stage == "develop" and "record" in out:
+            record["flat_pattern"] = out["record"]
+        elif stage == "reconstruct" and out.get("not_reconstructable"):
+            record["status"] = "prediction_only"
+            record["reconstruction"] = {"attempted": False, "reason": out["reason"]}
+        elif stage == "export" and out["status"] == "done":
+            record["status"] = out["outcome"]
+            record["reconstruction"] = out["reconstruction"]
+
+    stages = run_drawing(
+        path,
+        item_dir,
+        clients,
+        analyze_only=analyze_only,
+        unfold=unfold,
+        confirm=confirm,
+        units=units,
+        tolerance=tolerance,
+        max_candidates=max_candidates,
+        projection_default=projection_default,
+        on_stage=fill,
+    )
+    if stages["document"].get("not_orthographic"):
+        from cutplan_agent.reader.dxf_adapter import NotOrthographicSheet
+
+        raise NotOrthographicSheet(analysis())
 
 
 def run_batch(
@@ -354,6 +395,21 @@ def run_batch(
             adapter_kw: dict[str, Any] = {"projection_default": projection_default}
             if input_mode == "vision":
                 adapter_kw["dpi"] = dpi
+            if input_mode == "dxf" and dxf_mode == "auto":
+                _run_dxf_stages(
+                    path,
+                    item_dir,
+                    clients,
+                    record,
+                    analyze_only=analyze_only,
+                    unfold=unfold,
+                    confirm=confirm,
+                    units=units,
+                    tolerance=tolerance,
+                    max_candidates=max_candidates,
+                    projection_default=projection_default,
+                )
+                continue
             if analyze_only:
                 if input_mode == "dxf":
                     from cutplan_agent.reader.dxf_adapter import analyze_dxf

@@ -102,6 +102,10 @@ class DrawingDocument:
                 raise ValueError(f"Duplicate primitive ID in {view.id}")
         return cls(views, dict(value.get("metadata", {})), source)
 
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-ready; from_dict(value, value["source"]) rebuilds the document."""
+        return asdict(self)
+
 
 @dataclass
 class ReconstructionCandidate:
@@ -150,3 +154,58 @@ class ReconstructionResult:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> ReconstructionResult:
+        """Inverse of to_dict after a JSON round trip (lists become tuples again)."""
+
+        def pt(p):
+            return tuple(p) if p is not None else None
+
+        views = [
+            DrawingView(
+                id=v["id"],
+                name=v["name"],
+                primitives=[
+                    Primitive2D(
+                        id=p["id"],
+                        kind=p["kind"],
+                        points=[tuple(q) for q in p["points"]],
+                        center=pt(p["center"]),
+                        radius=p["radius"],
+                        line_type=p["line_type"],
+                        attributes=p["attributes"],
+                    )
+                    for p in v["primitives"]
+                ],
+                annotations=v["annotations"],
+                origin=pt(v["origin"]),
+                scale=v["scale"],
+                alignment=v["alignment"],
+            )
+            for v in value["views"]
+        ]
+        candidates = [
+            ReconstructionCandidate(
+                id=c["id"],
+                vertices=[tuple(p) for p in c["vertices"]],
+                edges=[tuple(e) for e in c["edges"]],
+                features=c["features"],
+                parameters=c["parameters"],
+                provenance=c["provenance"],
+                score=c["score"],
+            )
+            for c in value["candidates"]
+        ]
+        evaluations = [
+            CandidateEvaluation(
+                candidate_id=e["candidate_id"],
+                valid=e["valid"],
+                score=e["score"],
+                checks={k: CheckResult(**c) for k, c in e["checks"].items()},
+            )
+            for e in value["evaluations"]
+        ]
+        return cls(
+            value["metadata"], views, candidates, evaluations, value["review_request"]
+        )

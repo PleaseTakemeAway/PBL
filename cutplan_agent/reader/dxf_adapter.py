@@ -228,6 +228,23 @@ def _texts_in(entities, box: BBox | None):
     ]
 
 
+TITLE_FIELDS = (
+    "drawing_no",
+    "part_name",
+    "material",
+    "thickness_mm",
+    "scale",
+    "units",
+    "projection",
+)
+TITLE_BLOCK_PROMPT = (
+    "This image is the title block of a mechanical engineering drawing. Read these title_block fields: "
+    'drawing_no, part_name, material, thickness_mm (number), scale (string like "1/4"), units ("mm" or "inch"), '
+    'projection ("first" or "third", from the projection symbol: a cone with the small circle on the LEFT of the truncated cone means third-angle), '
+    "weight_kg (number). Use null when a value is not visible. Do not guess."
+)
+
+
 def parse_title_block(
     entities: list[RawEntity],
     region: BBox | None,
@@ -235,6 +252,25 @@ def parse_title_block(
     work_dir: Path | None,
     reason: VLMClient | None = None,
 ) -> TitleBlock:
+    """Regex first; OCR transcribes and the reasoning model structures only the missing fields."""
+    tb = regex_title_block(entities, region)
+    missing = missing_title_fields(tb)
+    if missing and ocr.enabled and work_dir is not None:
+        crop = render_title_block(entities, region, work_dir)
+        data = read_ocr_task(
+            ocr, reason, [crop], task="title_block", instructions=TITLE_BLOCK_PROMPT
+        )
+        if isinstance(data, dict):
+            apply_title_fields(
+                tb,
+                data,
+                missing,
+                f"vlm_reason:{reason.config.model}+vlm_ocr:{ocr.config.model}",
+            )
+    return tb
+
+
+def regex_title_block(entities: list[RawEntity], region: BBox | None) -> TitleBlock:
     tb = TitleBlock(region=region)
     texts = _texts_in(entities, region) if region else _texts_in(entities, None)
     joined = "\n".join(t.text for t in texts if t.text)
@@ -282,76 +318,63 @@ def parse_title_block(
         tb.units, tb.sources["units"] = "mm", "regex"
     elif re.search(r"\binch|\bin\.\b", joined, re.I):
         tb.units, tb.sources["units"] = "inch", "regex"
-    # OCR transcribes; the reasoning model structures missing fields and symbols.
-    missing = [
-        k
-        for k in (
-            "drawing_no",
-            "part_name",
-            "material",
-            "thickness_mm",
-            "scale",
-            "units",
-            "projection",
-        )
-        if getattr(tb, k) is None
-    ]
-    if missing and ocr.enabled and work_dir is not None:
-        crop = render(
-            [e for e in entities if e.kind != "other"],
-            work_dir / "title_block.png",
-            bbox=region,
-            width_in=10,
-        )
-        prompt = (
-            "This image is the title block of a mechanical engineering drawing. Read these title_block fields: "
-            'drawing_no, part_name, material, thickness_mm (number), scale (string like "1/4"), units ("mm" or "inch"), '
-            'projection ("first" or "third", from the projection symbol: a cone with the small circle on the LEFT of the truncated cone means third-angle), '
-            "weight_kg (number). Use null when a value is not visible. Do not guess."
-        )
-        data = read_ocr_task(
-            ocr, reason, [crop], task="title_block", instructions=prompt
-        )
-        if isinstance(data, dict):
-            for k in missing:
-                v = data.get(k)
-                if v in (None, "", "null"):
-                    continue
-                if k == "scale":
-                    sm = _SCALE_LONE_RE.match(str(v)) or re.match(
-                        r"^\s*(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)\s*$", str(v)
-                    )
-                    if sm:
-                        tb.scale, tb.scale_text = (
-                            float(sm.group(1)) / float(sm.group(2)),
-                            str(v).strip(),
-                        )
-                elif k == "thickness_mm":
-                    try:
-                        tb.thickness_mm = float(v)
-                    except (TypeError, ValueError):
-                        continue
-                elif k == "projection":
-                    if str(v).lower() in {"first", "third"}:
-                        tb.projection = str(v).lower()
-                    else:
-                        continue
-                elif k == "units":
-                    if str(v).lower() in {"mm", "inch"}:
-                        tb.units = str(v).lower()
-                    else:
-                        continue
-                else:
-                    setattr(tb, k, str(v).strip())
-                tb.sources[k] = (
-                    f"vlm_reason:{reason.config.model}+vlm_ocr:{ocr.config.model}"
-                )
-            if isinstance(data.get("weight_kg"), (int, float)):
-                tb.weight_kg = float(data["weight_kg"])
-                tb.sources["weight_kg"] = (
-                    f"vlm_reason:{reason.config.model}+vlm_ocr:{ocr.config.model}"
-                )
     return tb
+
+
+def missing_title_fields(tb: TitleBlock) -> list[str]:
+    return [k for k in TITLE_FIELDS if getattr(tb, k) is None]
+
+
+def render_title_block(
+    entities: list[RawEntity], region: BBox | None, work_dir: Path
+) -> Path:
+    """The OCR input image: the title-block region (the whole sheet when no region was found)."""
+    return render(
+        [e for e in entities if e.kind != "other"],
+        work_dir / "title_block.png",
+        bbox=region,
+        width_in=10,
+    )
+
+
+def apply_title_fields(
+    tb: TitleBlock, data: dict, missing: list[str], source: str
+) -> None:
+    """Fill the missing fields from the reasoning model's title_block reply; `source` goes into tb.sources."""
+    for k in missing:
+        v = data.get(k)
+        if v in (None, "", "null"):
+            continue
+        if k == "scale":
+            sm = _SCALE_LONE_RE.match(str(v)) or re.match(
+                r"^\s*(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)\s*$", str(v)
+            )
+            if sm:
+                tb.scale, tb.scale_text = (
+                    float(sm.group(1)) / float(sm.group(2)),
+                    str(v).strip(),
+                )
+        elif k == "thickness_mm":
+            try:
+                tb.thickness_mm = float(v)
+            except (TypeError, ValueError):
+                continue
+        elif k == "projection":
+            if str(v).lower() in {"first", "third"}:
+                tb.projection = str(v).lower()
+            else:
+                continue
+        elif k == "units":
+            if str(v).lower() in {"mm", "inch"}:
+                tb.units = str(v).lower()
+            else:
+                continue
+        else:
+            setattr(tb, k, str(v).strip())
+        tb.sources[k] = source
+    if isinstance(data.get("weight_kg"), (int, float)):
+        tb.weight_kg = float(data["weight_kg"])
+        tb.sources["weight_kg"] = source
 
 
 # ----------------------------------------------------------------------------- frames / regions / sheet type
@@ -1222,10 +1245,46 @@ def analyze_dxf(
     work_dir.mkdir(parents=True, exist_ok=True)
     entities, info = read_dxf(path)
     sheet = _sheet_bbox(entities)
-    frames, frame_handles = detect_frames(entities, sheet)
     title_regions = find_title_regions(entities, sheet)
     title_region = find_title_region(entities, sheet)
     title = parse_title_block(entities, title_region, ocr, work_dir, reason=reason)
+    found = find_views(entities, title_regions, gap_ratio=gap_ratio)
+    labelled = label_sheet(
+        found["views"],
+        entities,
+        title,
+        found["sheet_type"],
+        found["sheet_type_evidence"],
+        reason,
+        work_dir,
+        projection_default=projection_default,
+    )
+    analysis = write_sheet_analysis(
+        path,
+        work_dir,
+        info=info,
+        entities=entities,
+        title_regions=title_regions,
+        title_region=title_region,
+        title=title,
+        found=found,
+        labelled=labelled,
+        trace=ocr.trace + reason.trace,
+    )
+    return {
+        "entities": entities,
+        "views": found["views"],
+        "title": title,
+        "analysis": analysis,
+    }
+
+
+def find_views(
+    entities: list[RawEntity], title_regions: list[BBox], *, gap_ratio: float = 0.008
+) -> dict:
+    """Frames, excluded regions (title blocks + tables), view clusters and sheet type. No model."""
+    sheet = _sheet_bbox(entities)
+    frames, frame_handles = detect_frames(entities, sheet)
     tables: list[BBox] = []
     for e in entities:
         if e.kind == "text" and e.text and any(k in e.text.upper() for k in TABLE_KEYS):
@@ -1237,12 +1296,36 @@ def analyze_dxf(
     excluded = title_regions + tables
     views, seg = segment_views(entities, excluded, gap_ratio, frame_handles, frames)
     sheet_type, evidence = classify_sheet(entities, views)
+    return {
+        "frames": frames,
+        "excluded_regions": excluded,
+        "views": views,
+        "segmentation": seg,
+        "sheet_type": sheet_type,
+        "sheet_type_evidence": evidence,
+    }
+
+
+def label_sheet(
+    views: list[ViewCandidate],
+    entities: list[RawEntity],
+    title: TitleBlock,
+    sheet_type: str,
+    evidence: dict,
+    reason: VLMClient,
+    work_dir: Path,
+    *,
+    projection_default: str = "third",
+) -> dict:
+    """Label the view clusters in place. Nesting sheets get plates; other sheets get a
+    position fallback, then the reasoning model's view types, projection and part class.
+    May set title.projection."""
     review: list[dict] = []
     projection = title.projection or projection_default
     decision: dict = {"used": False}
     plates: list[dict] = []
     if sheet_type == "nesting":
-        plates = _nesting_plates(views, entities, sheet)
+        plates = _nesting_plates(views, entities, _sheet_bbox(entities))
         review.append(
             {
                 "issue": "nesting / cutting-plan sheet: orthographic reconstruction not applicable; use `plates`"
@@ -1301,6 +1384,31 @@ def analyze_dxf(
                     "evidence": evidence,
                 }
             )
+    return {
+        "projection": projection,
+        "decision": decision,
+        "plates": plates,
+        "review": review,
+    }
+
+
+def write_sheet_analysis(
+    path: Path,
+    work_dir: Path,
+    *,
+    info: dict,
+    entities: list[RawEntity],
+    title_regions: list[BBox],
+    title_region: BBox | None,
+    title: TitleBlock,
+    found: dict,
+    labelled: dict,
+    trace: list[dict],
+) -> dict:
+    """Render sheet.png with the labelled boxes and write sheet_analysis.json.
+    `found` comes from find_views, `labelled` from label_sheet, `trace` lists the model calls."""
+    views = found["views"]
+    decision = labelled["decision"]
     render(
         [e for e in entities if e.kind != "other"],
         work_dir / "sheet.png",
@@ -1312,15 +1420,15 @@ def analyze_dxf(
         "reader": info["reader"],
         "file_units": info["units"],
         "entity_counts": _count(entities),
-        "sheet_bbox": sheet,
-        "frames": frames,
+        "sheet_bbox": _sheet_bbox(entities),
+        "frames": found["frames"],
         "title_regions": title_regions,
         "title_region": title_region,
-        "excluded_regions": excluded,
-        "segmentation": seg,
-        "sheet_type": sheet_type,
-        "sheet_type_evidence": evidence,
-        "projection": projection,
+        "excluded_regions": found["excluded_regions"],
+        "segmentation": found["segmentation"],
+        "sheet_type": found["sheet_type"],
+        "sheet_type_evidence": found["sheet_type_evidence"],
+        "projection": labelled["projection"],
         "part_class": decision.get("part_class"),
         "part_class_probabilities": decision.get("part_class_probabilities"),
         "part_class_probability_source": decision.get("probability_source"),
@@ -1338,17 +1446,17 @@ def analyze_dxf(
             }
             for v in views
         ],
-        "plates": plates,
+        "plates": labelled["plates"],
         "vlm_decision": {k: v for k, v in decision.items() if k != "raw"},
-        "vlm_trace": ocr.trace + reason.trace,
-        "review": review,
+        "vlm_trace": trace,
+        "review": labelled["review"],
         "renders": {"sheet": str(work_dir / "sheet.png")},
     }
     (work_dir / "sheet_analysis.json").write_text(
         json.dumps(analysis, ensure_ascii=False, indent=2, default=list),
         encoding="utf-8",
     )
-    return {"entities": entities, "views": views, "title": title, "analysis": analysis}
+    return analysis
 
 
 def _count(entities) -> dict:

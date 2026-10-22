@@ -4,10 +4,11 @@
 
 ## 1. 처음 읽는 순서
 
-1. [getting_started.md](getting_started.md) — 설치, 실행, 자주 나는 문제
-2. [execution_flow.md](execution_flow.md) — 두 에이전트(v2 워크오더 에이전트, v3 도면 판독기)의 진입점과 함수 호출 순서
-3. [data/overview.md](data/overview.md) — 데이터가 어디 있고 어떤 스크립트가 만들며 누가 쓰는지
-4. [domain/glossary_kr.md](domain/glossary_kr.md) — 도면·제작 용어 (쉘, 코스, 경판, 네스팅, POR …)
+1. [harness_engineering.md](harness_engineering.md) — 이 프로젝트의 목표(로컬 LLM + 하네스)와 지금 상태, 로드맵
+2. [getting_started.md](getting_started.md) — 설치, 실행, 자주 나는 문제
+3. [execution_flow.md](execution_flow.md) — 두 에이전트(v2 워크오더 에이전트, v3 도면 판독기)의 진입점과 함수 호출 순서
+4. [data/overview.md](data/overview.md) — 데이터가 어디 있고 어떤 스크립트가 만들며 누가 쓰는지
+5. [domain/glossary_kr.md](domain/glossary_kr.md) — 도면·제작 용어 (쉘, 코스, 경판, 네스팅, POR …)
 
 그다음은 보려는 쪽에 따라 `agent/` (v2) 또는 `reader/` (v3) 로 간다.
 
@@ -15,11 +16,13 @@
 
 | 폴더 | 문서 | 내용 |
 |---|---|---|
-| `docs/` | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
+| `docs/` | [harness_engineering.md](harness_engineering.md) | 목표: 로컬 LLM 으로 orchestration 과 작업을 모두 하는 하네스. 지금 상태 판단과 로드맵 |
+| | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
-| `reader/` (v3) | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
+| `reader/` (v3) | [stages.md](reader/stages.md) | DXF 판독 13단계: 단계별 실행 명령, 단계마다 남는 파일, 한 단계만 다시 돌리기 |
+| | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
 | | [code_v3.md](reader/code_v3.md) | `experiments.sh` 실행 흐름과 파일별 역할, 출력 구조 |
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |
 | `data/` | [overview.md](data/overview.md) | 데이터 지도, 스크립트 ①~⑥ 의 입출력, 정답과 평가 |
@@ -30,7 +33,7 @@
 | | [unfold_classification_table.md](domain/unfold_classification_table.md) | KDM 도면 부품 라벨 779건의 전개 분류표 |
 | | [knowledge_files.md](domain/knowledge_files.md) | 에이전트가 읽는 지식·프롬프트 파일 목록과 읽는 시점 |
 
-동료의 zip 에서 받아 온 문서(`reader/`, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/`)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
+동료의 zip 에서 받아 온 문서(`reader/` 의 `stages.md` 를 뺀 문서, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/`)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
 
 ## 3. 레포 구조
 
@@ -49,6 +52,7 @@ cutplan_agent/
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
   reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
+  reader/stages/       DXF 판독 13단계. 단계마다 따로 실행되고, main.py --batch 가 차례로 부른다
   reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), verify_ocr_output.py, requirements.txt
