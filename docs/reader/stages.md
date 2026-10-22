@@ -114,8 +114,8 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/export.py $W
 같은 명령을 단계마다 주석 한 줄과 함께 [`experiments/run_stages.sh`](../../experiments/run_stages.sh) 에 묶어 두었다.
 
 - `./experiments/run_stages.sh [DXF] [작업 폴더]` 는 13단계를 차례로 돌리고 끝에 단계별 상태를 출력한다. 파이썬은 기본으로 `~/venvs/vllm-0.31/bin/python` 을 쓴다.
-- 서버는 띄우지 않는다. 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록되므로, 스크립트가 먼저 두 서버가 응답하는지 확인하고 응답이 없으면 멈춘다. `NO_VLM=1` 이면 모델 없이 돈다.
-- 한 단계만 돌릴 때는 스크립트의 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고(`ocr ok`, `reason ok` 가 둘 다 나와야 한다) 그 단계 줄을 실행한다. zsh 는 따옴표 없는 변수를 단어로 나누지 않아서 위의 `$PY` 가 명령 하나로 읽히지 않는다. 스크립트는 파이썬 경로 하나와 배열(`"${O[@]}"`)을 써서 bash 와 zsh 에서 모두 된다.
+- 서버는 띄우지 않는다. `./experiments/serve.sh` 로 띄워 두고, `runs/vllm/*.env` 를 source 했으면 그 모델과 주소를 쓴다. 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록되므로, 스크립트가 먼저 두 서버가 응답하는지 확인하고 응답이 없으면 멈춘다. `NO_VLM=1` 이면 모델 없이 돈다.
+- 한 단계만 돌릴 때는 스크립트의 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고(`ocr ok`, `reason ok` 가 둘 다 나와야 한다) 그 단계 줄을 실행한다. 스크립트도 파이썬 경로 하나와 배열(`"${O[@]}"`)을 써서 bash 와 zsh 에서 모두 된다.
 
 각 스크립트는 상태, 핵심 결과 몇 줄, 단계 파일 경로를 출력한다. 단계별 옵션은 `--help` 로 본다 (`views.py --gap-ratio`, `view_labels.py --projection`, `document.py --units`, `reconstruct.py --tolerance --max-candidates`).
 

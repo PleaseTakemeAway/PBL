@@ -6,7 +6,8 @@
 # 사용: ./experiments/run_stages.sh [DXF 파일] [작업 폴더]
 #   기본값은 data_v3/synthetic/cone_0019/cone_0019.dxf 와 runs/reader/check/<도면 이름>
 #   NO_VLM=1 이면 모델 없이 돈다. 모델 단계(03, 04, 06, 09, 12)는 skipped 로 남는다.
-#   모델 서버(OCR 8000, 추론 8001)는 미리 띄워 둔다. 이 스크립트는 서버를 띄우지 않는다.
+#   모델 서버(OCR 8000, 추론 8001)는 ./experiments/serve.sh 로 미리 띄워 둔다. 이 스크립트는 서버를 띄우지 않는다.
+#   serve.sh 가 쓴 runs/vllm/*.env 를 source 했으면 그 모델과 주소를 쓴다.
 #
 # 한 단계씩 손으로 돌리려면 레포 루트에서 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고,
 # 원하는 단계 줄만 실행한다.
@@ -47,7 +48,7 @@ curl -sf --max-time 3 -o /dev/null "$REASON_URL/models" && echo "reason ok" || {
 # 도면 파일이 없으면 멈춘다
 [[ -f "$DXF" ]] || { echo "DXF 가 없다: $DXF" >&2; exit 2; }
 # 모델을 쓰는데 서버가 응답하지 않으면 멈춘다 (NO_VLM=1 이면 그대로 돈다)
-[[ "$servers" == ok || "${NO_VLM:-0}" == 1 ]] || { echo "서버를 띄우거나 NO_VLM=1 로 돌린다" >&2; exit 2; }
+[[ "$servers" == ok || "${NO_VLM:-0}" == 1 ]] || { echo "./experiments/serve.sh 로 서버를 띄우거나 NO_VLM=1 로 돌린다" >&2; exit 2; }
 echo "도면: $DXF"
 echo "작업 폴더: $W"
 
