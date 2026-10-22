@@ -136,4 +136,6 @@ uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 
 | 도면 경로에 공백·괄호가 있어 명령이 깨진다 | `DWG="..."` 처럼 따옴표로 담고 `"$DWG"` 로 쓴다 |
 | `runs/vllm/ocr.env: no such file` | 서버가 안 떠 있다 (0절) |
 | 다음 단계가 `종료 코드 2` 로 멈춘다 | 앞 단계 파일이 없거나 `failed` 다. 앞 단계부터 다시 |
+| 끝까지 `done` 인데 `flat_pattern.*` 이 없다 (09·10 `skipped`) | 06 에서 형상(`part_class`)이 없거나 `other` 다. 모델 없이(`--no-vlm`) 돌리면 늘 없다. 모델을 붙여도 실도면은 한 장에 부품이 여럿이라 `other` 가 나온다 (S-2120 DWG-003: `other` 0.9998). 13 의 `no_valid_candidate` 도 같은 이유다. `show_stages.py $W 6` 으로 모델 답을 본다 |
+| 00 을 다시 돌렸더니 01–13 결과가 사라졌다 | 00 을 저장하면 01–13 파일을 지운다 (다른 단계도 저장하면 뒤 단계를 지운다). 결과를 남기려면 새 작업 폴더에서 돌린다. 지워졌으면 `run_stages.py $W 1-13` 으로 다시 만든다 (모델 답은 실행마다 같다, [stages.md](stages.md) 6절) |
 | `08 document: failed`, `11 reconstruct: failed` (실도면) | 고장이 아니라 reader 의 한계다. 한 장에 부품이 여러 개인 도면은 뷰를 front/top/right 하나씩으로 나누지 못한다 |
