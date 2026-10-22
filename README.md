@@ -46,15 +46,19 @@ cutplan_agent/
   eval/smoke_kd25038.py  API 없이 L2(B경로)→L3→L4 전체 경로 실행
   eval/run_eval.py       dataset 워크오더 평가 (API 필요)
   eval/run_experiments.py  E1·E2 는 API 없이 test_data 로 실행
-cutplan_agent_v3/      v3 정투영 복원 파이프라인 (step1~6, OCR·추론 VLM). 자체 README.md, code_v3.md 참조
+  reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
+  reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
+tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
+experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), verify_ocr_output.py, requirements.txt
 docs/execution_flow.md  v2·v3 의 진입점과 함수 호출 순서. 코드를 처음 읽을 때 여기서 시작
+docs/reader/           동료의 v3 문서 (README, code_v3.md, framework 그림)
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (프로젝트 루트 기준 경로, OS 무관)
-skills/                v3 와 cutplan_agent 가 읽는 도메인 문서·프롬프트 (04_reading_records 는 git 제외)
+skills/                reader 와 v2 skill 이 읽는 도메인 문서·프롬프트 (04_reading_records 는 git 제외)
 
 # 아래는 git 제외
 Data/                  원본·정제 데이터 (dataset, _dataset, part_class_dataset, 연도별 cutting plan)
 test_data/             scripts/build_test_data.py 가 Data/dataset 에서 만든 평가 세트
-data_v3/synthetic/     v3 입력: 합성 DXF + label.json 30개
+data_v3/synthetic/     reader 입력: 합성 DXF + label.json 30개
 tools/dwg2png/         이전 세션 툴킷 (Windows 용 libredwg, cp_extract 등). 코드는 Windows 의 dwg2dxf.exe 만 쓴다
 runs/<job>/            state.json, trajectory.json, <job>_CP.dxf, por.csv, final.md
 ```
@@ -96,7 +100,7 @@ VSCode: `Ctrl+Shift+P` → `Python: Select Interpreter` → `.venv` 를 고른�
   `build_dataset.py` → `extract_part_unfolds.py` → `ingest_drive_inputs.py` → `build_part_class_dataset.py` → `build_test_data.py` → `build_test_data_html.py`
   Drive 원본은 `Data/drive/8. Data/` 에 푼다. 원본 없이 `manifest.csv` 만 갱신하려면 빈 `Data/drive/8. Data/` 폴더를 만들고 `ingest_drive_inputs.py` 를 실행한다.
 - DWG 변환: Windows 는 `tools/dwg2png/libredwg/dwg2dxf.exe` 를, 그 밖에는 PATH 의 `dwg2dxf` 를 쓴다. Ubuntu 24.04 apt 에는 libredwg 패키지가 없으므로 GNU LibreDWG 를 소스에서 빌드해 설치한다.
-- v3 테스트: `cd cutplan_agent_v3 && uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
+- reader·reconstruct 테스트: `PYTHONPATH=. uv run --with requests --with opencv-python-headless --with pytesseract python -m unittest discover -s tests`. OCR 폴백 테스트는 tesseract 바이너리가 필요하다 (`sudo apt install tesseract-ocr`).
 
 ### 3.4 자주 나는 문제
 

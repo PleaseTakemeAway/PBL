@@ -17,7 +17,7 @@
 - "정리"는 git 구조만이 아니라 이 환경에서 실제로 돌게 만드는 리팩터링까지 포함한다. 하드코딩 경로, 역슬래시 경로, 빠진 의존성이 대상이다.
 - 동료와 협업하는 프로젝트다. 동료가 출장 중인 동안 사용자가 이어서 개발하고, 지금은 인수인계를 겸해 코드 정리와 리팩터링을 하고 있다. 동료가 돌아와 무엇이 바뀌었는지 볼 수 있게 동료의 원래 상태는 커밋과 태그로 재현할 수 있게 둔다.
 - 사용자는 동료의 작업을 먼저 그대로 돌려 보고 필요한 것을 파악한 뒤에 바꾸길 원한다. 리팩터링은 별도 브랜치나 분리된 커밋으로 한다.
-- 결과가 바뀌면 안 되는 변경은 전후를 비교해 확인하고, 그 근거를 커밋 메시지에 적는다. 비교 대상은 smoke test 출력 전체, v3 단위 테스트의 실패 목록, `cd cutplan_agent_v3 && python main.py --batch --input-mode dxf --no-vlm --output-dir <폴더> ../data_v3/synthetic` 의 출력(경로·시각을 빼면 실행마다 같다)이다.
+- 결과가 바뀌면 안 되는 변경은 전후를 비교해 확인하고, 그 근거를 커밋 메시지에 적는다. 비교 대상은 smoke test 출력 전체, v3 단위 테스트의 실패 목록, 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-vlm --output-dir <폴더> data_v3/synthetic` 의 출력이다. 이 출력은 출력 폴더 경로와 시각을 빼면 실행마다 같다. 입력 경로는 출력에 그대로 기록되므로 비교할 두 실행은 같은 경로 표기로 돌린다.
 - git 밖에서 가져온 파일은 출처와 동일하다는 근거를 함께 남긴다. 예를 들면 diff 결과나 sha256 이다.
 
 ## 3. 코드 스타일
@@ -30,22 +30,24 @@
 - `cutplan_agent/skills/` 의 skill 함수는 JSON 직렬화 가능한 인자를 받아 dict 를 돌려준다. orchestrator 가 이 함수를 그대로 Claude tool 로 노출한다.
 - `.md` 는 포맷하지 않는다. ruff 가 마크다운 안의 코드 블록까지 고쳐서 `skills/` 의 sha256 일치가 깨진다. `pyproject.toml` 의 `extend-exclude` 로 제외해 두었다.
 - 포맷만 한 커밋은 `.git-blame-ignore-revs` 에 해시를 적는다. 로컬 blame 에 반영하려면 `git config blame.ignoreRevsFile .git-blame-ignore-revs` 를 한 번 설정한다.
-- 2026-10-22 에 레포의 `.py` 전체를 한 번 포맷하고 import 를 정렬했다. docstring 들여쓰기와 import 블록 안의 순서를 빼면 AST 가 같아 동작은 바뀌지 않았다. 동료 원본(`cutplan_agent_v3/`, `scripts/`)의 바이트 단위 상태는 4절 표의 커밋과 태그에서 본다.
+- 2026-10-22 에 레포의 `.py` 전체를 한 번 포맷하고 import 를 정렬했다. docstring 들여쓰기와 import 블록 안의 순서를 빼면 AST 가 같아 동작은 바뀌지 않았다. 동료 원본(v3, `scripts/`)의 바이트 단위 상태는 4절 표의 커밋과 태그에서 본다.
 - 포맷 변경은 로직 변경과 같은 커밋에 섞지 않는다.
 
 ## 4. 레포 구조와 출처
 
 | 경로 | 출처 |
 |---|---|
-| `cutplan_agent/` | 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐다. 패키지로 설치하지 않는다 |
+| `cutplan_agent/` | 제품 패키지. 바로 아래의 `agent/`, `skills/`, `eval/`, `config.py` 등은 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐고, 패키지로 설치하지 않는다 |
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
-| `cutplan_agent_v3/` | 동료 커밋 253020c (subtree merge 1ea7cc6). 이후 정리 내역은 `git log -- cutplan_agent_v3` |
+| `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
+| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다 |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
 | `skills/` | 동료 zip 의 skills 폴더 그대로 (5f45c38). 동료 실행 기록의 sha256 과 일치 |
-| `docs/` | 이 레포에서 작성. `execution_flow.md` 는 v2·v3 의 진입점과 호출 순서. 진입점이나 호출 순서를 바꾸면 같이 고친다 |
+| `docs/execution_flow.md` | 이 레포에서 작성. v2·v3 의 진입점과 호출 순서. 진입점이나 호출 순서를 바꾸면 같이 고친다 |
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
-- `cutplan_agent_v3/` 는 패키지가 아니다. `python cutplan_agent_v3/main.py` 처럼 파일로 실행한다. 한 단계 위의 `skills/` 와 `data_v3/` 를 읽으므로, 레포 루트가 동료 서버의 `PBL_2026/` 폴더 역할을 한다.
+- 폴더는 하는 일로 이름을 짓고, 버전은 git 으로 관리한다. `_v3` 같은 버전 폴더나 복사본을 만들지 않는다. 옛 상태는 커밋과 태그로 꺼낸다. 동료의 v3 원본은 253020c, 폴더를 옮기기 직전은 ca142a8 이다.
+- reader 도 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로 실행한다. `knowledge.py` 는 레포 루트의 `skills/` 를, `experiments/*.sh` 는 `data_v3/synthetic` 과 `runs/reader/` 를 기본값으로 쓴다.
 - `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. 레포 루트에서 `PYTHONPATH=. uv run python scripts/<이름>.py` 로 실행한다. Windows PowerShell 은 먼저 `$env:PYTHONPATH = "."` 를 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
 
 ## 5. git 제외 데이터 (레포 루트 기준)
@@ -55,8 +57,8 @@
 | `Data/` | 1.4G | 노바투스2026.zip 의 `Data/` | cutplan_agent, scripts |
 | `test_data/` | 712M | `scripts/build_test_data.py` 로 `Data/dataset` 에서 생성 | cutplan_agent 평가 |
 | `data_v3/synthetic/` | 3.1M | 동료 서버에서 rsync. 합성 DXF + label.json 30개 | v3 입력 |
-| `cutplan_agent_v3/examples/` | 3.6M | zip | v3 단위 테스트 |
-| `cutplan_agent_v3/output/`, `cutplan_agent_v3/data_v3_claude_batch_10141611/` | 70M | zip | 동료 실행 결과, 비교 기준 |
+| `tests/fixtures/` | 3.6M | zip 의 `cutplan_agent_v3/examples/`. 고객 도면이 들어 있다 | 단위 테스트 |
+| `runs/reader/` | 70M | zip 의 `cutplan_agent_v3/output/*` 와 `data_v3_claude_batch_10141611/` | 동료 실행 결과, 비교 기준 |
 | `tools/dwg2png/` | 65M | 동료에게 받은 툴킷 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 | `skills/04_reading_records/` | 44K | zip | 코드가 읽지 않는다 |
 | `Data/drive/8. Data/` | | Google Drive 원본을 푸는 위치. 아직 없다 | `scripts/ingest_drive_inputs.py` |
@@ -66,10 +68,10 @@
 
 - 2026-10-21 부터 작업은 GPU 가 있는 원격 서버에서 한다. 그 전 정리는 로컬 `/home/unist/developer/pbl` 에서 했다.
 - cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
-- v3: `cutplan_agent_v3/requirements.txt` 와 vllm 이 깔린 파이썬으로 `cd cutplan_agent_v3 && ./experiments.sh --python <파이썬>`. 기본값은 DeepSeek-OCR-2 (GPU 4, 포트 8000) 와 Qwen3.6-27B (GPU 5, 포트 8001) 이다.
-- v3 기준값: 동료의 2026-10-18 실행 `cutplan_agent_v3/output/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
+- v3 (reader): `experiments/requirements.txt` 와 vllm 이 깔린 파이썬으로 레포 루트에서 `./experiments/experiments.sh --python <파이썬>`. 기본값은 DeepSeek-OCR-2 (GPU 4, 포트 8000) 와 Qwen3.6-27B (GPU 5, 포트 8001) 이다.
+- v3 기준값: 동료의 2026-10-18 실행 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.
-- v3 의 `--no-vlm` 모드와 OCR 폴백 테스트는 tesseract 바이너리가 필요하다.
+- 이미지 입력의 `--no-vlm` 과 OCR 폴백 테스트는 tesseract 바이너리가 필요하다. DXF 입력의 `--no-vlm` 배치는 tesseract 없이 돈다.
 - DWG 입력을 읽으려면 `dwg2dxf` 가 필요하다. Ubuntu 24.04 apt 에는 없으므로 GNU LibreDWG 를 소스에서 빌드한다.
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)

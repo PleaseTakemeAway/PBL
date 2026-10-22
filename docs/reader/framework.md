@@ -1,5 +1,7 @@
 # CUTPLAN_AGENT_V2 구성도
 
+> **위치가 바뀌었다 (2026-10-22, 268b42e).** 이 문서는 동료가 `cutplan_agent_v3/` 시절에 쓴 그대로다. 지금 코드는 `cutplan_agent/reader/` (판독) 와 `cutplan_agent/reconstruct/` (3D 복원) 에, 실험 스크립트는 `experiments/`, 테스트는 `tests/`, 예제 입력은 `tests/fixtures/` 에 있다. 아래의 `python main.py ...` 는 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로, `bash experiments.sh` 는 `bash experiments/experiments.sh` 로 읽는다. 실행 순서는 [docs/execution_flow.md](../execution_flow.md) 에 정리했다.
+
 현재 구현을 읽어 작성한 도면 단위 처리 흐름이다. 미래 설계나 모델이 추측한 구조가 아니다.
 
 ![현재 코드 프레임워크](framework.png)
@@ -77,12 +79,12 @@ Reasoning이 선호 후보를 달리 골라도 검증기의 후보 순위와 출
 
 ## 코드 근거
 
-- 입력·실행: [main.py](../main.py), [experiments.sh](../experiments.sh), [drawing_io.py](../drawing_io.py)
-- 배치·정답 평가: [batch.py](../batch.py)
-- DXF 분석: [dxf_reader.py](../dxf_reader.py), [dxf_adapter.py](../dxf_adapter.py)
-- 이미지 분석: [vision_reader.py](../vision_reader.py), [vision_adapter.py](../vision_adapter.py)
-- 모델·출력 계약: [vlm.py](../vlm.py), [vlm_output.py](../vlm_output.py)
-- 공통 객체·복원: [models.py](../models.py), [pipeline.py](../pipeline.py), [step6.py](../step6.py)
+- 입력·실행: [main.py](../../cutplan_agent/reader/main.py), [experiments.sh](../../experiments/experiments.sh), [drawing_io.py](../../cutplan_agent/reader/drawing_io.py)
+- 배치·정답 평가: [batch.py](../../cutplan_agent/reader/batch.py)
+- DXF 분석: [dxf_reader.py](../../cutplan_agent/reader/dxf_reader.py), [dxf_adapter.py](../../cutplan_agent/reader/dxf_adapter.py)
+- 이미지 분석: [vision_reader.py](../../cutplan_agent/reader/vision_reader.py), [vision_adapter.py](../../cutplan_agent/reader/vision_adapter.py)
+- 모델·출력 계약: [vlm.py](../../cutplan_agent/reader/vlm.py), [vlm_output.py](../../cutplan_agent/reader/vlm_output.py)
+- 공통 객체·복원: [models.py](../../cutplan_agent/reconstruct/models.py), [pipeline.py](../../cutplan_agent/reconstruct/pipeline.py), [step6.py](../../cutplan_agent/reconstruct/step6.py)
 - 제약 생성의 배경: [XGrammar 논문](https://arxiv.org/abs/2411.15100),
   [vLLM Structured Outputs 공식 문서](https://docs.vllm.ai/en/v0.31.0/features/structured_outputs/)
 

@@ -1,5 +1,7 @@
 # cutplan_agent_v3 코드 구조 — `experiments.sh` 실행 흐름
 
+> **위치가 바뀌었다 (2026-10-22, 268b42e).** 이 문서는 동료가 `cutplan_agent_v3/` 시절에 쓴 그대로다. 지금 코드는 `cutplan_agent/reader/` (판독) 와 `cutplan_agent/reconstruct/` (3D 복원) 에, 실험 스크립트는 `experiments/`, 테스트는 `tests/`, 예제 입력은 `tests/fixtures/` 에 있다. 아래의 `python main.py ...` 는 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로, `bash experiments.sh` 는 `bash experiments/experiments.sh` 로 읽는다. 실행 순서는 [docs/execution_flow.md](../execution_flow.md) 에 정리했다.
+
 `experiments.sh`를 실행했을 때 호출되는 하위 파일들의 구조와 각 파일의 동작을 정리한 문서입니다.
 
 ## 1. 전체 호출 흐름
