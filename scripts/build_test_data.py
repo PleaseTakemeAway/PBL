@@ -20,6 +20,7 @@ import shutil
 import sys
 
 from cutplan_agent.config import DATASET, TEST_DATA
+from cutplan_agent.eval.drawing_refs import coverage, missing_text
 
 BASE = DATASET
 OUT = TEST_DATA
@@ -70,6 +71,24 @@ def count(d, exts=None):
     )
 
 
+# 정답 부품이 가리키는 설계 도면이 input_drawings 에 있는지. 표시만 하고 워크오더를 빼지 않는다
+NO_COVERAGE = {"parts_with_ref": "", "parts_ref_missing": "", "missing_refs": ""}
+
+
+def drawing_coverage(dst):
+    p = os.path.join(dst, "output_cutting_plan", "parts.csv")
+    if not os.path.exists(p):
+        return dict(NO_COVERAGE)
+    labels = [x["part_label"] for x in csv.DictReader(open(p, encoding="utf-8-sig"))]
+    names = [f for _, _, fs in os.walk(os.path.join(dst, "input_drawings")) for f in fs]
+    cov = coverage(labels, names)
+    return {
+        "parts_with_ref": cov["with_ref"],
+        "parts_ref_missing": cov["missing"],
+        "missing_refs": missing_text(cov),
+    }
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     manifest = list(
@@ -109,6 +128,7 @@ def main():
                     "gt_sheets": 1,
                     "gt_sheets_ok": 1,
                     "grade": r["grade"],
+                    **NO_COVERAGE,
                 }
             )
             continue
@@ -136,6 +156,7 @@ def main():
             "gt_sheets": r["n_sheets"],
             "gt_sheets_ok": r["n_sheets_ok"],
             "grade": r["grade"],
+            **NO_COVERAGE,
         }
         if included:
             dst = os.path.join(OUT, wo)
@@ -160,6 +181,7 @@ def main():
                     for x in csv.DictReader(open(idx, encoding="utf-8-sig"))
                     if x["match"] == "ok"
                 )
+            row.update(drawing_coverage(dst))
         rows.append(row)
     rows.sort(key=lambda x: (x["included"] != "yes", x["workorder"]))
     with open(
@@ -184,6 +206,12 @@ output_cutting_plan(TruTops TAF + nesting_dataset.json + sheets/parts/bom csv).
 index.csv: 전체 {len(rows)} 워크오더. included=no 인 것은 reason 열에 빠진 이유. 입력 도면이 없는 것은 Drive zip 나머지 파트를 풀고
 `scripts/ingest_drive_inputs.py` → `scripts/build_test_data.py` 를 다시 돌리면 추가된다.
 
+parts_with_ref, parts_ref_missing, missing_refs: 정답 부품 라벨에서 설계 도면 번호를 읽어 input_drawings 에서 찾은 결과.
+parts_with_ref 는 도면 번호를 읽은 부품 수, parts_ref_missing 은 그중 입력에 없는 도면을 가리키는 부품 수,
+missing_refs 는 없는 도면별 개수다. 입력에 없는 도면의 부품은 에이전트가 맞출 수 없으므로 점수를 볼 때 감안한다.
+표시만 하고 워크오더를 빼지 않는다. 라벨 형식이 달라 도면 번호를 못 읽은 부품은 세지 않는다
+(cutplan_agent/eval/drawing_refs.py).
+
 권장 사용 순서: grade=성공, gt_sheets_ok 큰 순. 평가 지표는 cutplan_agent/README.md 참조.
 시각화: 같은 폴더의 README.html (브라우저에서 열기, 썸네일 내장). 갱신은 `scripts/build_test_data_html.py`.
 원본: Data/dataset (여기는 그 부분집합의 {"하드링크" if LINK else "복사본"}).
@@ -202,6 +230,12 @@ index.csv: 전체 {len(rows)} 워크오더. included=no 인 것은 reason 열에
     for x in rows:
         if x["included"] != "yes":
             print(f"  제외 {x['workorder']}: {x['reason']}")
+    for x in inc:
+        if x["parts_ref_missing"]:
+            print(
+                f"  주의 {x['workorder']}: 도면 번호가 있는 부품 {x['parts_with_ref']} 중 "
+                f"{x['parts_ref_missing']} 개의 도면이 입력에 없다 ({x['missing_refs']})"
+            )
 
 
 if __name__ == "__main__":

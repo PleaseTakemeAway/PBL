@@ -1,6 +1,6 @@
 # 데이터와 스크립트
 
-이 프로젝트가 쓰는 데이터가 어디에 있고, 어떤 스크립트가 무엇을 읽어 무엇을 만들며, 어느 코드가 그것을 쓰는지 정리했다. 2026-10-22 서버의 실제 폴더 기준이다.
+이 프로젝트가 쓰는 데이터가 어디에 있고, 어떤 스크립트가 무엇을 읽어 무엇을 만들며, 어느 코드가 그것을 쓰는지 정리했다. 2026-10-22 서버의 실제 폴더 기준이고, `test_data/cutting_plan/`·`test_data/cases/` 는 2026-10-23 에 더했다.
 
 데이터는 전부 git 에서 빠져 있다 (`.gitignore`). 이 레포는 public 이라 데이터, 고객 도면, 판독 기록을 커밋하지 않는다. 데이터는 팀 공유 압축본(노바투스2026.zip)과 동료 서버에서 받는다.
 
@@ -15,11 +15,13 @@
 | `Data/drive/8. Data/` | Google Drive 원본을 푸는 자리. 아직 없다 | 사람 | `ingest_drive_inputs.py` |
 | `Data/dataset/` | 워크오더 단위로 모은 데이터셋. 구조는 [dataset_structure.md](dataset_structure.md) | 스크립트 ①②③ | v2 `orchestrator.py` (`input/drawings`), `compare_with_gt` (`gt/sheets.csv`), `build_test_data.py` |
 | `Data/part_class_dataset/` | 부품 전개 이미지(512px PNG 1,789장) ↔ 형상 class 5종. 규칙은 [part_class_rules.md](part_class_rules.md) | 스크립트 ④ | 코드에서 읽는 곳은 아직 없다 (분류 학습·평가용) |
-| `test_data/` | 입력 도면·전개도·커팅플랜이 모두 있는 워크오더 39개 (KDM 38, HCE 1). `index.csv` 에 제외된 32개와 사유도 있다 | 스크립트 ⑤⑥ | v2 `eval/run_experiments.py`, `eval/compare_outputs.py`, `eval/manual_vlm_run.py` |
+| `test_data/` | 입력 도면·전개도·커팅플랜이 모두 있는 워크오더 39개 (KDM 38, HCE 1). `index.csv` 에 제외된 32개와 사유, 정답 부품이 가리키는 도면이 입력에 있는지 (`parts_ref_missing`) 도 있다 | 스크립트 ⑤⑥ | v2 `eval/run_experiments.py`, `eval/compare_outputs.py`, `eval/manual_vlm_run.py` |
+| `test_data/cutting_plan/` | 회사 담당자에게 받은 설비 2개 (S-2120, D-1203) 의 설계 도면과 커팅플랜 `CP.dwg`, 워크오더 번호를 적은 `note.md`. 다시 만들 수 없으니 지우지 않는다 | 회사 담당자 (2026-10-22) | 스크립트 ⑦ |
+| `test_data/cases/` | 위 폴더로 만든 테스트셋. 설비마다 입력 도면, 정답 `sheets`·`parts`·`pieces` CSV, 조각 DXF, 확인 그림. [cutplan_cases.md](cutplan_cases.md) | 스크립트 ⑦ | 아직 없다 |
 | `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 생성기는 레포에 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
 | `tests/fixtures/` | reader 단위 테스트 입력: `box.json`, `KD23041_CP.dxf`, HCE 스캔 `hce_*.png`. 고객 도면이 들어 있다 | 압축본 | `tests/` |
 | `runs/` | 실행 결과. v2 는 `runs/<job>/`, v3 는 `runs/reader/` (동료의 기준 결과 `deepseek_ocr_qwen_reasoning_skills` 등 포함) | 실행 | `eval/status.py`, `eval/compare_outputs.py`, 기준선 비교 |
-| `tools/dwg2png/` | 이전 세션 툴킷. 이 서버에는 없다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
+| `tools/dwg2png/` | 이전 세션 툴킷. `Data/_dataset/` 을 만든 `cp_extract.py` 가 들어 있다. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 
 경로의 기준은 `cutplan_agent/config.py` 의 `ROOT` 다. 기본은 레포 루트이고 `CUTPLAN_ROOT` 로 바꿀 수 있다.
 
@@ -37,6 +39,8 @@ Data/dataset/KDM/<year>/<wo>/unfold/*.dxf               Data/dataset/KDM/<year>/
         ├─▶ ④ build_part_class_dataset.py ─▶ Data/part_class_dataset/
         │
         └─▶ ⑤ build_test_data.py ─▶ test_data/ ─▶ ⑥ build_test_data_html.py ─▶ test_data/README.html
+
+회사 담당자: test_data/cutting_plan/<설비>/ ─▶ ⑦ build_cutplan_cases.py ─▶ test_data/cases/
 ```
 
 평소에는 압축본의 `Data/` 를 그대로 두고 ⑤ 만 실행하면 된다. `Data/` 를 처음부터 다시 만들 때만 ①~⑥ 을 차례로 실행한다. 모두 레포 루트에서 `PYTHONPATH=. uv run python scripts/<이름>.py` 로 실행하고, 원본 폴더는 복사만 하고 고치지 않는다.
@@ -47,8 +51,9 @@ Data/dataset/KDM/<year>/<wo>/unfold/*.dxf               Data/dataset/KDM/<year>/
 | ② | [`extract_part_unfolds.py`](../../scripts/extract_part_unfolds.py) | 커팅플랜 DXF (`images/_dxf/`), `nesting_dataset.json` | `unfold/*.dxf` (부품마다 하나), `unfold/index.csv` | 부품 bbox 안의 기하만 잘라낸다. `match` 열이 `ok` 인 행만 평가에 쓴다 |
 | ③ | [`ingest_drive_inputs.py`](../../scripts/ingest_drive_inputs.py) | `Data/drive/8. Data/` (기술부 도면·계산서, 구매부 POR) | `input/drawings`, `input/calculation`, `input/por`, `input/index.csv`, `_third_party_index.csv`, `manifest.csv` 갱신 | 여러 번 실행해도 안전하다. 절차서는 용량 때문에 복사하지 않고 목록만 남긴다 |
 | ④ | [`build_part_class_dataset.py`](../../scripts/build_part_class_dataset.py) | `part_tags.csv`, `nesting_dataset.json`, `unfold/*.dxf` | `Data/part_class_dataset/` (`part_tags_labeled.csv`, `dataset.csv`, `images/<class>/*.png`, `summary.json`) | `--dry` 는 CSV 만, `--only-ok` 는 `match=ok` 만 렌더 |
-| ⑤ | [`build_test_data.py`](../../scripts/build_test_data.py) | `Data/dataset/` | `test_data/<wo>/{input_drawings, output_unfold, output_cutting_plan}`, `index.csv`, `README.md` | 3종이 모두 있는 워크오더만 넣는다. `--link` 는 복사 대신 하드링크 |
+| ⑤ | [`build_test_data.py`](../../scripts/build_test_data.py) | `Data/dataset/` | `test_data/<wo>/{input_drawings, output_unfold, output_cutting_plan}`, `index.csv`, `README.md` | 3종이 모두 있는 워크오더만 넣는다. `--link` 는 복사 대신 하드링크. 정답 부품이 입력에 없는 도면을 가리키면 `index.csv` 에 적고 `주의` 로 출력하지만 빼지는 않는다 |
 | ⑥ | [`build_test_data_html.py`](../../scripts/build_test_data_html.py) | `test_data/` | `test_data/README.html` | 썸네일이 들어간 한 파일짜리 개요. 브라우저로 연다 |
+| ⑦ | [`build_cutplan_cases.py`](../../scripts/build_cutplan_cases.py) | `test_data/cutting_plan/<설비>/` | `test_data/cases/<설비>/`, `index.csv`, `README.md` | dwg2dxf 가 필요하다. 정답은 `cutplan_agent/eval/cp_parse.py` 가 CP.dxf 에서 읽는다. [cutplan_cases.md](cutplan_cases.md) |
 
 ## 3. 정답 데이터와 평가
 
@@ -58,10 +63,12 @@ Data/dataset/KDM/<year>/<wo>/unfold/*.dxf               Data/dataset/KDM/<year>/
 | v2 분할·네스팅 엔진 (E1, E2) | `test_data/<wo>/output_cutting_plan/*.csv`, `output_unfold/*.dxf` | `eval/run_experiments.py` |
 | v2 원통 전개 공식 | `Data/_dataset/part_tags.csv` | `cutplan_agent/unfold.py --validate` |
 | v3 형상 분류와 전개도 | `data_v3/synthetic/*/label.json` | `reader/batch.py`. 추론이 끝난 뒤에만 읽는다 |
+| 실도면 입력부터 커팅플랜까지 | `test_data/cases/<설비>/output_cutting_plan/*.csv` | 아직 없다. 정답 형식은 [cutplan_cases.md](cutplan_cases.md) |
 
 정답을 쓸 때 주의할 점이다 (자세한 내용은 [dataset_structure.md](dataset_structure.md)).
 
 - `unfold/index.csv` 의 `match` 가 `ok` 인 부품만 평가에 쓴다. `diff`·`none` 은 이웃 부품이 섞였거나 곡선이 잘렸을 수 있다.
 - `sheets.csv` 의 `quality = chain_path` 판재는 부품을 나눌 수 없어 네스팅 평가에서 뺀다.
 - 입력 도면이 없는 워크오더가 많다. `test_data/index.csv` 기준 제외 32개 중 24개가 Drive 압축 파트를 아직 못 받아 입력 도면이 없는 경우다.
+- 들어간 워크오더도 입력 도면이 모자란 경우가 많다. 2026-10-23 기준으로 정답 부품 라벨에서 도면 번호를 읽은 1,605개 중 638개가 입력에 없는 도면을 가리킨다 (`index.csv` 의 `parts_ref_missing`, `missing_refs`). 몸통·노즐 도면이 빠진 워크오더가 많다. 라벨 형식이 달라 도면 번호를 못 읽은 부품 8,716개는 세지 않았다.
 - `data_v3/synthetic` 의 생성기는 레포에 없어서, 라벨을 어떤 규칙으로 계산했는지 코드로 확인할 수 없다.

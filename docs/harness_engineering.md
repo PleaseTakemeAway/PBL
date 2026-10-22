@@ -42,7 +42,7 @@
 | 검증과 폴백 | 모델이 낸 뷰 번호·종류를 실제 후보와 대조하고, 위치 기반 라벨과 다르면 review 에 남긴다. 전개 길이는 모델이 계산하지 못하게 하고 코드가 계산한다. 복원 후보는 검증기 순위가 우선이다. 모델이 없거나 실패해도 끝까지 돈다 | L4 검증 skill, 사람 확인(`ask_human`) |
 | 보완 장치 | 없다. 한 번 묻고, 틀리면 폴백 | Claude 의 tool 루프에 맡긴다 |
 | 기록 | 모델 호출마다 원문·검증 결과·시간·skill 문서. 단계 파일(`stages/*.json`) | Trajectory (`state.py` 의 `@logged`) |
-| 평가 | 합성 도면 30장의 `label.json`: 형상 분류 정확도, 전개 블랭크 1% 이내 | KD25038 smoke test, `run_eval.py` 가 사람 커팅플랜과 비교 |
+| 평가 | 합성 도면 30장의 `label.json`: 형상 분류 정확도, 전개 블랭크 1% 이내 | KD25038 smoke test, `run_eval.py` 가 사람 커팅플랜과 비교. 입력과 정답이 짝지어진 실도면 세트는 회사에서 받은 2건뿐이다 ([data/cutplan_cases.md](data/cutplan_cases.md)) |
 | orchestration | LLM 없음. 순서가 코드에 고정 ([`stages/run.py`](../cutplan_agent/reader/stages/run.py)) | Claude (`tool_runner`, [`orchestrator.py`](../cutplan_agent/agent/orchestrator.py)) |
 | 모델 | OCR·추론 두 역할. OpenAI 호환 서버(vLLM)나 Anthropic. 기본값은 둘 다 로컬 | 전부 `claude-opus-5-5` 하나 ([`config.py`](../cutplan_agent/config.py)). Anthropic 전용 기능(beta `tool_runner`, `effort`, server-side fallback)을 쓴다 |
 | 결과 | 로컬 모델(DeepSeek-OCR-2 + Qwen3.6-27B)로 합성 30장 중 27장 형상 분류 (동료 2026-10-18 실행) | API 없는 smoke test 통과. VLM 경로(L1·L2)는 기록상 실행된 적 없음 |

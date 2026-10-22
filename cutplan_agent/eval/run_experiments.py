@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from cutplan_agent.config import DENSITY_STEEL, RUNS_DIR, TEST_DATA
+from cutplan_agent.config import DENSITY_STEEL, RUNS_DIR, TEST_DATA, density_of
 from cutplan_agent.skills import l3_rules as L3
 from cutplan_agent.skills import l4_verify as L4
 from cutplan_agent.skills.l1_perception import _render_dxf
@@ -282,7 +282,7 @@ def e1_kdm(wo: str, skip_big: bool) -> dict:
         widths.setdefault((mat, t), set()).add(W)
         Lmax, Wmax = max(Lmax, H), max(Wmax, W)
         gt_n += q
-        gt_gross += t * W * H * q * DENSITY_STEEL
+        gt_gross += t * W * H * q * density_of(mat)
         gt_area += W * H * q
         pieces += sheet_pieces
         gt_part_area += sum(x["w"] * x["h"] * q for x in sheet_pieces)

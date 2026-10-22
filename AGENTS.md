@@ -1,6 +1,6 @@
 # AGENTS.md
 
-이 레포에서 일하는 코딩 에이전트를 위한 규칙과 맥락이다. 2026-10-21 에 쓰고 2026-10-22 에 고쳤다.
+이 레포에서 일하는 코딩 에이전트를 위한 규칙과 맥락이다. 2026-10-21 에 쓰고 2026-10-22, 2026-10-23 에 고쳤다.
 
 ## 1. 비밀 정보 (절대 규칙)
 
@@ -38,13 +38,13 @@
 
 | 경로 | 출처 |
 |---|---|
-| `cutplan_agent/` | 제품 패키지. 바로 아래의 `agent/`, `skills/`, `eval/`, `config.py` 등은 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐고, 패키지로 설치하지 않는다 |
+| `cutplan_agent/` | 제품 패키지. 바로 아래의 `agent/`, `skills/`, `eval/`, `config.py` 등은 동료의 v2 skill 에이전트 (최초 커밋 f51473f). refactor 작업으로 uv 프로젝트가 됐고, 패키지로 설치하지 않는다. `eval/cp_parse.py`, `eval/drawing_refs.py` 는 이 레포에서 썼다 (2026-10-23) |
 | `cutplan_agent/unfold.py` | 툴킷의 `tools/dwg2png/vlm/unfold.py` 를 옮김 (db70044, 줄바꿈만 LF) |
 | `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
 | `cutplan_agent/reader/stages/` | 이 레포에서 만들었다 (2026-10-22, `reader-stages`). `--batch --input-mode dxf` 가 부르는 판독 13단계. 사용법은 `docs/reader/stages.md` |
-| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py`, `docs/reader/stages.md`, `experiments/serve.sh`, `experiments/vllm_common.sh`, `experiments/run_stages.sh` 는 이 레포에서 썼다. `vllm_common.sh` 는 동료의 `experiments.sh` 에서 옮긴 코드다 (a2c06a3) |
+| `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다. `tests/test_stages.py`, `tests/test_cp_parse.py`, `docs/reader/stages.md`, `experiments/serve.sh`, `experiments/vllm_common.sh`, `experiments/run_stages.sh` 는 이 레포에서 썼다. `vllm_common.sh` 는 동료의 `experiments.sh` 에서 옮긴 코드다 (a2c06a3) |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
-| `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
+| `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. `01_core_knowledge/` 는 2026-10-23 에 회사 담당자의 계산 문서 `shell_cone_head_unfold.md` 를 더하고 (녹음 정리본 원문은 b399b4d, 같은 날 기준 문서 형식으로 다시 썼다) `unfold_rules.md`·`site_constants.md` 를 그 문서에 맞춰 고쳤다. 그 전 상태는 5a710f6, 동료 실행 기록과 sha256 이 맞는 판이다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
 | `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `harness_engineering.md`, `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md`, `reader/stages.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태. 브랜치 `cutplan_v3`·`data_script`·`refactor` 는 2026-10-22 에 원격에서 지웠다 (`refactor` 는 main 에 다 들어 있다) |
 | 태그 `archive/reader-stages-7stage` | 다른 서버에서 같은 요청으로 만든 7단계 판 `reader-stages` (46fd37a). main 에는 13단계 판을 머지했다 |
@@ -60,10 +60,12 @@
 |---|---|---|---|
 | `Data/` | 1.4G | 노바투스2026.zip 의 `Data/` | cutplan_agent, scripts |
 | `test_data/` | 712M | `scripts/build_test_data.py` 로 `Data/dataset` 에서 생성 | cutplan_agent 평가 |
+| `test_data/cutting_plan/` | 9.5M | 회사 담당자에게 받은 설비 2개 (S-2120, D-1203) 의 설계 도면과 커팅플랜 (2026-10-22). 다시 만들 수 없으니 지우지 않는다 | `scripts/build_cutplan_cases.py` |
+| `test_data/cases/` | 15M | `scripts/build_cutplan_cases.py` 로 `test_data/cutting_plan` 에서 생성 (`docs/data/cutplan_cases.md`) | 실도면 평가 (아직 쓰는 코드 없음) |
 | `data_v3/synthetic/` | 3.1M | 동료 서버에서 rsync. 합성 DXF + label.json 30개 | v3 입력 |
 | `tests/fixtures/` | 3.6M | zip 의 `cutplan_agent_v3/examples/`. 고객 도면이 들어 있다 | 단위 테스트 |
 | `runs/reader/` | 70M | zip 의 `cutplan_agent_v3/output/*` 와 `data_v3_claude_batch_10141611/` | 동료 실행 결과, 비교 기준 |
-| `tools/dwg2png/` | 65M | 동료에게 받은 툴킷 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
+| `tools/dwg2png/` | 65M | 동료에게 받은 툴킷. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 (2026-10-23 확인) | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 | `skills/04_reading_records/` | 44K | zip | 코드가 읽지 않는다 |
 | `Data/drive/8. Data/` | | Google Drive 원본을 푸는 위치. 아직 없다 | `scripts/ingest_drive_inputs.py` |
 | `runs/` | | 실행 산출물 | |
@@ -71,16 +73,16 @@
 ## 6. 실행 환경
 
 - 2026-10-21 부터 작업은 GPU 가 있는 원격 서버에서 한다. 그 전 정리는 로컬 `/home/unist/developer/pbl` 에서 했다.
-- cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6125.0 kg 이다.
+- cutplan_agent: Python 3.12 이상, `uv sync` 후 `PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py`. 기대 결과는 22/22 배치, 총 6132.2 kg 이다. 2026-10-23 에 헤드 원판 식을 회사 계산 문서 식으로 바꾸기 전에는 6125.0 kg 이었다.
 - 작업 서버(호스트 `mlic`)는 RTX A5000 24GB 4장(GPU 0–3)이고 NVIDIA 드라이버는 535(CUDA 12.2)다. PyPI 기본 vLLM·torch 는 CUDA 13 용이라 이 드라이버에서 돌지 않는다. vLLM 0.31.0+cu129 환경을 `~/venvs/vllm-0.31` 에 만들어 두었고, 만드는 법은 `docs/getting_started.md` 3절에 있다.
 - v3 (reader): `experiments/requirements.txt` 와 vllm 이 깔린 파이썬으로 레포 루트에서 `./experiments/experiments.sh --python <파이썬> --vllm-bin <vllm>`. 기본값은 DeepSeek-OCR-2 (GPU 0, 포트 8000) 와 Qwen3.6-27B (GPU 1,2,3 pipeline parallel, 포트 8001) 로, 작업 서버에 맞춘 것이다. 동료는 90GB 급 GPU 한 장씩(GPU 4, 5)을 썼다.
 - 서버를 띄워 두고 여러 번 돌릴 때는 `./experiments/serve.sh --vllm-bin <vllm>` 로 서버만 띄운다 (Ctrl-C 까지 유지). 다른 셸에서 `. runs/vllm/ocr.env; . runs/vllm/reason.env` 를 하면 `main.py`, 단계 스크립트, `experiments.sh` 가 그 서버를 쓴다. `experiments.sh` 와 `serve.sh` 의 역할 설정과 서버 기동 코드는 `experiments/vllm_common.sh` 에 한 벌만 있다.
 - v3 기준값: 동료의 2026-10-18 실행 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 가 형상 분류 30개 중 27개를 맞췄다. `xgrammar_batch` 의 29/30 은 v2 코드 결과다.
 - 동료 서버 구성 (출력 JSON 의 절대 경로에서 추론. 접속한 적은 없다): `/home/hwang/yechanhwang/PBL_2026/` 아래에 `cutplan_agent_v3`, `cutplan_agent_v2`, `skills`, `data_v3`, `pbl` 이 있었다. `pbl` 은 vllm 이 설치된 Python 3.10 가상환경이다.
 - 이미지 입력의 `--no-vlm` 과 OCR 폴백 테스트는 tesseract 바이너리가 필요하다. DXF 입력의 `--no-vlm` 배치는 tesseract 없이 돈다.
-- DWG 입력을 읽으려면 `dwg2dxf` 가 필요하다. Ubuntu 22.04·24.04 apt 에는 없으므로 `scripts/install_libredwg.sh` 로 GNU LibreDWG 0.14 를 `~/.local` 에 빌드한다. 이 서버에는 2026-10-22 에 설치했다. 동료 툴킷의 Windows `dwg2dxf.exe` 도 0.14 다.
+- DWG 입력을 읽으려면 `dwg2dxf` 가 필요하다. Ubuntu 22.04·24.04 apt 에는 없으므로 `scripts/install_libredwg.sh` 로 GNU LibreDWG 0.14 를 `~/.local` 에 빌드한다. 2026-10-23 에 확인했을 때 `mlic` 에는 없어서 이 스크립트로 `~/.local/bin/dwg2dxf` 에 설치했다. 동료 툴킷의 Windows `dwg2dxf.exe` 도 0.14 다.
 - 사람이 볼 도면 PDF·PNG 는 `scripts/render_drawings.py` 로 만든다. 에이전트 코드를 import 하지 않는 독립 스크립트다.
-- LibreDWG 0.14 의 한계 (2026-10-22, `Data/dataset/KDM` 기준): 커팅플랜 DWG 67개는 모두 읽고, 동료가 Windows 에서 만든 DXF 와 헤더 날짜·정수 부호 표기만 다르다. 입력 도면 DWG 536개 중 87개는 읽지 못한다. 77개는 R2007 DWG 에서 오류를 내고도 종료 코드 0 으로 빈 DXF 를 쓰고, 10개는 ezdxf 가 열지 못하는 DXF 를 쓴다. 87개 중 47개는 같은 이름의 PDF 가 옆에 있다. 일부 도면은 글자 뒤에 실행마다 다른 쓰레기 바이트를 붙여 DXF 가 실행마다 조금씩 다르다. v2 의 `ingest_drawing` 도 같은 dwg2dxf 를 쓰므로 이 도면들에서 같은 문제를 겪는다.
+- LibreDWG 0.14 의 한계 (2026-10-22, `Data/dataset/KDM` 기준): 커팅플랜 DWG 67개는 모두 읽고, 동료가 Windows 에서 만든 DXF 와 헤더 날짜·정수 부호 표기만 다르다. 입력 도면 DWG 536개 중 87개는 읽지 못한다. 77개는 R2007 DWG 에서 오류를 내고도 종료 코드 0 으로 빈 DXF 를 쓰고, 10개는 ezdxf 가 열지 못하는 DXF 를 쓴다. 87개 중 47개는 같은 이름의 PDF 가 옆에 있다. 일부 도면은 글자 뒤에 실행마다 다른 쓰레기 바이트를 붙여 DXF 가 실행마다 조금씩 다르다. v2 의 `ingest_drawing` 도 같은 dwg2dxf 를 쓰므로 이 도면들에서 같은 문제를 겪는다. 회사에서 받은 D-1203 입력 DWG 6개도 DXF 를 TABLES 구간까지만 쓰고 멈춰 ezdxf 가 열지 못한다. 같은 이름의 PDF 가 있다.
 
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
@@ -88,4 +90,5 @@
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.
+- `test_data/` 는 입력 도면이 정답을 다 설명하지 못한다. 2026-10-23 기준으로 정답 부품 라벨에서 도면 번호를 읽은 1,605개 중 638개가 입력에 없는 도면을 가리킨다 (`test_data/index.csv` 의 `parts_ref_missing`). 입력과 정답이 짝지어진 실도면 세트는 `test_data/cases/` 의 2건이다 (`docs/data/cutplan_cases.md`). `tests/test_cp_parse.py` 의 5건은 통과한다.
 - 할 일: `docs/harness_engineering.md` 3절의 로드맵 (단계별 평가 → 작업별 모델 설정 → Claude 대 로컬 비교 → 보완 장치 → 로컬 orchestrator), v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리.

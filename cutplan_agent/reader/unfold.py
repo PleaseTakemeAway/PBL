@@ -49,7 +49,9 @@ PARAM_KEYS = (
     "head_type",
     "straight_flange",
 )
-# unfold_rules.md: "D_blank ≈ k × ID + 2 × SF_extra, k = 1.25~1.30"
+# 동료가 둔 경험계수 (2026-10-22 까지의 unfold_rules.md: "D_blank ≈ k × ID + 2 × SF_extra, k = 1.25~1.30").
+# 2026-10-23 부터 unfold_rules.md 와 v2 (skills/l3_rules.py) 는 회사 담당자 계산 문서의 형식별 식을 쓴다.
+# v3 는 data_v3/synthetic 의 press_formed 정답과 맞춰 두려고 그대로 둔다
 HEAD_BLANK_K = (1.25, 1.30)
 
 

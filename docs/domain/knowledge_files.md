@@ -17,6 +17,7 @@
 | material_mapping.md | 재질 정규화(SA516-70 = A516-70, N 유지, SS400 ↔ St37, 클래드), 판재 여부 판정 | BOM 정규화 |
 | design_data_ga.md | GA DESIGN DATA·MATERIAL SPEC·NOZZLE LIST 용도, 보강패드 지름 결정 순서 | GA 읽을 때 |
 | por_format.md | POR 열 구조, 판재 행 예, 중량 t×W×L×7.85e-6, 품명 규칙 | POR 작성 전 |
+| shell_cone_head_unfold.md | (2026-10-23 추가) 회사 담당자에게 받은 쉘·콘·헤드 전개 계산 기준. 원문은 녹음을 AI 가 정리한 대화체 문서이고 (b399b4d), 같은 날 내용을 빼지 않고 부품별 기준 문서로 다시 썼다. 평균지름 원칙, 쉘, 동심·편심 콘, 헤드 형식별 원판 식, 부품별 필요 수치, 중량 7.85·7.93, 받은 커팅플랜과의 대조와 확인할 식(7절). unfold_rules.md 와 v2 L3 식의 원본 | v2: `load_domain_prompt` 로 필요할 때. v3 단계는 읽지 않는다 |
 
 숫자 상수(커팅여유, 운반상한, 표준폭, 전개판정 키워드)는 md 가 아니라 `cutplan_agent/config.py` 에 있다.
 

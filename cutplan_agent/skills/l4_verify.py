@@ -18,9 +18,9 @@ from typing import Dict, List, Optional
 from cutplan_agent.config import (
     DATASET,
     DEFAULT_CUT,
-    DENSITY_STEEL,
     KERF_MARGIN,
     TRANSPORT_MAX,
+    density_of,
 )
 from cutplan_agent.state import HitlEvent, get_state, logged
 
@@ -94,7 +94,7 @@ def verify_weight_vs_bom(
             if b.weight_kg and b.part_name.upper() == p.part_name.upper()
         ]
         bom_weight_kg = cand[0] if cand else None
-    calc = flat["area"] * p.thickness * DENSITY_STEEL
+    calc = flat["area"] * p.thickness * density_of(p.material)
     if not bom_weight_kg:
         return {
             "part_id": p.part_id,
@@ -178,7 +178,9 @@ def compare_with_gt(job: str = "") -> dict:
             d = out.setdefault(key, {"sheets": 0, "area_m2": 0.0, "kg": 0.0})
             d["sheets"] += q
             d["area_m2"] += float(r[w_k]) * float(r[h_k]) * q / 1e6
-            d["kg"] += float(r[t_k]) * float(r[w_k]) * float(r[h_k]) * q * DENSITY_STEEL
+            d["kg"] += (
+                float(r[t_k]) * float(r[w_k]) * float(r[h_k]) * q * density_of(r[mat_k])
+            )
         return out
 
     g = agg(gt, "material", "thickness", "sheet_w", "sheet_h", "sheet_qty")

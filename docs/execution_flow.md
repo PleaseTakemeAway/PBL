@@ -14,7 +14,7 @@
 | 먼저 볼 진입점 | [`eval/smoke_kd25038.py`](../cutplan_agent/eval/smoke_kd25038.py) | [`reader/main.py`](../cutplan_agent/reader/main.py), 실험은 [`experiments/experiments.sh`](../experiments/experiments.sh) |
 | 모델 | Claude (Anthropic SDK) | OCR 모델 + 추론 모델 두 역할. 로컬 vLLM(OpenAI 호환) 또는 Anthropic |
 | 실행 | `PYTHONPATH=. uv run python <파일>` | `PYTHONPATH=. python cutplan_agent/reader/main.py ...` |
-| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6125.0 kg). VLM 경로는 기록상 미실행 ([agent/skills.md](agent/skills.md)) | 단위 테스트 88개 중 11개 실패 (알려진 상태, AGENTS.md 7절). 합성 도면 30장 형상 분류 27/30 |
+| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6132.2 kg. 2026-10-23 헤드 원판 식을 바꾸기 전에는 6125.0 kg). VLM 경로는 기록상 미실행 ([agent/skills.md](agent/skills.md)) | 단위 테스트 88개 중 11개 실패 (알려진 상태, AGENTS.md 7절). 합성 도면 30장 형상 분류 27/30 |
 
 두 코드는 한 제품의 앞단과 뒷단에 가깝다. v3 는 v2 를 대체한 버전이 아니라, 앞단(도면 판독)을 새로 만든 것이다.
 
@@ -68,7 +68,7 @@ PYTHONPATH=. uv run python cutplan_agent/eval/smoke_kd25038.py
    3. `L3.split_to_pieces(i, max_w=...)` — 판 폭(2438, 헤드는 2000)에 맞춰 조각으로 나눈다
 5. `L3.nest_all(cut="gas", allow_custom=True)` — (재질, 두께) 그룹마다 조각을 판에 배치한다
 6. `L4.verify_nesting()` — 겹침·간격·판 초과·미배치 검사. 기대값 `placed 22/22`
-7. `L3.build_por()` — 구매의뢰 행과 중량. 기대값 `total 6125.0 kg`
+7. `L3.build_por()` — 구매의뢰 행과 중량. 기대값 `total 6132.2 kg`
 8. `L3.write_cutting_plan_dxf()` — 커팅플랜 DXF
 9. `L4.confidence_report()`, `L4.ask_human("H4", ...)` — 저신뢰 항목 보고와 최종 확인 (평가 모드라 자동 응답)
 10. `runs/KD25038_smoke/` 에 `state.json`, `trajectory.json` 저장
@@ -188,7 +188,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 
 | 일 | v2 | v3 | 차이 |
 |---|---|---|---|
-| 전개 계산 | `skills/l3_rules.unfold_part` (+ `cutplan_agent/unfold.py` 엔진) | `reader/unfold.develop` | 경판 블랭크 (ID 2600, SF 50): v2 3250, v3 3415, KDM 실제 3240. 소경 0 인 원추는 v3 에서 에러 |
+| 전개 계산 | `skills/l3_rules.unfold_part` (+ `cutplan_agent/unfold.py` 엔진) | `reader/unfold.develop` | 경판 블랭크 (ID 2600, SF 50): v2 3260 (2026-10-23 부터 회사 계산 문서 식, 그 전 3250), v3 3415, KDM 실제 3240. 소경 0 인 원추는 v3 에서 에러 |
 | 지식 문서 로더 | `skills/knowledge.py` → `cutplan_agent/knowledge/*.md` | `reader/knowledge.py` → `skills/**/*.md` | 두 문서 묶음은 바이트 단위로 같다 |
 | VLM 호출 | `skills/l1_perception.vlm_parse` (Anthropic SDK) | `reader/vlm.VLMClient` (requests, 여러 provider) | |
 | DXF 읽기 | `skills/l1_perception.dxf_read_text` (글자·치수만) | `reader/dxf_reader.read_dxf` (기하 전체) | |
