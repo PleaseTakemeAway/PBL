@@ -33,6 +33,24 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/orchestrator.py "cone_0019 판독�
 | `anthropic` | Claude tool use. 루프는 다른 방식과 같은 코드다 (`tool_runner` 를 쓰지 않는다). 거절된 요청은 server-side fallback 으로 다른 모델이 이어받는다 | `.env` 의 `ANTHROPIC_API_KEY` |
 
 - 지금 `experiments/vllm_common.sh` 의 추론 서버는 tool parser 없이 뜬다. 그래서 `native` 는 400 을 받고, 오류 메시지가 서버 옵션이나 `--tool-mode schema` 를 안내한다.
+
+### 2.1 모델이 도구를 부르는 방식들 (2026-10-23 확인)
+
+"tool calling" 은 두 가지를 가리킨다. 하나는 패턴이다: 모델이 함수와 인자를 고르고, 프로그램이 실행하고, 결과를 모델에게 돌려주는 반복. 다른 하나는 API 기능이다: 요청의 `tools` 를 서버가 모델이 학습한 형식(Qwen3.6 은 `<tool_call><function=…>`)으로 프롬프트에 넣고, 모델이 쓴 호출을 서버의 tool parser 가 꺼내 `tool_calls` 로 돌려준다. `schema` 모드는 패턴은 같지만 API 기능을 쓰지 않는다. 도구 설명은 system prompt 에 글로 넣고, 답을 structured outputs(`response_format: json_schema`)로 강제하고, 그 JSON 을 이 코드가 읽어 함수를 부른다. 2026-10-23 의 cone_0019 시연(5.1절)은 `schema` 모드다.
+
+| 방식 | 요청 | 형식 보장 | 이 서버 (`serve.sh` 기본값, 2026-10-23) |
+|---|---|---|---|
+| 프롬프트만 (ReAct 식) | 도구를 글로 설명하고 모델이 쓴 글을 파싱 | 없다 | 된다 (서버 기능이 필요 없다) |
+| JSON mode | `response_format: {"type": "json_object"}` | JSON 문법만 | 된다 |
+| structured outputs (`schema` 모드) | `response_format: {"type": "json_schema", …}`. vLLM 은 xgrammar 로 스키마에 맞는 토큰만 만든다 | 스키마까지 | 된다 |
+| native `auto` | `tools`, `tool_choice: "auto"`. 모델이 호출 여부와 개수를 정하고 parser 가 꺼낸다 | 없다 (parser 가 놓칠 수 있다) | 400 `"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set` |
+| native `required` | `tool_choice: "required"`. 하나 이상 호출 | 있다 | 400 `tool_choice="required" requires --tool-call-parser to be set` |
+| native 지정 | `tool_choice: {"type": "function", "function": {"name": …}}` | 있다 | 400 `tool_choice=function "…" requires --tool-call-parser to be set` |
+
+- 확인 방법: 떠 있던 추론 서버(Qwen3.6-27B)에 도구 하나(`stage_status`)를 넣은 요청을 `tool_choice` 만 바꿔 세 번 보냈다. 서버는 재기동하지 않았다.
+- vLLM 0.31 코드(`vllm/tool_parsers/utils.py` 의 `get_json_schema_from_tools`)를 보면 `required` 는 "도구 스키마들의 `anyOf` 를 항목으로 하는 배열(`minItems: 1`)" 을, 지정은 그 함수의 인자 스키마를 structured outputs 로 강제한다. 즉 `required` 는 `schema` 모드와 거의 같은 원리다. 그래도 서버는 `--tool-call-parser` 가 없으면 요청을 거절한다 (코드의 응답 조립 부분만 보면 parser 없이 될 것처럼 보이지만 실제로는 거절된다).
+- native 의 장점은 모델이 학습한 호출 형식이라는 것, 글과 호출을 함께 쓰거나 한 번에 여러 도구를 부를 수 있다는 것이다. `schema` 모드의 장점은 약한 모델도 형식을 틀릴 수 없다는 것이고, 대가는 한 턴에 도구 하나와 우리가 만든 형식이다. 어느 쪽이 나은지는 재지 않았다. 같은 도면으로 비교하는 것이 하네스 실험 항목이다.
+- vLLM 밖의 방식: Claude tool use (`--provider anthropic`. v2 워크오더 에이전트도 Claude 의 `tool_runner` 로 skill 25개를 이 방식으로 불렀다), 모델이 파이썬 코드를 써서 함수를 부르는 방식(code-as-action, 실행 샌드박스가 필요하다).
 - `native` 를 쓰려면 서버를 `--reason-vllm-arg=--enable-auto-tool-choice --reason-vllm-arg=--tool-call-parser=qwen3_coder` 를 붙여 다시 띄운다. Qwen3.6 chat template 은 `<tool_call><function=…><parameter=…>` 형식이라 vLLM 0.31 의 `qwen3_coder`(= `qwen3_xml`) 파서가 맞을 것으로 보인다. 아직 띄워서 확인하지 않았다.
 - `schema` 는 약한 모델이 tool 형식을 틀릴 일을 디코딩 단계에서 없앤다. 대신 응답마다 tool 을 정확히 하나만 부르고, `thought` 가 생각할 자리를 대신한다. 두 방식의 차이는 그 자체로 하네스 비교 항목이다.
 - `--thinking off|on|default` (openai): Qwen3 의 `enable_thinking` 을 `chat_template_kwargs` 로 보낸다. 기본은 `off` 다. 서버의 `--max-model-len` 이 16384 라서 생각 토큰이 쌓이면 대화가 넘친다. `--effort` (anthropic) 의 기본은 `medium` 이다.
