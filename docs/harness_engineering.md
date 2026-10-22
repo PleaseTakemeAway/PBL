@@ -43,7 +43,7 @@
 | 보완 장치 | 없다. 한 번 묻고, 틀리면 폴백 | Claude 의 tool 루프에 맡긴다 |
 | 기록 | 모델 호출마다 원문·검증 결과·시간·skill 문서. 단계 파일(`stages/*.json`) | Trajectory (`state.py` 의 `@logged`) |
 | 평가 | 합성 도면 30장의 `label.json`: 형상 분류 정확도, 전개 블랭크 1% 이내 | KD25038 smoke test, `run_eval.py` 가 사람 커팅플랜과 비교. 입력과 정답이 짝지어진 실도면 세트는 회사에서 받은 2건뿐이다 ([data/cutplan_cases.md](data/cutplan_cases.md)) |
-| orchestration | LLM 없음. 순서가 코드에 고정 ([`stages/run.py`](../cutplan_agent/reader/stages/run.py)) | Claude (`tool_runner`, [`orchestrator.py`](../cutplan_agent/agent/orchestrator.py)) |
+| orchestration | 기본은 LLM 없이 순서가 코드에 고정 ([`stages/run.py`](../cutplan_agent/reader/stages/run.py)). 2026-10-23 부터 모델이 단계를 tool 로 부르는 [`orchestrator.py`](../cutplan_agent/reader/orchestrator.py) 도 있다 ([reader/orchestrator.md](reader/orchestrator.md)) | Claude (`tool_runner`, [`orchestrator.py`](../cutplan_agent/agent/orchestrator.py)) |
 | 모델 | OCR·추론 두 역할. OpenAI 호환 서버(vLLM)나 Anthropic. 기본값은 둘 다 로컬 | 전부 `claude-opus-5-5` 하나 ([`config.py`](../cutplan_agent/config.py)). Anthropic 전용 기능(beta `tool_runner`, `effort`, server-side fallback)을 쓴다 |
 | 결과 | 로컬 모델(DeepSeek-OCR-2 + Qwen3.6-27B)로 합성 30장 중 27장 형상 분류 (동료 2026-10-18 실행) | API 없는 smoke test 통과. VLM 경로(L1·L2)는 기록상 실행된 적 없음 |
 
@@ -72,7 +72,7 @@ v3 판독기는 고정 순서 workflow 의 하네스로는 갖춰진 편이다. 
 | 3 | 작업별 모델 설정: 단계마다 모델, 엔드포인트, `max_tokens`, `temperature`, skill 문서를 설정 파일로 정한다 | |
 | 4 | Claude 대 로컬 비교표: 같은 하네스로 합성 30장을 돌려 단계별로 비교한다 | |
 | 5 | 보완 장치: 검증 오류를 붙여 다시 묻기, N회 샘플 다수결(형상 분류), 두 번째 모델 확인. 하나씩 켜고 끄며 효과를 잰다 | |
-| 6 | 로컬 orchestrator: 단계 함수(`stages/*.py` 의 `run`)를 tool 로 노출하고, 로컬 모델이 tool 호출 루프로 단계를 고르고 다시 부른다 (vLLM 의 OpenAI 호환 tool calling). 고정 순서 `run.py` 가 기준선이다 | |
+| 6 | 로컬 orchestrator: 단계 함수(`stages/*.py` 의 `run`)를 tool 로 노출하고, 로컬 모델이 tool 호출 루프로 단계를 고르고 다시 부른다 (vLLM 의 OpenAI 호환 tool calling). 고정 순서 `run.py` 가 기준선이다 | 2026-10-23 `reader-agent` 브랜치에 첫 판. 로컬 Qwen3.6-27B 가 schema 모드로 cone_0019 를 끝까지 돌렸다. `native` 모드와 30장 비교는 아직. [reader/orchestrator.md](reader/orchestrator.md) |
 | 7 | v2 뒷단(전개 → 분할 → 네스팅 → POR)을 v3 단계 뒤에 잇고, 최종 산출물까지 로컬로 돈다 | |
 
 ## 4. 하네스를 만들 때 지킬 것

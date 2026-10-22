@@ -24,6 +24,7 @@
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
 | `reader/` (v3) | [quickstart.md](reader/quickstart.md) | 단계별 실행·결과 보기 명령만 모은 요약. 서버, 셸 준비, 단계를 번호로 돌리고 보기, 자주 나는 문제 |
 | | [stages.md](reader/stages.md) | DXF 판독 13단계: 단계별 실행 명령, 단계마다 남는 파일, 한 단계만 다시 돌리기 |
+| | [orchestrator.md](reader/orchestrator.md) | 자연어 명령 한 줄로 모델이 13단계를 tool 로 골라 부르는 실행기. 로컬(vLLM)과 Claude 를 같은 루프로 돌린다. 2026-10-23 시연 기록 |
 | | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
 | | [code_v3.md](reader/code_v3.md) | `experiments.sh` 실행 흐름과 파일별 역할, 출력 구조 |
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |
@@ -37,7 +38,7 @@
 | | [knowledge_files.md](domain/knowledge_files.md) | 에이전트가 읽는 지식·프롬프트 파일 목록과 읽는 시점 |
 | | [company_questions.md](domain/company_questions.md) | 회사 담당자에게 확인할 것: 콘 전개 지름, 헤드 트림, 받은 데이터의 이상한 곳 |
 
-동료의 zip 에서 받아 온 문서(`reader/` 의 `stages.md` 를 뺀 문서, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/` 의 `company_questions.md` 를 뺀 문서)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
+동료의 zip 에서 받아 온 문서(`reader/` 의 `stages.md`, `orchestrator.md` 를 뺀 문서, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/` 의 `company_questions.md` 를 뺀 문서)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
 
 ## 3. 레포 구조
 
@@ -59,6 +60,7 @@ cutplan_agent/
   eval/drawing_refs.py   부품 라벨의 도면 번호 → 입력 도면 파일
   reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
   reader/stages/       DXF 판독 13단계. 단계마다 따로 실행되고, main.py --batch 가 차례로 부른다
+  reader/tools.py, reader/orchestrator.py  13단계를 tool 로 노출하고, 모델이 자연어 명령에 따라 부르는 루프
   reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), serve.sh (서버만), verify_ocr_output.py, requirements.txt

@@ -31,7 +31,7 @@ PYTHONPATH=. uv run python \
 ./experiments/experiments.sh --dry-run   # 서버를 띄우지 않고 설정만 출력
 ```
 
-DXF 도면 1장을 단계별로 돌리고 단계마다 결과를 보려면 `cutplan_agent/reader/stages/` 의 스크립트를 쓴다 ([reader/stages.md](reader/stages.md)).
+DXF 도면 1장을 단계별로 돌리고 단계마다 결과를 보려면 `cutplan_agent/reader/stages/` 의 스크립트를 쓴다 ([reader/stages.md](reader/stages.md)). 자연어 명령 한 줄로 모델이 단계를 골라 부르게 하려면 `cutplan_agent/reader/orchestrator.py` 를 쓴다 ([reader/orchestrator.md](reader/orchestrator.md)).
 
 진입점별 실행 순서는 [execution_flow.md](execution_flow.md), 데이터와 스크립트는 [data/overview.md](data/overview.md) 를 본다.
 
