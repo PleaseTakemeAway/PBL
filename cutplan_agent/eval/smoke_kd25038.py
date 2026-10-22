@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 API 없이 L3/L4 만 돌리는 smoke test — KDM 발표자료의 검증 사례 KD25038 (VP2V901C SLOPS TANK).
 
@@ -14,18 +13,10 @@ API 없이 L3/L4 만 돌리는 smoke test — KDM 발표자료의 검증 사례 
 
 import json
 
-from cutplan_agent.skills import (
-    knowledge as K,
-)
-from cutplan_agent.skills import (
-    l2_relation as L2,
-)
-from cutplan_agent.skills import (
-    l3_rules as L3,
-)
-from cutplan_agent.skills import (
-    l4_verify as L4,
-)
+from cutplan_agent.skills import knowledge as K
+from cutplan_agent.skills import l2_relation as L2
+from cutplan_agent.skills import l3_rules as L3
+from cutplan_agent.skills import l4_verify as L4
 from cutplan_agent.state import JobState, Trajectory, set_context
 
 

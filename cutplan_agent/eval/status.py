@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 실행 중인(또는 끝난) job 의 진행 상황 조회. 다른 터미널에서:
 
@@ -10,7 +9,6 @@
 
 import argparse
 import json
-import os
 import time
 from datetime import datetime
 

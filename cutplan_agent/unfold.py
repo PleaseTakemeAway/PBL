@@ -22,7 +22,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 import ezdxf
 from ezdxf import units

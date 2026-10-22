@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Data/dataset/ 구축 스크립트.
 
@@ -26,7 +25,6 @@ import json
 import os
 import re
 import shutil
-import sys
 
 import openpyxl
 

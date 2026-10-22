@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 커팅플랜 DXF에서 부품별 전개 외곽을 잘라내어 dataset/KDM/<year>/<wo>/unfold/ 에 개별 DXF로 저장.
 
@@ -20,12 +19,10 @@ import csv
 import json
 import os
 import re
-import sys
 
 import ezdxf
 import numpy as np
 from ezdxf import bbox
-from ezdxf.math import Vec3
 
 from cutplan_agent.config import DATA_DIR, DATASET
 

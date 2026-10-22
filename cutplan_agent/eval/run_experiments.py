@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_data 전체 실험 하네스. 도메인별로 task 를 나눈다.
 
@@ -23,7 +22,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import os
 import statistics
 import time

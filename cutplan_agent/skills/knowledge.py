@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 도메인 지식 로더. '어떤 지식을 언제 불러오는가' 자체가 정책(policy)의 일부가 되도록 skill 로 노출한다.
 
 knowledge/<topic>.md 를 그대로 돌려준다. topic 목록은 list_topics() 로.
 """
 
-from pathlib import Path
 from typing import Dict, List
 
 from cutplan_agent.config import KNOWLEDGE_DIR

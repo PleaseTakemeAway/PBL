@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Google Drive 공유폴더('8. Data') 내려받은 것을 워크오더별 input/ 폴더로 분류.
 

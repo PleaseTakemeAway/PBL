@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 L1 인식(Perception) — "무엇이 어디에 적혀 있나". OCR 의 경계 안.
 
@@ -13,9 +12,7 @@ VLM 호출은 Claude API (claude-opus-5-5) + structured output. ANTHROPIC_API_KE
 from __future__ import annotations
 
 import base64
-import io
 import json
-import os
 import re
 import subprocess
 from pathlib import Path
@@ -358,9 +355,8 @@ _PROMPTS = {
 
 
 def _client():
-    from cutplan_agent.client import (
-        make_client,  # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
-    )
+    # ANTHROPIC_WORKSPACE_ID 가 있으면 anthropic-workspace-id 헤더를 붙인다
+    from cutplan_agent.client import make_client
 
     return make_client()
 

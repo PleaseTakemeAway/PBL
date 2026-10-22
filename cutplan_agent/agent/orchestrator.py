@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 오케스트레이터: Claude tool_runner 가 skill 들을 도구로 호출한다. 모든 호출은 trajectory 로 남는다.
 
@@ -16,7 +15,7 @@ import functools
 import json
 import sys
 from pathlib import Path
-from typing import Any, Callable, List
+from typing import Callable, List
 
 from cutplan_agent.config import DATASET, MAX_TOKENS, MODEL
 from cutplan_agent.skills import knowledge as K
@@ -153,8 +152,6 @@ def run(
     max_steps: int = 80,
     hitl_policy: dict | None = None,
 ) -> JobState:
-    import anthropic
-
     state = JobState(job=job, inputs=inputs, eval_mode=eval_mode)
     if hitl_policy:
         state.hitl_policy.update(hitl_policy)

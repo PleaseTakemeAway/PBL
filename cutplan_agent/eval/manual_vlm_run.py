@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 VLM 자리를 사람(또는 Claude 세션)이 대신하는 수동 파이프라인.
 
@@ -21,26 +20,17 @@ spec.json 형식:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 from pathlib import Path
 
 from cutplan_agent.agent.orchestrator import job_inputs
-from cutplan_agent.config import DATASET, DENSITY_STEEL, RUNS_DIR, TEST_DATA
-from cutplan_agent.skills import (
-    l1_perception as L1,
-)
-from cutplan_agent.skills import (
-    l2_relation as L2,
-)
-from cutplan_agent.skills import (
-    l3_rules as L3,
-)
-from cutplan_agent.skills import (
-    l4_verify as L4,
-)
-from cutplan_agent.state import JobState, Trajectory, get_state, set_context
+from cutplan_agent.config import RUNS_DIR, TEST_DATA
+from cutplan_agent.skills import l1_perception as L1
+from cutplan_agent.skills import l2_relation as L2
+from cutplan_agent.skills import l3_rules as L3
+from cutplan_agent.skills import l4_verify as L4
+from cutplan_agent.state import JobState, Trajectory, set_context
 
 
 def ingest(job: str, inputs: list[str]):
