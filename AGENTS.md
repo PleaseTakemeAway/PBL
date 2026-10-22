@@ -42,10 +42,11 @@
 | `cutplan_agent/reader/`, `cutplan_agent/reconstruct/` | 동료의 v3 (커밋 253020c, subtree merge 1ea7cc6). 268b42e 에서 `cutplan_agent_v3/` 를 역할별로 나눠 옮겼다. reader 는 도면 판독·전개도·CLI, reconstruct 는 3D 복원이다 |
 | `tests/`, `experiments/`, `docs/reader/` | 같은 v3 의 단위 테스트, 실험 스크립트, 문서. 268b42e 에서 옮겼다 |
 | `scripts/` | 동료 커밋 148e703, pyc 만 제외 (b82ebe8). 이후 정리 내역은 `git log -- scripts` |
-| `skills/` | 동료 zip 의 skills 폴더 그대로 (5f45c38). 동료 실행 기록의 sha256 과 일치 |
-| `docs/execution_flow.md` | 이 레포에서 작성. v2·v3 의 진입점과 호출 순서. 진입점이나 호출 순서를 바꾸면 같이 고친다 |
+| `skills/` | 동료 zip 의 skills 폴더 (5f45c38). 코드가 읽는 `01_core_knowledge/`, `02_prompts/` 는 그대로이고 동료 실행 기록의 sha256 과 일치한다. 사람용 문서(`README.md`, `03_reference/`)는 2026-10-22 에 내용 그대로 `docs/` 로 옮겼다 |
+| `docs/` | 사람이 읽는 문서 전부. 목차는 `docs/README.md`. `getting_started.md`, `execution_flow.md`, `data/overview.md`, `agent/skills.md` 는 이 레포에서 썼다. 실행 방법, 진입점, 호출 순서, 데이터 흐름을 바꾸면 해당 문서를 같이 고친다 |
 | 태그 `archive/cutplan_v3`, `archive/data_script` | 통합 전 원격 브랜치 상태 |
 
+- 사람이 읽는 문서는 `docs/` 아래에만 둔다. 예외는 코드가 실행 중에 읽는 문서(`skills/`, `cutplan_agent/knowledge/`, `cutplan_agent/agent/system.md`), 도구가 루트에서 찾는 `AGENTS.md`·`CLAUDE.md`, 짧은 소개만 두는 루트 `README.md` 다.
 - 폴더는 하는 일로 이름을 짓고, 버전은 git 으로 관리한다. `_v3` 같은 버전 폴더나 복사본을 만들지 않는다. 옛 상태는 커밋과 태그로 꺼낸다. 동료의 v3 원본은 253020c, 폴더를 옮기기 직전은 ca142a8 이다.
 - reader 도 레포 루트에서 `PYTHONPATH=. python cutplan_agent/reader/main.py ...` 로 실행한다. `knowledge.py` 는 레포 루트의 `skills/` 를, `experiments/*.sh` 는 `data_v3/synthetic` 과 `runs/reader/` 를 기본값으로 쓴다.
 - `scripts/` 의 경로는 `cutplan_agent.config` 의 프로젝트 루트(또는 `CUTPLAN_ROOT`) 기준이다. 레포 루트에서 `PYTHONPATH=. uv run python scripts/<이름>.py` 로 실행한다. Windows PowerShell 은 먼저 `$env:PYTHONPATH = "."` 를 실행한다. `manifest.csv` 의 경로는 슬래시로 쓰고, 예전 역슬래시 경로도 읽는다. 동료 원본 스크립트는 b82ebe8 시점의 것이다.
@@ -77,7 +78,7 @@
 ## 7. 알려진 상태와 할 일 (2026-10-21)
 
 - v3 단위 테스트 83건 중 13건이 실패한다. 동료가 올린 상태 그대로다. tesseract 미설치 7건, 실험 스크립트 GPU 기본값과 어긋난 테스트 2건, 원인 미확인 4건이다. 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
-- smoke test 의 t10 중량이 README 4절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
+- smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 현재는 5,828 kg 이다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다.
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
-- cutplan_agent 의 VLM 경로(L1·L2)는 README 기준으로 한 번도 실행된 적이 없다.
+- cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.
 - 할 일: v3 의존성의 pyproject 이전, `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리, 원격의 옛 브랜치 `cutplan_v3`·`data_script`·`refactor` 삭제.

@@ -14,7 +14,7 @@
 | 먼저 볼 진입점 | [`eval/smoke_kd25038.py`](../cutplan_agent/eval/smoke_kd25038.py) | [`reader/main.py`](../cutplan_agent/reader/main.py), 실험은 [`experiments/experiments.sh`](../experiments/experiments.sh) |
 | 모델 | Claude (Anthropic SDK) | OCR 모델 + 추론 모델 두 역할. 로컬 vLLM(OpenAI 호환) 또는 Anthropic |
 | 실행 | `PYTHONPATH=. uv run python <파일>` | `PYTHONPATH=. python cutplan_agent/reader/main.py ...` |
-| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6125.0 kg). VLM 경로는 README 기준 미실행 | 단위 테스트 83개 중 13개 실패 (알려진 상태). 합성 도면 30장 형상 분류 27/30 |
+| 검증 상태 | API 없는 smoke test 통과 (22/22 배치, 6125.0 kg). VLM 경로는 기록상 미실행 ([agent/skills.md](agent/skills.md)) | 단위 테스트 83개 중 13개 실패 (알려진 상태). 합성 도면 30장 형상 분류 27/30 |
 
 두 코드는 한 제품의 앞단과 뒷단에 가깝다. v3 는 v2 를 대체한 버전이 아니라, 앞단(도면 판독)을 새로 만든 것이다.
 

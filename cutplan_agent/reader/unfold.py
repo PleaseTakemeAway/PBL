@@ -5,7 +5,7 @@
    (skills/02_prompts/unfold_extract.md, skills/01_core_knowledge/unfold_rules.md,
    drawing_conventions_kr.md). Without a model, or for fields it leaves empty, the overall
    dimensions of the reconstructed views fill the parameters and the source says so.
-3. `develop` applies the formulas of unfold_rules.md / unfold_pipeline_tools.md §3 in code:
+3. `develop` applies the formulas of unfold_rules.md / docs/domain/unfold_pipeline_tools.md §3 in code:
    the skills forbid the model from computing lengths itself.
 4. `export_flat_pattern` writes flat_pattern.json, flat_pattern.dxf (layers BLANK/BEND/INFO) and flat_pattern.png.
 """

@@ -1,6 +1,6 @@
 """Domain-knowledge loader: the reasoning VLM reads the project's skills/*.md before it judges.
 
-`load_domain_prompt(topic)` follows skills/03_reference/skill_agent_framework.md §3-2: a topic is
+`load_domain_prompt(topic)` follows docs/agent/skill_agent_framework.md §3-2: a topic is
 the file stem of any markdown under the skills root (e.g. `unfold_rules`, `unfold_extract`,
 `drawing_conventions_kr`). The root defaults to `<repo>/skills` next to this package and can be
 moved with CUTPLAN_SKILLS_DIR. STAGE_TOPICS fixes which documents each reasoning stage reads.

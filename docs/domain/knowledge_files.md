@@ -1,5 +1,7 @@
 # skills — 커팅플랜 생성용 도메인 지식 모음
 
+> **위치 안내 (2026-10-22).** 이 문서는 원래 `skills/README.md` 였다. 사람이 읽는 문서를 `docs/` 로 모으면서 옮겼고, 아래 03_reference 의 문서는 지금 [../agent/](../agent/) (`skill_agent_framework.md`), [../data/](../data/) (`dataset_structure.md`, `part_class_rules.md`), 이 폴더(`glossary_kr.md`, `unfold_pipeline_tools.md`, `unfold_classification_table.md`)에 있다. 01_core_knowledge 와 02_prompts 는 코드가 읽으므로 `skills/` 에 그대로 있다.
+
 프로젝트 곳곳에 흩어져 있던 도메인 지식 md 파일을 2026-10-18 에 한 곳에 **복사**한 것이다. 원본은 그대로 두었으므로
 원본을 고치면 여기도 다시 복사해야 한다 (아래 "원본" 열 참조).
 
