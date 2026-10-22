@@ -35,7 +35,7 @@ experiments.sh                     (bash: 설정 → vLLM 서버 2개 기동 →
 
 | 파일 | 역할 |
 |---|---|
-| `experiments.sh` | `ocr`과 `reason` 두 역할을 설정합니다. 우선순위는 CLI > `CUTPLAN_*` 환경변수 > 기본값입니다. 기본값은 OCR=`deepseek-ai/DeepSeek-OCR-2`(GPU 4, :8000), reason=`Qwen/Qwen3.6-27B`(GPU 5, :8001, `json_schema`/xgrammar)입니다. 역할이 `local`이면 `vllm serve`를 백그라운드로 띄우고 `/health`가 응답할 때까지 기다립니다. 로그는 `server_logs/{ocr,reason}_vllm.log`에 쌓입니다. 설정은 `CUTPLAN_{OCR,REASON}_{PROVIDER,MODEL,BASE_URL,OUTPUT_FORMAT,API_KEY}`로 export되어 파이썬에 전달됩니다. 스크립트가 끝나면 trap이 서버를 종료합니다. |
+| `experiments.sh` | `ocr`과 `reason` 두 역할을 설정합니다. 우선순위는 CLI > `CUTPLAN_*` 환경변수 > 기본값입니다. 기본값은 OCR=`deepseek-ai/DeepSeek-OCR-2`(GPU 0, :8000), reason=`Qwen/Qwen3.6-27B`(GPU 1,2,3 pipeline parallel, :8001, `json_schema`/xgrammar)입니다. GPU 목록의 개수가 병렬 크기가 되고, 나누는 방식은 `--ocr-parallel`·`--reason-parallel`(`tensor`|`pipeline`)로 고릅니다. 역할이 `local`이면 `vllm serve`를 백그라운드로 띄우고 `/health`가 응답할 때까지 기다립니다. 로그는 `server_logs/{ocr,reason}_vllm.log`에 쌓입니다. 설정은 `CUTPLAN_{OCR,REASON}_{PROVIDER,MODEL,BASE_URL,OUTPUT_FORMAT,API_KEY}`로 export되어 파이썬에 전달됩니다. 스크립트가 끝나면 trap이 서버를 종료합니다. |
 | `main.py` | argparse 진입점입니다. 이 스크립트에서는 항상 `--batch`로 호출되므로 `run_batch`로 넘어갑니다. 끝나면 요약, 정확도 표, 전개도 통계를 출력합니다. |
 | `batch.py` | 샘플마다 `output/<id>/` 폴더를 만들고 분석, 전개, 복원, 내보내기를 수행합니다. 상태는 `reconstructed` / `prediction_only` / `no_valid_candidate` / `failed` 중 하나로 기록됩니다. 정답 `label.json`은 추론이 모두 끝난 뒤(`finally`)에만 읽으므로 추론 과정에 새어 들어가지 않습니다. |
 | `drawing_io.py` | 입력 종류에 따라 처리 경로를 나눕니다. 이 스크립트에서는 `.dxf` + `input_mode=dxf` + `dxf_mode=auto`이므로 `dxf_adapter`로 갑니다. |
@@ -99,5 +99,4 @@ predictions.json  reconstruction.json  accuracy.md  flat_patterns.json/.md   ←
 
 ## 4. 확인해 볼 점
 
-- `experiments.sh`의 `--help` 문구에는 "local OCR on GPU 0 + Qwen on GPU 1"이라고 되어 있지만, 실제 기본값은 GPU **4/5**입니다. 문구를 고치거나 기본값을 맞추는 게 좋겠습니다.
 - 출력 폴더에 이전 결과가 있으면 `--overwrite`를 주지 않는 한 배치가 바로 실패합니다.

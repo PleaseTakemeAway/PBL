@@ -11,7 +11,8 @@ export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
 declare -A ocr=(
   [mode]="${CUTPLAN_OCR_MODE:-local}"
   [model]="${CUTPLAN_OCR_MODEL:-deepseek-ai/DeepSeek-OCR-2}"
-  [gpu]="${CUTPLAN_OCR_GPU:-4}"
+  [gpu]="${CUTPLAN_OCR_GPU:-0}"
+  [parallel]="${CUTPLAN_OCR_PARALLEL:-tensor}"
   [port]="${CUTPLAN_OCR_PORT:-8000}"
   [provider]="${CUTPLAN_OCR_PROVIDER:-openai}"
   [base_url]="${CUTPLAN_OCR_BASE_URL:-}"
@@ -21,7 +22,8 @@ declare -A ocr=(
 declare -A reason=(
   [mode]="${CUTPLAN_REASON_MODE:-local}"
   [model]="${CUTPLAN_REASON_MODEL:-Qwen/Qwen3.6-27B}"
-  [gpu]="${CUTPLAN_REASON_GPU:-5}"
+  [gpu]="${CUTPLAN_REASON_GPU:-1,2,3}"
+  [parallel]="${CUTPLAN_REASON_PARALLEL:-pipeline}"
   [port]="${CUTPLAN_REASON_PORT:-8001}"
   [provider]="${CUTPLAN_REASON_PROVIDER:-openai}"
   [base_url]="${CUTPLAN_REASON_BASE_URL:-}"
@@ -35,10 +37,12 @@ startup_timeout="${CUTPLAN_VLLM_STARTUP_TIMEOUT:-7200}"
 allow_shared_gpus="${CUTPLAN_ALLOW_SHARED_GPUS:-0}"
 dry_run=0
 
-# These limits fit the default models' sequential drawing workflow. Repeated
-# --*-vllm-arg options are appended last and can override any of these values.
-ocr_vllm_args=(--max-model-len=8192 --max-num-seqs=16 --gpu-memory-utilization=0.20)
-reason_vllm_args=(--max-model-len=16384 --max-num-seqs=16 --gpu-memory-utilization=0.80
+# These limits fit the default models' sequential drawing workflow on 24 GB GPUs
+# (RTX A5000): the last of Qwen's three pipeline stages holds the LM head and needs
+# 0.95 to leave room for a 16k-token request. Repeated --*-vllm-arg options are
+# appended last and can override any of these values.
+ocr_vllm_args=(--max-model-len=8192 --max-num-seqs=16 --gpu-memory-utilization=0.50)
+reason_vllm_args=(--max-model-len=16384 --max-num-seqs=16 --gpu-memory-utilization=0.95
                   --structured-outputs-config.backend=xgrammar)
 inputs=()
 main_args=()
@@ -47,13 +51,16 @@ server_pids=()
 usage() {
   cat <<'EOF'
 Usage: bash experiments.sh [options] [DXF files/directories]
-No arguments: local OCR on GPU 0 + local Qwen3.6-27B on GPU 1;
+No arguments: local OCR on GPU 0 + local Qwen3.6-27B pipelined over GPUs 1,2,3;
              process data_v3/synthetic as one batch.
 
 Role options (replace ROLE with ocr or reason):
   --ROLE-mode local|api         local starts vLLM; api uses an existing endpoint.
   --ROLE-model MODEL           Model ID for that role.
-  --ROLE-gpu IDS               GPU IDs, e.g. 4 or 4,5; count sets tensor parallelism.
+  --ROLE-gpu IDS               GPU IDs, e.g. 0 or 1,2,3; count sets the parallel size.
+  --ROLE-parallel tensor|pipeline
+                               How vLLM splits the model over those GPUs.
+                               Default: OCR tensor, reason pipeline.
   --ROLE-port PORT             Local server port (OCR 8000, reason 8001).
   --ROLE-provider openai|anthropic
   --ROLE-base-url URL          API URL (OpenAI-compatible URLs include /v1).
@@ -91,7 +98,7 @@ Examples:
 
 Keys: CUTPLAN_OCR_API_KEY / CUTPLAN_REASON_API_KEY take precedence over
 OPENAI_API_KEY or ANTHROPIC_API_KEY; --ROLE-api-key-env overrides all of them.
-Mode, model, GPU, port, provider, base URL and output format also accept
+Mode, model, GPU, parallel, port, provider, base URL and output format also accept
 matching CUTPLAN_ROLE_* environment variables.
 EOF
 }
@@ -101,7 +108,7 @@ die() { echo "error: $*" >&2; exit 2; }
 set_role_option() {
   local -n config="$1"
   case "$2" in
-    mode|model|gpu|port|provider|base_url|api_key_env|output_format) config["$2"]="$3" ;;
+    mode|model|gpu|parallel|port|provider|base_url|api_key_env|output_format) config["$2"]="$3" ;;
     vllm_arg)
       local -n extra_args="${1}_vllm_args"
       extra_args+=("$3")
@@ -171,6 +178,7 @@ configure_role() {
   if [[ "${config[mode]}" == local ]]; then
     config[gpu]="${config[gpu]//[[:space:]]/}"
     [[ "${config[gpu]}" =~ ^(0|[1-9][0-9]*)(,(0|[1-9][0-9]*))*$ ]] || die "$role GPU IDs must be comma-separated integers without leading zeroes"
+    [[ "${config[parallel]}" == tensor || "${config[parallel]}" == pipeline ]] || die "$role parallel must be tensor or pipeline"
     [[ "${config[port]}" =~ ^[0-9]{1,5}$ ]] && (( 10#${config[port]} >= 1 && 10#${config[port]} <= 65535 )) || die "$role port must be 1..65535"
     config[port]="$((10#${config[port]}))"
     config[provider]=openai
@@ -222,7 +230,7 @@ for role in ocr reason; do
   declare -n config="$role"
   echo "$role: mode=${config[mode]} model=${config[model]} provider=${config[provider]} output_format=${config[output_format]}"
   if [[ "${config[mode]}" == local ]]; then
-    echo "  GPUs=${config[gpu]} port=${config[port]}"
+    echo "  GPUs=${config[gpu]} parallel=${config[parallel]} port=${config[port]}"
   else
     echo "  endpoint=${config[base_url]}"
   fi
@@ -267,12 +275,16 @@ start_server() {
     die "port ${config[port]} already has a server; choose --${role}-port or use api mode"
   fi
   IFS=',' read -r -a ids <<< "${config[gpu]}"
-  args=(serve "${config[model]}" --host 127.0.0.1 --port "${config[port]}" --tensor-parallel-size "${#ids[@]}")
+  args=(serve "${config[model]}" --host 127.0.0.1 --port "${config[port]}" "--${config[parallel]}-parallel-size" "${#ids[@]}")
   [[ "${!trust_name:-0}" != 1 ]] || args+=(--trust-remote-code)
   mkdir -p "$output_dir/server_logs"
-  echo "Starting $role vLLM: GPU=${config[gpu]}, TP=${#ids[@]}; log=$log_file"
+  echo "Starting $role vLLM: GPU=${config[gpu]}, ${config[parallel]} parallel=${#ids[@]}; log=$log_file"
+  # FlashInfer's sampler is JIT-compiled with nvcc on first use and fails where no
+  # CUDA toolkit matches the wheel. vlm.py samples at temperature 0, so vLLM's
+  # PyTorch sampler gives the same greedy output.
   CUDA_VISIBLE_DEVICES="${config[gpu]}" \
     VLLM_ENGINE_READY_TIMEOUT_S="${VLLM_ENGINE_READY_TIMEOUT_S:-$startup_timeout}" \
+    VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}" \
     TRITON_ALLOW_NON_CONSTEXPR_GLOBALS="${TRITON_ALLOW_NON_CONSTEXPR_GLOBALS:-${CUTPLAN_TRITON_ALLOW_NON_CONSTEXPR_GLOBALS:-1}}" \
     "$vllm_bin" "${args[@]}" "${extra_args[@]}" >"$log_file" 2>&1 &
   pid=$!
