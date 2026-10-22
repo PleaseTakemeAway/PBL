@@ -33,8 +33,9 @@
 | | [unfold_pipeline_tools.md](domain/unfold_pipeline_tools.md) | 형상별 전개 판정과 전개 공식, 툴킷 설명 |
 | | [unfold_classification_table.md](domain/unfold_classification_table.md) | KDM 도면 부품 라벨 779건의 전개 분류표 |
 | | [knowledge_files.md](domain/knowledge_files.md) | 에이전트가 읽는 지식·프롬프트 파일 목록과 읽는 시점 |
+| | [company_questions.md](domain/company_questions.md) | 회사 담당자에게 확인할 것: 콘 전개 지름, 헤드 트림, 받은 데이터의 이상한 곳 |
 
-동료의 zip 에서 받아 온 문서(`reader/` 의 `stages.md` 를 뺀 문서, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/`)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
+동료의 zip 에서 받아 온 문서(`reader/` 의 `stages.md` 를 뺀 문서, `agent/skill_agent_framework.md`, `data/dataset_structure.md`, `data/part_class_rules.md`, `domain/` 의 `company_questions.md` 를 뺀 문서)는 내용을 그대로 두었다. 옛 경로가 나오면 [execution_flow.md](execution_flow.md) 와 [getting_started.md](getting_started.md) 의 경로가 현재 기준이다.
 
 ## 3. 레포 구조
 
