@@ -100,11 +100,11 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 슬라이드의 내용 | 출처 |
 |---|---|
 | 보이려는 것 (가설): 작은 로컬 AI 라도 하네스를 잘 만들면 쓸 만한 결과 | [harness_engineering.md](harness_engineering.md) 1절의 목표 문장. 아직 증명 전이라 "주장" 대신 "가설" 로 적었다 |
-| 시제품: AI 판단 3번, 133초, 지어낸 숫자 0 | `reader-agent` 브랜치의 orchestrator (`cutplan_agent/reader/tools.py`, `orchestrator.py`, 아직 main 에 없다) 를 cone_0019 에 돌린 실행 (2026-10-23, schema 모드). 명령, 기록 위치 `runs/reader/agent/orchestrator/20261023-021136/`, 보여 주는 명령(`scripts/reader/show_trajectory.py`)은 그 브랜치의 `docs/reader/orchestrator.md` 5.1절. 133초는 `trajectory.jsonl` 마지막 턴의 경과 시간이다 |
-| 시제품은 "답 양식 강제 (structured outputs)", 표준 tool calling 은 서버 설정 후 확인 (6 · 8장) | 시연은 `--tool-mode schema` 다. 지금 추론 서버는 `--tool-call-parser` 없이 떠 있어 native tool calling(`auto`, `required`, 지정) 요청이 모두 400 이다 (2026-10-23 요청으로 확인). 방식 비교는 `reader-agent` 브랜치 `docs/reader/orchestrator.md` 2.1절 |
+| 시제품: AI 판단 3번, 133초, 지어낸 숫자 0 | orchestrator (`cutplan_agent/reader/tools.py`, `orchestrator.py`. `reader-agent` 브랜치에서 만들어 main 에 머지했다) 를 cone_0019 에 돌린 실행 (2026-10-23, schema 모드). 명령, 기록 위치 `runs/reader/agent/orchestrator/20261023-021136/`, 보여 주는 명령(`scripts/reader/show_trajectory.py`)은 [reader/orchestrator.md](reader/orchestrator.md) 5.1절. 133초는 `trajectory.jsonl` 마지막 턴의 경과 시간이다 |
+| 시제품은 "답 양식 강제 (structured outputs)", 표준 tool calling 은 서버 설정 후 확인 (6 · 8장) | 시연은 `--tool-mode schema` 다. 지금 추론 서버는 `--tool-call-parser` 없이 떠 있어 native tool calling(`auto`, `required`, 지정) 요청이 모두 400 이다 (2026-10-23 요청으로 확인). 방식 비교는 [reader/orchestrator.md](reader/orchestrator.md) 2.1절 |
 | v2 계산 도구가 끝까지 돈다 | smoke test: 손으로 넣은 부품 8개로 22/22 배치, 6132.2 kg ([AGENTS.md](../AGENTS.md) 6절) |
-| 에이전트 구조: 도구 17개 = 판독 13단계 + 4 | `reader-agent` 브랜치 `docs/reader/orchestrator.md` 3절 (`list_drawings`, `stage_status`, `show_stage`, `run_<단계>` 13개, `run_stages`) |
-| AI 의 판단 세 번 (글자 그대로, 줄임표로 줄였다) | `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 의 턴 1 · 2 · 3 `text`, 경과 6.1 · 16.9 · 133.0 초, `run_stages` 92.3 초. 보는 명령은 `scripts/reader/show_trajectory.py` (`reader-agent` 브랜치) |
+| 에이전트 구조: 도구 17개 = 판독 13단계 + 4 | [reader/orchestrator.md](reader/orchestrator.md) 3절 (`list_drawings`, `stage_status`, `show_stage`, `run_<단계>` 13개, `run_stages`) |
+| AI 의 판단 세 번 (글자 그대로, 줄임표로 줄였다) | `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 의 턴 1 · 2 · 3 `text`, 경과 6.1 · 16.9 · 133.0 초, `run_stages` 92.3 초. 보는 명령은 `scripts/reader/show_trajectory.py` |
 | 결과 표 예시 (SHELL t8, TOP HEAD t10) | S-2120 정답 `parts.csv` 의 두께. tool calling 으로 만들 결과의 모양을 보이는 예시다 |
 | 다음 주에 할 일 네 가지, 목표 "몸통 두께를 8 로" | 2026-10-23 에 제안한 계획이다 (확정 아님). 근거는 5절의 실패 사례와 [harness_engineering.md](harness_engineering.md) 3절 로드맵 2 · 5 · 6번 |
 | 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, 2번 → 단계별 채점, 4 · 5번 → 하네스 장치 비교, 7번 → 뒷단 연결. "실제 도면용 도구 · 검사" 는 5절의 실패에서 나온 새 단계다. 날짜는 정하지 않았다 |
