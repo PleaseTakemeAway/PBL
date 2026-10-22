@@ -65,7 +65,7 @@
 | `data_v3/synthetic/` | 3.1M | 동료 서버에서 rsync. 합성 DXF + label.json 30개 | v3 입력 |
 | `tests/fixtures/` | 3.6M | zip 의 `cutplan_agent_v3/examples/`. 고객 도면이 들어 있다 | 단위 테스트 |
 | `runs/reader/` | 70M | zip 의 `cutplan_agent_v3/output/*` 와 `data_v3_claude_batch_10141611/` | 동료 실행 결과, 비교 기준 |
-| `tools/dwg2png/` | 65M | 동료에게 받은 툴킷 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
+| `tools/dwg2png/` | 65M | 동료에게 받은 툴킷. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 (2026-10-23 확인) | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 | `skills/04_reading_records/` | 44K | zip | 코드가 읽지 않는다 |
 | `Data/drive/8. Data/` | | Google Drive 원본을 푸는 위치. 아직 없다 | `scripts/ingest_drive_inputs.py` |
 | `runs/` | | 실행 산출물 | |

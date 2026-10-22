@@ -21,7 +21,7 @@
 | `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 생성기는 레포에 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
 | `tests/fixtures/` | reader 단위 테스트 입력: `box.json`, `KD23041_CP.dxf`, HCE 스캔 `hce_*.png`. 고객 도면이 들어 있다 | 압축본 | `tests/` |
 | `runs/` | 실행 결과. v2 는 `runs/<job>/`, v3 는 `runs/reader/` (동료의 기준 결과 `deepseek_ocr_qwen_reasoning_skills` 등 포함) | 실행 | `eval/status.py`, `eval/compare_outputs.py`, 기준선 비교 |
-| `tools/dwg2png/` | 이전 세션 툴킷. 이 서버에는 없다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
+| `tools/dwg2png/` | 이전 세션 툴킷. `Data/_dataset/` 을 만든 `cp_extract.py` 가 들어 있다. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 
 경로의 기준은 `cutplan_agent/config.py` 의 `ROOT` 다. 기본은 레포 루트이고 `CUTPLAN_ROOT` 로 바꿀 수 있다.
 
