@@ -1,6 +1,6 @@
 # 도면 판독 단계별 실행
 
-DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결과를 파일로 확인하는 방법이다. 2026-10-22 에 `reader-stages` 브랜치에서 만들었다.
+DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결과를 파일로 확인하는 방법이다. 붙여 넣을 명령만 보려면 [quickstart.md](quickstart.md) 를 본다. 2026-10-22 에 `reader-stages` 브랜치에서 만들었다.
 
 - 단계마다 파이썬 파일이 하나씩 있고 ([`cutplan_agent/reader/stages/`](../../cutplan_agent/reader/stages/)), 각각 따로 실행된다.
 - `main.py --batch --input-mode dxf` 도 이 단계들을 차례로 부른다. 그래서 한 번에 돌린 결과와 단계별로 손으로 돌린 결과가 같다 (`tests/test_stages.py` 가 확인한다).
@@ -61,10 +61,9 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 
 ## 3. 실행
 
-모든 명령은 레포 루트에서 실행한다. v3 의존성은 아직 uv 환경에 없어서 `--with` 로 붙인다. 아래에서는 줄여서 `"${PY[@]}"` 로 쓴다. 배열이라 bash 와 zsh 에서 똑같이 돈다 (문자열 `PY="uv run ..."` 은 zsh 에서 단어로 나뉘지 않아 `$PY` 가 명령 하나로 읽힌다).
+모든 명령은 레포 루트에서 실행한다. 판독기 의존성은 uv 환경에 있으므로 `uv sync` 한 뒤 `uv run python` 으로 돌린다. `cutplan_agent` 는 설치하지 않으므로 `PYTHONPATH=.` 가 없으면 `No module named 'cutplan_agent'` 로 멈춘다.
 
 ```bash
-PY=(uv run --with requests --with opencv-python-headless --with pytesseract python)
 DXF=data_v3/synthetic/cone_0019/cone_0019.dxf
 W=runs/reader/check/cone_0019
 ```
@@ -81,14 +80,14 @@ W=runs/reader/check/cone_0019
 
 ```bash
 # 배치 (도면 1장도 된다). 결과는 runs/reader/check/cone_0019/ 와 집계 파일
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/main.py --batch --input-mode dxf \
+PYTHONPATH=. uv run python cutplan_agent/reader/main.py --batch --input-mode dxf \
   --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1 \
   --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1 \
   --output-dir runs/reader/check $DXF
 
 # 도면 1장, 단계마다 한 줄씩 결과를 출력한다. 집계 파일과 prediction.json 은 만들지 않는다
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $DXF $W --no-vlm
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 옵션>   # 07 까지만
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $DXF $W --no-vlm
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 옵션>   # 07 까지만
 ```
 
 `run.py` 는 `main.py --batch` 의 `--analyze-only`, `--no-unfold`, `--no-confirm`, `--units`, `--tolerance`, `--max-candidates`, `--projection` 을 그대로 받는다. 옵션으로 건너뛴 단계도 `skipped` 파일을 남긴다.
@@ -96,26 +95,36 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $DXF $W --to sheet <�
 ### 3.2 한 단계씩
 
 ```bash
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/read.py $DXF $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_regex.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_ocr.py $W --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_fields.py $W --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/views.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/view_labels.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/sheet.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/document.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/unfold_params.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/develop.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/reconstruct.py $W
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/confirm.py $W --reason-model ... --reason-base-url ...
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/export.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/read.py $DXF $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/title_regex.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/title_ocr.py $W --ocr-model deepseek-ai/DeepSeek-OCR-2 --ocr-base-url http://127.0.0.1:8000/v1
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/title_fields.py $W --reason-model <추론 모델> --reason-base-url http://127.0.0.1:8001/v1
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/views.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/view_labels.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/sheet.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/document.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/unfold_params.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/develop.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/reconstruct.py $W
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/confirm.py $W --reason-model ... --reason-base-url ...
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/export.py $W
 ```
 
-같은 명령을 단계마다 주석 한 줄과 함께 [`experiments/run_stages.sh`](../../experiments/run_stages.sh) 에 묶어 두었다.
+단계 파일 이름 대신 번호로 고르려면 [`scripts/reader/run_stages.py`](../../scripts/reader/run_stages.py) 를 쓴다. 4절의 `show_stages.py` 와 같은 방식(번호, 이름, 범위)으로 단계를 고른다.
 
-- `./experiments/run_stages.sh [DXF] [작업 폴더]` 는 13단계를 차례로 돌리고 끝에 단계별 상태를 출력한다. 파이썬은 기본으로 `~/venvs/vllm-0.31/bin/python` 을 쓴다.
-- 서버는 띄우지 않는다. `./experiments/serve.sh` 로 띄워 두고, `runs/vllm/*.env` 를 source 했으면 그 모델과 주소를 쓴다. 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록되므로, 스크립트가 먼저 두 서버가 응답하는지 확인하고 응답이 없으면 멈춘다. `NO_VLM=1` 이면 모델 없이 돈다.
-- 한 단계만 돌릴 때는 스크립트의 '준비'와 '서버 확인' 블록을 셸에 붙여 넣고(`ocr ok`, `reason ok` 가 둘 다 나와야 한다) 그 단계 줄을 실행한다. 스크립트도 파이썬 경로 하나와 배열(`"${O[@]}"`)을 써서 bash 와 zsh 에서 모두 된다.
+```bash
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1 --dxf $DXF   # 01 (도면을 처음 읽을 때만 --dxf)
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 6              # 06 하나
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 2-7            # 02–07
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 6 --show       # 돌리고 바로 표와 그림
+PYTHONPATH=. uv run python scripts/reader/run_stages.py $W 1-5 --no-vlm   # 모델 없이
+```
+
+- 이어지는 단계는 `run.py --from <첫 단계> --to <끝 단계>` 한 번으로 돈다. 결과는 단계 파일을 직접 실행한 것과 같다.
+- 01 을 다시 돌릴 때 `--dxf` 가 없으면 `01_read.json` 에 기록된 도면을 다시 읽는다. 단계 없이 주면 01–13 전부다.
+- 단계를 다시 돌리면 그 뒤 단계 파일이 지워진다. `1 3` 처럼 떨어진 단계를 주면 01 이 02 를 지워서 03 은 돌지 않는다.
+- 모델 옵션(`--ocr-model`, `--reason-model` 등)과 `--no-vlm`, `--analyze-only`, `--tolerance` 같은 옵션은 `run.py` 에 그대로 넘긴다. 옵션은 단계 번호 앞에 써도 된다.
+- 모델 단계는 서버에 연결하지 못해도 `done` 으로 남고 실패는 `trace` 에만 기록된다. 돌리기 전에 `curl -s http://127.0.0.1:8000/v1/models` (OCR), `:8001` (추론) 으로 서버를 확인하고, 돌린 뒤 `show_stages.py` 의 모델 호출 줄을 본다.
 
 각 스크립트는 상태, 핵심 결과 몇 줄, 단계 파일 경로를 출력한다. 단계별 옵션은 `--help` 로 본다 (`views.py --gap-ratio`, `view_labels.py --projection`, `document.py --units`, `reconstruct.py --tolerance --max-candidates`).
 
@@ -123,8 +132,8 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/export.py $W
 
 ```bash
 # OCR 모델만 바꿔서 03 을 다시 → 04 부터 다시
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/title_ocr.py $W --ocr-model <다른 OCR 모델> --ocr-base-url ...
-PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $W --from title_fields <모델 옵션>
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/title_ocr.py $W --ocr-model <다른 OCR 모델> --ocr-base-url ...
+PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $W --from title_fields <모델 옵션>
 ```
 
 `run.py <work> --from <단계>` 는 그 단계부터 끝까지(또는 `--to` 까지) 돈다. 앞 단계는 작업 폴더에 있는 파일을 그대로 쓰므로 DXF 경로를 주지 않아도 된다.
@@ -136,6 +145,40 @@ PYTHONPATH=. "${PY[@]}" cutplan_agent/reader/stages/run.py $W --from title_field
 - 단계에서 오류가 나면 `failed` 파일을 남기고 종료 코드 1 로 끝난다. `main.py --batch` 와 `run.py` 는 남은 단계를 `skipped` 로 남긴다.
 
 ## 4. 결과 보기
+
+단계 파일은 다음 단계가 읽는 자료라 사람이 보기 어렵다. [`scripts/reader/show_stages.py`](../../scripts/reader/show_stages.py) 가 단계마다 볼 것만 골라 표로 출력하고, 같은 내용을 그림으로 그린다.
+
+```bash
+uv run python scripts/reader/show_stages.py $W              # 있는 단계 전부
+uv run python scripts/reader/show_stages.py $W 6            # 한 단계 (번호나 이름: view_labels)
+uv run python scripts/reader/show_stages.py $W 2 4 6-9      # 여러 단계, 범위
+uv run python scripts/reader/show_stages.py $W 9 --raw      # 모델 원문 응답까지
+uv run python scripts/reader/show_stages.py $W 1 --limit 0  # 목록을 자르지 않는다 (기본 30줄)
+uv run python scripts/reader/show_stages.py $W --no-figures # 표만
+```
+
+- 표: `skipped` 는 이유, `failed` 는 오류를 출력하고, 모델 단계는 호출마다 모델, 걸린 시간, 성공 여부, 붙인 skill 문서를 출력한다.
+- 그림: 고른 단계마다 `<작업 폴더>/figures/NN_<단계>.png` 를 쓰고, 단계 끝에 그 경로와 단계가 직접 남긴 그림(`analysis/*.png`, `flat_pattern.png`)의 경로를 출력한다.
+- `figures/index.html`: 모든 단계의 그림과 표를 한 페이지에 묶는다. 고른 단계만 그림을 새로 그리고, 이 파일에는 늘 모든 단계가 들어간다.
+- 정답: DXF 옆에 `label.json` 이 있으면 (합성 도면) 표제란, 뷰 이름, 형상, 복원 가능 여부, 전개 파라미터, 전개 결과에 정답을 나란히 보여 준다. 뷰 이름은 bbox 가 정답 뷰와 절반 넘게 겹칠 때만 짝짓는다.
+- 단계 파일만 읽고 `cutplan_agent` 를 import 하지 않아서 `PYTHONPATH` 가 없어도 된다.
+
+| 단계 | 그림 |
+|---|---|
+| 01 | 도면 전체를 레이어별 색으로 (점선 = 숨은선) |
+| 02 | 표제란으로 찾은 영역 (빨간 상자), 그 확대, 필드 표 (정답과 같으면 초록, 다르거나 못 읽으면 빨강) |
+| 03 | OCR 에 넣은 그림과 받아쓴 글자 |
+| 04 | 정규식, 모델 답, 최종값, 정답 표 |
+| 05 | 뷰 후보 (주황), 제외 영역 (회색), 도면 틀 (파란 점선) |
+| 06 | 뷰 라벨 (front 빨강, top 파랑, right 초록), 정답 뷰와 다르면 함께 표시, 형상 확률 막대 |
+| 08 | 3D 복원에 넘기는 front/top/right 뷰와 치수 |
+| 09 | 전개 파라미터와 누가 채웠나 (모델 / 코드) |
+| 10 | 계산한 전개도와 정답을 같은 축척으로 겹친 그림 (부채꼴, 직사각형, 원) |
+| 11 | 3D 와이어프레임 후보와 검사 결과 |
+
+07, 12 는 단계가 남긴 `analysis/sheet.png`, `analysis/candidates.png` 를 쓴다. 원격 서버에서는 PNG 를 VSCode 로 바로 열거나, `uv run python -m http.server 8765 -d $W` 를 띄우고 `http://localhost:8765/figures/index.html` 을 연다 (VSCode 가 포트를 넘겨 준다). 한글 폰트는 matplotlib 이 아는 것이 없으면 `fc-list :lang=ko` 로 찾는다.
+
+JSON 을 직접 볼 때는 아래처럼 한다.
 
 ```bash
 # 단계 상태 한눈에
@@ -172,3 +215,11 @@ run.run_drawing(dxf, work, (ocr, reason), last="sheet")   # 여러 단계
 ```
 
 단계 안의 함수(`regex_title_block`, `find_views`, `label_with_vlm`, `read_unfold_params` 등)도 따로 import 해서 부를 수 있다. 단계 사이에 넘기는 객체를 JSON 으로 바꾸는 함수는 [`stages/workspace.py`](../../cutplan_agent/reader/stages/workspace.py) 에 있다.
+
+## 6. 모델 답의 재현성 (2026-10-23 확인)
+
+모델 호출은 `temperature` 0 (greedy) 이라, 같은 서버에 같은 입력을 주면 답이 같다. `mlic` (Qwen3.6-27B, GPU 1–3 pipeline parallel) 에서 06 을 `cylinder_0013`, `cylinder_0018`, `flat_0005` 에 세 번씩 돌렸더니 원문 응답이 세 번 모두 바이트 단위로 같았다.
+
+이 세 도면은 동료의 2026-10-18 실행(`runs/reader/deepseek_ocr_qwen_reasoning_skills`, 30장 중 27장)에서 06 의 모델 답이 검증을 통과하지 못해(`invalid reply`) 형상이 비었던 도면이다. 이번에는 셋 다 맞혔다. 그러니 차이는 실행마다 달라지는 무작위성이 아니라 실행 환경 차이에서 왔다. 다른 점은 GPU 와 병렬 방식(동료는 90GB 급 GPU 한 장, 여기는 A5000 3장 pipeline parallel), vLLM 버전(동료 것은 모른다), 06 에 붙는 skill 문서(`unfold_rules.md` 를 2026-10-23 에 고쳤다)다. 이 중 무엇이 원인인지는 아직 가리지 않았다.
+
+정확도를 비교할 때는 같은 환경에서 다시 돌린 결과끼리 비교하고, 비교표에 GPU·병렬 방식·vLLM 버전·skill 문서 sha256 (단계 파일 `trace` 의 `skills`) 을 함께 적는다.
