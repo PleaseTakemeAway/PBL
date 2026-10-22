@@ -21,7 +21,8 @@
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
-| `reader/` (v3) | [stages.md](reader/stages.md) | DXF 판독 13단계: 단계별 실행 명령, 단계마다 남는 파일, 한 단계만 다시 돌리기 |
+| `reader/` (v3) | [quickstart.md](reader/quickstart.md) | 단계별 실행·결과 보기 명령만 모은 요약. 서버, 셸 준비, 단계를 번호로 돌리고 보기, 자주 나는 문제 |
+| | [stages.md](reader/stages.md) | DXF 판독 13단계: 단계별 실행 명령, 단계마다 남는 파일, 한 단계만 다시 돌리기 |
 | | [README.md](reader/README.md) | 동료가 쓴 v3 사용법: 입력 경로, VLM 설정, 실험 스크립트 옵션 |
 | | [code_v3.md](reader/code_v3.md) | `experiments.sh` 실행 흐름과 파일별 역할, 출력 구조 |
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |

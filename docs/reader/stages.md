@@ -1,6 +1,6 @@
 # 도면 판독 단계별 실행
 
-DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결과를 파일로 확인하는 방법이다. 2026-10-22 에 `reader-stages` 브랜치에서 만들었다.
+DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결과를 파일로 확인하는 방법이다. 붙여 넣을 명령만 보려면 [quickstart.md](quickstart.md) 를 본다. 2026-10-22 에 `reader-stages` 브랜치에서 만들었다.
 
 - 단계마다 파이썬 파일이 하나씩 있고 ([`cutplan_agent/reader/stages/`](../../cutplan_agent/reader/stages/)), 각각 따로 실행된다.
 - `main.py --batch --input-mode dxf` 도 이 단계들을 차례로 부른다. 그래서 한 번에 돌린 결과와 단계별로 손으로 돌린 결과가 같다 (`tests/test_stages.py` 가 확인한다).
