@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 API 없이 L3/L4 만 돌리는 smoke test — KDM 발표자료의 검증 사례 KD25038 (VP2V901C SLOPS TANK).
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 에이전트가 매 step 읽고 쓰는 단일 상태(JobState) + trajectory 로그.
 

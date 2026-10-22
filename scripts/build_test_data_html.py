@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_data/README.html 생성 — 단일 파일(썸네일 base64 내장), 브라우저에서 바로 열림.
 

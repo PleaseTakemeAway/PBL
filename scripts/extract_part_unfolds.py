@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 커팅플랜 DXF에서 부품별 전개 외곽을 잘라내어 dataset/KDM/<year>/<wo>/unfold/ 에 개별 DXF로 저장.
 

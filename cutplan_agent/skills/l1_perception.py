@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 L1 인식(Perception) — "무엇이 어디에 적혀 있나". OCR 의 경계 안.
 

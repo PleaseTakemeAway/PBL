@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 L4 검증·HITL — 저신뢰·모호 항목은 사람이 확정. verifier 는 Phase 2 RL 의 reward 원형.
 

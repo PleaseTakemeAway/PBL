@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 L2 관계·의미 매핑(Relation & Semantic) — "무엇을 의미하고 무엇과 이어지나". VLM 추론의 본체.
 

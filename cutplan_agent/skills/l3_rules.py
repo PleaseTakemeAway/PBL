@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 L3 계산·로직(Rule engine) — 결정적. LLM 은 파라미터만 넘긴다.
 

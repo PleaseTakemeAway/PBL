@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 오케스트레이터: Claude tool_runner 가 skill 들을 도구로 호출한다. 모든 호출은 trajectory 로 남는다.
 

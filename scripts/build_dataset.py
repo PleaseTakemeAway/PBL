@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Data/dataset/ 구축 스크립트.
 

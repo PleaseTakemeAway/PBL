@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_data 전체 실험 하네스. 도메인별로 task 를 나눈다.
 

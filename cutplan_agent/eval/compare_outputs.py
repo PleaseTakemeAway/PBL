@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 우리 결과(runs/<run>) 를 정답 파일(test_data/<job>/output_unfold, output_cutting_plan) 과 나란히 비교.
 
