@@ -8,7 +8,7 @@
 |---|---|
 | `presentation/slides.py` | 모든 덱이 같이 쓰는 색, 글꼴, 도형, 슬라이드 틀(`Deck`) |
 | `presentation/build_reader_orchestrator.py` | "도면 판독 orchestrator" 파트 (14장, 약 18분) → `reader_orchestrator.pptx` |
-| `presentation/build_dwg_dxf.py` | "DWG 와 DXF" 파트 (12장, 약 15분) → `dwg_dxf.pptx`. 글은 줄이고 차트 · 도면 그림 · 도식으로 보여 준다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
+| `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -37,16 +37,16 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 
 ## 4. DWG·DXF 파트의 숫자 출처 (2026-10-23, `mlic`)
 
+청중은 AI 와 프로그래밍을 잘 모르는 사람들이다. 이야기 순서: AI 는 글자와 그림을 읽고 바이너리는 못 읽는다 → DWG 는 메모장에서 기호뿐, DXF 는 글자 → 그런데 실제 도면의 DXF 는 AI 가 한 번에 읽는 양의 50배 → 프로그램은 0.1초에 읽는다 → 둘이 잘하는 것이 다르다 → 함께 하면 → 그래서 DWG 를 DXF 로 바꾼다.
+
 | 슬라이드의 숫자 | 출처 |
 |---|---|
-| 입력 도면 DWG 536장, 버전 AC1021 301 · AC1018 231 · AC1024 4 | `Data/dataset/KDM` 아래 `input` 의 `*.dwg` 첫 6바이트 |
-| DWG 0.2–0.5 MB → DXF 1.1–2.8 MB (5.0–7.7배) | 위 536장을 정렬해 50장마다 1장씩 뽑은 11장을 LibreDWG 0.14 `dwg2dxf` 로 변환. R2007 2장은 7,463 바이트 빈 DXF, 나머지 9장 |
-| 82만–218만 토큰 | 변환한 DXF 3장 전체를 Qwen3.6-27B 토크나이저로 셈 (837,402 / 823,730 / 2,179,027) |
-| 4,747 토큰, 엔티티 66개 | `data_v3/synthetic/cone_0019/cone_0019.dxf` 같은 방법. 엔티티 수는 판독 01단계 결과 |
-| cone_0019 의 표제란 SPCC, 4t · 1/2 · SYN-00019, 치수 150 × 150 × 150 | 판독 02 `title_regex`, 08 `document` 단계 결과 (orchestrator 시연 실행) |
-| 262,144 | Qwen3.6-27B 토크나이저 설정의 최대 길이 |
-| 엔티티 2,085–7,245개, LINE 60–69% | 변환한 DXF 2장을 ezdxf 로 읽어 modelspace 엔티티를 셈 |
-| UTF-8 로 62자 깨짐, CP949 로 한글 39자 | AC1018 DXF 2장(`$DWGCODEPAGE` = ANSI_949)을 두 인코딩으로 읽어 셈 |
-| 87장 실패 (빈 DXF 77, ezdxf 가 못 여는 DXF 10), 그중 47장은 PDF 있음 | [AGENTS.md](../AGENTS.md) 6절 (2026-10-22) |
+| DWG 를 메모장으로 연 모습, 읽히는 글자 23% | `cone_0019.dxf` 를 LibreDWG 0.14 `dxf2dwg` 로 DWG(6,346 바이트, AC1015)로 저장. 바이트를 Latin-1 로 보고 제어 문자를 □ 로 바꿈. 출력 가능한 ASCII 바이트 비율 23%. 문자열은 스크립트의 `DWG_AS_TEXT` |
+| DXF 를 메모장으로 연 모습 | `cone_0019.dxf` 의 첫 LINE 엔티티 |
+| AI 가 한 번에 약 50쪽, 실제 도면 DXF 약 2,500쪽 (×50) | 실제 입력 도면 1장의 DXF (1.1 MB, 124,962줄, Qwen3.6-27B 토크나이저로 837,402 토큰 = 줄당 6.7 토큰). 서버 컨텍스트 16,384 토큰 ≈ 2,445줄 ≈ 49쪽, DXF 124,962줄 ≈ 2,499쪽 (1쪽 = 50줄). 토크나이저 최대 262,144 토큰으로도 약 780쪽 |
+| 0.1초, 선 1,243, 글자 330 | 같은 DXF 를 `ezdxf.readfile` 로 읽고 modelspace 를 센 시간 0.13초, LINE 1,243, TEXT·MTEXT 330 |
+| 요소 66개, 치수 150, SPCC · 두께 4, "원뿔", 정면 · 평면 · 우측면 | cone_0019 판독 실행(orchestrator 시연): 01 `read` 엔티티 66개, 02 `title_regex`, 08 `document`, 06 `view_labels` (part_class=cone) |
+| 전개도 (반지름 405.65 / 252.87, 68.33°) | 같은 실행의 10 `develop`. 그림은 이 값으로 그린 부채꼴. 작은 지름을 모델이 92 로 읽었다 (정답 100). 발표자 노트에 적었다 |
+| 536장 중 87장 실패 (빈 파일 77, 못 엶 10) | [AGENTS.md](../AGENTS.md) 6절 (2026-10-22). 2026-10-23 에 11장을 다시 바꿔 R2007 2장이 7,463 바이트 빈 DXF 인 것을 확인 |
 
-변환한 DXF 는 세션 임시 폴더에만 두었고 레포에는 없다.
+변환한 DWG·DXF 는 세션 임시 폴더에만 두었고 레포에는 없다. 회사 도면은 크기, 줄 수, 개수, 시간만 썼다.
