@@ -22,3 +22,12 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = ""
+
+[dependency-groups]
+dev = [
+    "ruff==0.17.1",
+]
+
+[tool.ruff]
+# 마크다운 안의 코드 블록은 포맷하지 않는다. skills/ 는 동료 원본과 sha256 이 같아야 한다.
+extend-exclude = ["*.md"]
