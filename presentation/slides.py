@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
@@ -33,6 +33,9 @@ ORANGE_TINT = "FBE7DC"
 WHITE = "FFFFFF"
 CODE_BG = "263238"
 CODE_FG = "E6EDF0"
+PALE = "C9D3D6"  # light outline
+DASH = 4  # MSO_LINE_DASH_STYLE.DASH
+CHECK, CROSS, PART = "✓", "✕", "△"
 
 W, H = 13.333, 7.5
 X0, CW = 0.6, 12.133  # content left edge and width
@@ -405,3 +408,163 @@ def badge(slide, x, y, d, glyph, fill, color=WHITE, size=None):
     return circle(
         slide, x, y, d, glyph, fill=fill, color=color, size=size or int(d * 30)
     )
+
+
+# ---------------------------------------------------------------------- composite shapes
+def road(s, here: int, labels: list[str], w: float = 0.82):
+    """The steps of a part in the top right corner, with the current step filled."""
+    gap = 0.07
+    x = W - X0 - (len(labels) * w + (len(labels) - 1) * gap)
+    for i, label in enumerate(labels):
+        chip(
+            s,
+            x + i * (w + gap),
+            0.14,
+            w,
+            0.27,
+            label,
+            fill=ORANGE if i == here else LIGHT,
+            color=WHITE if i == here else GRAY,
+            size=10,
+            bold=i == here,
+        )
+
+
+def outline(s, kind, x, y, w, h, color=GRAY, width=1.0):
+    """A shape with a line and no fill."""
+    sp = s.shapes.add_shape(kind, Inches(x), Inches(y), Inches(w), Inches(h))
+    sp.fill.background()
+    sp.line.color.rgb = rgb(color)
+    sp.line.width = Pt(width)
+    sp.shadow.inherit = False
+    return sp
+
+
+def dashed(sp, color=ORANGE, width=1.5):
+    sp.line.color.rgb = rgb(color)
+    sp.line.width = Pt(width)
+    sp.line.dash_style = DASH
+    return sp
+
+
+def connect(s, x1, y1, x2, y2, color=PALE, width=1.5):
+    c = s.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2)
+    )
+    c.line.color.rgb = rgb(color)
+    c.line.width = Pt(width)
+    return c
+
+
+def page(s, x, y, w, h, fill=WHITE, line_color=GRAY):
+    """A sheet of paper (folded corner)."""
+    return shape(s, MSO_SHAPE.FOLDED_CORNER, x, y, w, h, fill, line=line_color)
+
+
+def real_sheet(s, x, y, w, h):
+    """An abstract company drawing: frame, several parts, a parts table and a title block.
+    Drawn with shapes so no customer drawing is shown."""
+    shape(s, MSO_SHAPE.RECTANGLE, x, y, w, h, WHITE, line=GRAY)
+    m = 0.05 * w
+    outline(s, MSO_SHAPE.RECTANGLE, x + m, y + m, w - 2 * m, h - 2 * m, GRAY, 0.75)
+    tw = 0.27 * w
+    for r in range(6):  # parts table, top right
+        outline(
+            s,
+            MSO_SHAPE.RECTANGLE,
+            x + w - m - tw,
+            y + m + r * 0.05 * h,
+            tw,
+            0.05 * h,
+            PALE,
+            0.5,
+        )
+    shape(  # title block, bottom right
+        s,
+        MSO_SHAPE.RECTANGLE,
+        x + w - m - tw,
+        y + h - m - 0.2 * h,
+        tw,
+        0.2 * h,
+        LIGHT,
+        line=PALE,
+    )
+    parts = [  # (kind, x, y, w, h) as fractions of the sheet
+        (MSO_SHAPE.RECTANGLE, 0.09, 0.12, 0.28, 0.22),
+        (MSO_SHAPE.OVAL, 0.10, 0.46, 0.13, 0.19),
+        (MSO_SHAPE.OVAL, 0.29, 0.50, 0.09, 0.13),
+        (MSO_SHAPE.RECTANGLE, 0.44, 0.10, 0.11, 0.30),
+        (MSO_SHAPE.TRAPEZOID, 0.29, 0.72, 0.17, 0.12),
+        (MSO_SHAPE.RECTANGLE, 0.50, 0.52, 0.13, 0.09),
+        (MSO_SHAPE.OVAL, 0.55, 0.70, 0.07, 0.10),
+        (MSO_SHAPE.RECTANGLE, 0.09, 0.76, 0.14, 0.06),
+    ]
+    for kind, px, py, pw, ph in parts:
+        outline(s, kind, x + px * w, y + py * h, pw * w, ph * h, INK, 1.0)
+
+
+def bubble(s, x, y, w, h, who, said, *, ai: bool):
+    """One line of a conversation: who speaks and what."""
+    fill, color = (INK, WHITE) if ai else (LIGHT, INK)
+    said_run = {"text": said}
+    if ai:
+        said_run["font"] = MONO
+    card(
+        s,
+        x,
+        y,
+        w,
+        h,
+        [[{"text": who + "  ", "bold": True, "size": 12, "color": ORANGE}, said_run]],
+        fill=fill,
+        color=color,
+        size=15,
+        anchor=MSO_ANCHOR.MIDDLE,
+        margin=0.15,
+    )
+
+
+def band(s, y, head, body, *, fill=ORANGE_TINT, color=ORANGE, h=0.85, size=17):
+    """A full-width card with a bold lead word."""
+    card(
+        s,
+        X0,
+        y,
+        CW,
+        h,
+        [[{"text": head + "  ", "bold": True, "color": color}, {"text": body}]],
+        fill=fill,
+        size=size,
+        anchor=MSO_ANCHOR.MIDDLE,
+        margin=0.3,
+    )
+
+
+def table(s, x, y, w, h, rows, widths, style):
+    """A table; style(r, c) gives (fill, color, bold, size, align) for each cell."""
+    t = s.shapes.add_table(
+        len(rows), len(rows[0]), Inches(x), Inches(y), Inches(w), Inches(h)
+    ).table
+    for c, cw in enumerate(widths):
+        t.columns[c].width = Inches(cw)
+    for r, row in enumerate(rows):
+        for c, value in enumerate(row):
+            fill, color, bold, size, align = style(r, c)
+            cell = t.cell(r, c)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = rgb(fill)
+            cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+            write(
+                cell.text_frame,
+                [{"text": value}],
+                size=size,
+                bold=bold,
+                color=color,
+                align=align,
+                after=0,
+                margin=0.08,
+            )
+    return t
+
+
+# ---------------------------------------------------------------------- slides
