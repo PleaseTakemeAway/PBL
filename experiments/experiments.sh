@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Role defaults live in vllm_common.sh. Use CUTPLAN_* environment variables or
-# CLI flags; precedence is CLI > environment > defaults. API keys stay in the environment.
+# Role defaults live in vllm_common.sh and model settings in experiments/models.
+# Precedence: CLI > CUTPLAN_* environment > model profile > role defaults.
+# API keys stay in the environment.
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
 main_py="$repo_root/cutplan_agent/reader/main.py"
@@ -21,12 +22,14 @@ No arguments: local OCR on GPU 0 + local Qwen3.6-27B pipelined over GPUs 1,2,3;
              process data_v3/synthetic as one batch.
 
 Role options (replace ROLE with ocr or reason):
+  --ROLE-profile NAME|FILE     Model profile: experiments/models/NAME.sh or a file
+                               of that form. Default: OCR deepseek-ocr-2,
+                               reason qwen3.6-27b. The flags below override it.
   --ROLE-mode local|api         local starts vLLM; api uses an existing endpoint.
-  --ROLE-model MODEL           Model ID for that role.
+  --ROLE-model MODEL           Model ID; keeps the profile's vLLM options.
   --ROLE-gpu IDS               GPU IDs, e.g. 0 or 1,2,3; count sets the parallel size.
   --ROLE-parallel tensor|pipeline
                                How vLLM splits the model over those GPUs.
-                               Default: OCR tensor, reason pipeline.
   --ROLE-port PORT             Local server port (OCR 8000, reason 8001).
   --ROLE-provider openai|anthropic
   --ROLE-base-url URL          API URL (OpenAI-compatible URLs include /v1).
@@ -54,6 +57,9 @@ Use -- before input paths that start with a hyphen.
 
 Examples:
   bash experiments.sh --dry-run
+  bash experiments.sh --reason-profile qwen3.6-27b-fp8 --reason-gpu 1,2 /path/to/dxfs
+  bash experiments.sh --reason-profile qwen3.6-27b-fp8 --reason-mode api \
+    --reason-base-url http://127.0.0.1:8001/v1 /path/to/dxfs
   bash experiments.sh --ocr-gpu 4 --reason-gpu 5 /path/to/dxfs
   bash experiments.sh --ocr-mode local --ocr-gpu 4 \
     --reason-mode api --reason-provider anthropic --reason-model claude-sonnet-5 \
@@ -64,8 +70,8 @@ Examples:
 
 Keys: CUTPLAN_OCR_API_KEY / CUTPLAN_REASON_API_KEY take precedence over
 OPENAI_API_KEY or ANTHROPIC_API_KEY; --ROLE-api-key-env overrides all of them.
-Mode, model, GPU, parallel, port, provider, base URL and output format also accept
-matching CUTPLAN_ROLE_* environment variables.
+Profile, mode, model, GPU, parallel, port, provider, base URL, output format and
+trust_remote_code also accept matching CUTPLAN_ROLE_* environment variables.
 EOF
 }
 
@@ -93,6 +99,8 @@ while (( $# )); do
 done
 
 check_server_settings
+load_role ocr
+load_role reason
 configure_role ocr
 configure_role reason
 if [[ "${ocr[mode]}" == local && "${reason[mode]}" == local ]]; then

@@ -239,6 +239,47 @@ class ExperimentsScriptTests(LauncherTestCase):
         self.assertTrue((self.directory / "8001.stopped").exists())
         self.assertFalse((self.directory / "8000.json").exists())
 
+    def test_profile_sets_model_layout_and_limits_and_keeps_role_options(self):
+        result = self.run_script(
+            "--reason-profile", "qwen3.6-27b-fp8", "--reason-gpu", "1,2", "sample.dxf"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = json.loads((self.directory / "8001.json").read_text())
+        self.assertEqual(record["gpu"], "1,2")
+        self.assertEqual(record["argv"][1], "Qwen/Qwen3.6-27B-FP8")
+        self.assertEqual(
+            record["argv"][record["argv"].index("--tensor-parallel-size") + 1], "2"
+        )
+        self.assertIn("--max-num-seqs=4", record["argv"])
+        self.assertIn("--structured-outputs-config.backend=xgrammar", record["argv"])
+        self.assertEqual(
+            self.captured()["config"]["REASON"]["MODEL"], "Qwen/Qwen3.6-27B-FP8"
+        )
+
+    def test_environment_and_flags_override_the_profile(self):
+        profile = self.directory / "custom.sh"
+        profile.write_text(
+            "model=custom/base\ngpu=5\nvllm_args=(--max-num-seqs=2)\n",
+            encoding="utf-8",
+        )
+        self.env["CUTPLAN_REASON_PROFILE"] = str(profile)
+        self.env["CUTPLAN_REASON_GPU"] = "6"
+        result = self.run_script("--reason-model", "custom/flag", "sample.dxf")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = json.loads((self.directory / "8001.json").read_text())
+        self.assertEqual(record["gpu"], "6")
+        self.assertEqual(record["argv"][1], "custom/flag")
+        self.assertIn("--max-num-seqs=2", record["argv"])
+
+    def test_api_profile_starts_no_server(self):
+        self.env["ANTHROPIC_API_KEY"] = "test-key-only"
+        result = self.run_script("--reason-profile", "claude-sonnet-5", "sample.dxf")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        config = self.captured()["config"]["REASON"]
+        self.assertEqual(config["PROVIDER"], "anthropic")
+        self.assertEqual(config["MODEL"], "claude-sonnet-5")
+        self.assertFalse((self.directory / "8001.json").exists())
+
     def test_overlap_and_bad_options_fail_before_starting_servers(self):
         for args in (
             ("--ocr-gpu", "4", "--reason-gpu", "4"),
@@ -247,6 +288,7 @@ class ExperimentsScriptTests(LauncherTestCase):
             ("--reason-gpu",),
             ("--reason-gpu", "4,4,"),
             ("--reason-parallel", "data"),
+            ("--reason-profile", "no-such-model"),
         ):
             with self.subTest(args=args):
                 result = self.run_script(*args)
@@ -387,6 +429,7 @@ class ServeScriptTests(LauncherTestCase):
             ("--ocr-gpu", "1"),
             ("--ocr-port", "8001"),
             ("both",),
+            ("reason", "--reason-profile", "claude-sonnet-5"),
         ):
             with self.subTest(args=args):
                 result = subprocess.run(
