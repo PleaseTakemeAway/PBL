@@ -65,4 +65,5 @@ git worktree add --detach ~/gwanwoo/v2_archive archive/cutplan_v2
 ## 5. 보고하지 않는 것과 다음 순서
 
 - 보고하지 않는다: 뷰 이름, 치수, 전개도 결과 ([v3_upgrade.md](v3_upgrade.md) 2절 기준, 3.1·3.2절 점수), 정답을 회사 계산 기준으로 다시 만든 새 합성 데이터(`data_v3/generated`)와 그 이유 ([data/synthetic.md](data/synthetic.md)). 회사 담당자용 자료 [company_brief.md](company_brief.md) 는 이것들을 다루는 10-27 자료다.
-- 중간보고 뒤: 실제 도면 읽기. 회사에서 받은 설비 2건(S-2120, D-1203)의 도면과 커팅플랜(`test_data/cases/`, [data/cutplan_cases.md](data/cutplan_cases.md))부터 한다. 먼저 `Data/`, `test_data/` 를 이 서버로 옮긴다 ([data/transfer.md](data/transfer.md)). 실도면에 필요한 부품표 단계 계획은 `git show c71cca0:docs/v4.md` 에 있다.
+- 중간보고 뒤 먼저: 현업자가 그린 시험 도면 3건(`data_v3/20261027example`)의 형상 분류와 전개 ([v3_upgrade.md](v3_upgrade.md) 5절).
+- 그다음: 실제 도면 읽기. 회사에서 받은 설비 2건(S-2120, D-1203)의 도면과 커팅플랜(`test_data/cases/`, [data/cutplan_cases.md](data/cutplan_cases.md))부터 한다. 먼저 `Data/`, `test_data/` 를 이 서버로 옮긴다 ([data/transfer.md](data/transfer.md)). 실도면에 필요한 부품표 단계 계획은 `git show c71cca0:docs/v4.md` 에 있다.

@@ -70,7 +70,8 @@
 | `test_data/cases/` | 14M | `scripts/build_cutplan_cases.py` 로 `test_data/cutting_plan` 에서 생성 (`docs/data/cutplan_cases.md`) | 실도면 평가 (아직 쓰는 코드 없음) |
 | `data_v3/synthetic/` | 3.1M | 동료 서버에서 rsync. 합성 DXF + label.json 30개. 콘·헤드·굽힘판 정답이 회사 계산 기준과 다르다 (`docs/data/synthetic.md` 5절) | v3 기본 입력 |
 | `data_v3/generated/` | 4.3M | `scripts/build_synthetic.py` 로 생성 (2026-10-27). 같은 30장을 회사 기준 정답으로 | 아직 기본 입력이 아니다 |
-| `tests/fixtures/` | 3.6M | zip 의 `cutplan_agent_v3/examples/`. 고객 도면이 들어 있다. `mlic` 에는 없다 | 단위 테스트 |
+| `data_v3/20261027example/` | 900K | 회사 현업자가 합성 도면과 비슷하게 그린 시험 도면 3건과 정답 전개도 (DWG·PDF, 2026-10-27 받음). workstation1 에만 있다 | 시험 세트 (`docs/v3_upgrade.md` 5절) |
+| `tests/fixtures/` | 3.6M | zip 의 `cutplan_agent_v3/examples/`. 고객 도면이 들어 있다. workstation1 에서는 레포 루트 `fixtures/` 에 있던 것을 2026-10-28 에 옮겼다 (sha256 이 기준과 같음) | 단위 테스트 |
 | `runs/reader/` | 89M | zip 의 `cutplan_agent_v3/output/*` 와 `data_v3_claude_batch_10141611/` (70M), 그 뒤 `mlic` 에서 돌린 판독 결과 | 동료 실행 결과, 비교 기준 |
 | `tools/dwg2png/` | 65M | 동료에게 받은 툴킷. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 (2026-10-23 확인) | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |
 | `skills/04_reading_records/` | 44K | zip. `mlic` 에는 없다 | 코드가 읽지 않는다 |
@@ -95,11 +96,12 @@
 
 ## 7. 알려진 상태와 할 일 (2026-10-23)
 
-- 단위 테스트는 2026-10-28 에 124건이다 (`model-profiles` 의 3건, `test_vlm_output.py` 의 #13 다시 묻기 1건이 늘었다). 아래는 2026-10-27 의 120건 기준이다. 동료 서버에서 `tests/fixtures/` 를 두고 돌리면 124건 중 11건이 실패하고, 목록은 아래의 11건과 같다. 120건은 동료의 v3 테스트 88건과 이 레포에서 쓴 `test_stages.py` 7건, `test_cp_parse.py` 5건, `test_l3_formulas.py` 8건, `test_reader_tools.py` 3건, `test_orchestrator.py` 2건, `test_build_synthetic.py` 7건. 이 레포의 32건은 모두 통과한다. v3 88건은 `tests/fixtures/` 가 있고 tesseract 가 없던 로컬(2026-10-21)에서 11건이 실패했다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 와 tesseract 가 둘 다 없는 `mlic` 에서는 17건이 실패한다 (2026-10-23 확인, 모두 v3 테스트). 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
+- 단위 테스트는 2026-10-28 에 124건이다 (`model-profiles` 의 3건, `test_vlm_output.py` 의 #13 다시 묻기 1건이 늘었다). 아래는 2026-10-27 의 120건 기준이다. 동료 서버와 workstation1 (2026-10-28) 에서 `tests/fixtures/` 를 두고 돌리면 124건 중 11건이 실패하고, 목록은 아래의 11건과 같다. 120건은 동료의 v3 테스트 88건과 이 레포에서 쓴 `test_stages.py` 7건, `test_cp_parse.py` 5건, `test_l3_formulas.py` 8건, `test_reader_tools.py` 3건, `test_orchestrator.py` 2건, `test_build_synthetic.py` 7건. 이 레포의 32건은 모두 통과한다. v3 88건은 `tests/fixtures/` 가 있고 tesseract 가 없던 로컬(2026-10-21)에서 11건이 실패했다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 와 tesseract 가 둘 다 없는 `mlic` 에서는 17건이 실패한다 (2026-10-23 확인, 모두 v3 테스트). 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 2026-10-21 에는 5,828 kg 이었다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다. 2026-10-23 에 헤드 원판 식을 바꾼 뒤에는 5,835.2 kg 이다 (총 6132.2 kg 과 같은 실행).
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.
 - `test_data/` 는 입력 도면이 정답을 다 설명하지 못한다. 2026-10-23 기준으로 정답 부품 라벨에서 도면 번호를 읽은 1,605개 중 638개가 입력에 없는 도면을 가리킨다. 이 수는 `scripts/build_test_data.py` 가 `index.csv` 에 쓰는 `parts_ref_missing` 열에서 나오는데, 임시 폴더에서 돌려 얻은 값이다 (24f624d). `mlic` 의 `test_data/` 는 2026-10-21 판이라 `index.csv` 에 이 열이 없다. 입력과 정답이 짝지어진 실도면 세트는 `test_data/cases/` 의 2건이다 (`docs/data/cutplan_cases.md`). `tests/test_cp_parse.py` 의 5건은 통과한다.
 - 2026-10-27 에 목표를 v3 고도화로 바꿨다. 합성 도면 생성기를 레포에 다시 쓰고 검증한 뒤, 합성 30장(`data_v3/synthetic`)을 모든 단계에서 정답과 맞게 완주한다. 실도면 작업(v4)은 이 브랜치에서 지웠다 (`git show c71cca0:docs/v4.md`). 기준, 계획, 합성 도면의 이상한 점 목록은 `docs/v3_upgrade.md`. 브랜치는 2026-10-28 에 모두 main 에 머지했다.
 - 2026-10-28 에 동료와 중간보고 범위를 정했다. `data_v3/synthetic` 은 회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장이고, 로컬 모델로 형상 분류 29/30, 못 맞힌 1장은 답이 잘려 JSON 이 깨진 경우라 쉬운 형상은 잘 분류한다고 보고한다. 중간보고는 여기까지이고, 실제 도면은 그 뒤에 한다. 내용과 재현 명령은 `docs/interim_report.md`, 합의 원문은 `docs/v3_upgrade.md` 1.2절. 데이터를 다른 서버로 옮기는 법은 `docs/data/transfer.md`.
+- 중간보고 다음 작업 (2026-10-28 계획): 현업자가 그린 시험 도면 3건(`data_v3/20261027example`)에서 형상 분류를 재고, 전개도 같이 잰다 (커팅플랜은 선택). 합성 `data_v3/generated` 는 개발 세트, 이 3건은 시험 세트로 쓴다. 돌리기 전에 정할 것(경판 원판 식이 회사 문서와 현업자 정답에서 다르다 등)은 `docs/v3_upgrade.md` 5절.
 - 할 일: `docs/harness_engineering.md` 3절의 로드맵 (단계별 평가 → 작업별 모델 설정 → Claude 대 로컬 비교 → 보완 장치 → 로컬 orchestrator), `cutplan_agent/knowledge/` 와 `skills/01_core_knowledge/` 중복 정리.

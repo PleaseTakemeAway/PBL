@@ -45,6 +45,11 @@ DATASETS = (
         ("compare.md",),  # --compare 를 줄 때만 생긴다
     ),
     Dataset("tests/fixtures", "tests_fixtures.sha256", "옮긴다"),
+    Dataset(
+        "data_v3/20261027example",
+        "data_v3_20261027example.digest",
+        "옮긴다. 회사 담당자가 그린 시험 도면 3건 (docs/data/transfer.md)",
+    ),
     Dataset("Data", "Data.digest", "옮긴다"),
     Dataset("test_data", "test_data.digest", "옮긴다"),
 )
@@ -166,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     for ds in DATASETS:
         status, detail = check(ds)
         bad |= status == "다름"
-        print(f"{status:6} {ds.path:20} {detail}")
+        print(f"{status:6} {ds.path:24} {detail}")
     return 1 if bad else 0
 
 

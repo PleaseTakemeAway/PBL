@@ -22,6 +22,7 @@
 | `test_data/cases/` | 위 폴더로 만든 테스트셋. 설비마다 입력 도면, 정답 `sheets`·`parts`·`pieces` CSV, 조각 DXF, 확인 그림. [cutplan_cases.md](cutplan_cases.md) | 스크립트 ⑦ | 아직 없다 |
 | `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장. 옛 생성기 `make_data_v3.py` 는 남아 있지 않아 다시 만들 수 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
 | `data_v3/generated/` | 합성 도면 30장을 회사 계산 기준으로 새로 만든 것 (2026-10-27). 형상·치수는 `data_v3/synthetic` 과 같고, 그리는 법과 정답 식을 고쳤다. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json`. [synthetic.md](synthetic.md) | `scripts/build_synthetic.py` | 아직 기본 입력이 아니다 |
+| `data_v3/20261027example/` | 회사 현업자가 합성 도면과 비슷하게 그린 시험 도면 3건 (SHELL, CONE, HEAD). 부품마다 입력 도면과 정답 전개도가 DWG·PDF 로 있다. `label.json` 은 없다 | 회사 현업자 (2026-10-27) | 시험 세트 ([../v3_upgrade.md](../v3_upgrade.md) 5절). 아직 쓰는 코드 없음 |
 | `tests/fixtures/` | reader 단위 테스트 입력: `box.json`, `KD23041_CP.dxf`, HCE 스캔 `hce_*.png`. 고객 도면이 들어 있다 | 압축본 | `tests/` |
 | `runs/` | 실행 결과. v2 는 `runs/<job>/`, v3 는 `runs/reader/` (동료의 기준 결과 `deepseek_ocr_qwen_reasoning_skills` 등 포함) | 실행 | `eval/status.py`, `eval/compare_outputs.py`, 기준선 비교 |
 | `tools/dwg2png/` | 이전 세션 툴킷. `Data/_dataset/` 을 만든 `cp_extract.py` 가 들어 있다. `mlic` 에는 레포 밖 `~/dwg2png` 에 있다 | 동료 | Windows 의 `dwg2dxf.exe` 만 코드가 쓴다 |

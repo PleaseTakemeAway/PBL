@@ -15,6 +15,7 @@
 |---|---|---|---|
 | `data_v3/synthetic/` | **옮긴다** (다시 만들 수 없다. 옛 생성기 `make_data_v3.py` 는 어디에도 없다) | 동료 서버 `/home/hwang/yechanhwang/PBL_2026/data_v3/synthetic/`, workstation1 `~/developer/pbl/data_v3/synthetic/` (같은 파일) | 중간보고 형상 분류 29/30, reader 기본 입력, 실험 스크립트 기본 입력 |
 | `data_v3/generated/` | **만든다** (2절) | `scripts/build_synthetic.py` | 회사 기준 정답으로 다시 만든 합성 30장 ([synthetic.md](synthetic.md)) |
+| `data_v3/20261027example/` | **옮긴다** (900K) | workstation1 `~/developer/pbl/data_v3/20261027example/` (사용자가 2026-10-27 에 받아 둔 곳, 여기에만 있다) | 시험 세트: 현업자가 그린 도면 3건과 정답 전개도 ([../v3_upgrade.md](../v3_upgrade.md) 5절) |
 | `tests/fixtures/` | **옮긴다** | 동료 서버 `/home/hwang/yechanhwang/PBL_2026/cutplan_agent_v3/examples/`, 팀 압축본의 `cutplan_agent_v3/examples/` | v3 단위 테스트 (없으면 17건 실패) |
 | `Data/` | **옮긴다** (1.4G) | workstation1 `~/developer/pbl/Data/`, 팀 압축본(노바투스2026.zip)의 `Data/` | 레포 v2 (`cutplan_agent/`) smoke test, `scripts/` 의 데이터셋 만들기, 실도면 작업 |
 | `test_data/` | **옮긴다** (729M). `test_data/cases/` 포함 | workstation1 `~/developer/pbl/test_data/` | v2 평가, 실도면 테스트셋 `test_data/cases/` (설비 S-2120, D-1203. [cutplan_cases.md](cutplan_cases.md)) |
@@ -35,6 +36,7 @@ cd ~/gwanwoo/pbl                       # 새 서버의 레포 루트
 # workstation1 에서 가져올 것
 rsync -a --info=progress2 <원본>:developer/pbl/Data/      Data/
 rsync -a --info=progress2 <원본>:developer/pbl/test_data/ test_data/
+rsync -a --info=progress2 <원본>:developer/pbl/data_v3/20261027example/ data_v3/20261027example/
 
 # 동료 서버에서는 복사하지 않고 링크로 둔다 (같은 기계, 동료 폴더는 읽기만)
 mkdir -p data_v3
@@ -70,13 +72,16 @@ OK     tests/fixtures       파일 5개 일치
 - 기준 파일은 `scripts/data_manifests/` 에 있다. 합성 도면과 fixture 는 파일별 sha256 (`*.sha256`), 고객 데이터인 `Data/`·`test_data/` 는 파일 이름을 남기지 않는 요약(`*.digest`: 파일 수, 바이트, 전체 해시 하나)이다.
 - `data_v3/synthetic` 의 기준은 동료 서버의 원본에서 만들었다. 동료가 보낸 `cutplan_v2_transfer.tar.gz` 안의 같은 폴더, workstation1 의 사본과도 90개 sha256 이 모두 같다 ([../server_handoff.md](../server_handoff.md) 2절).
 - `data_v3/generated` 는 `compare.md` 를 빼고 비교한다 (`--compare` 를 줄 때만 생긴다). 생성기나 정답 식을 일부러 바꿨으면 `--write data_v3/generated` 로 기준을 다시 쓰고 같은 커밋에 넣는다.
-- **`Data/`, `test_data/` 의 기준은 아직 없다.** 원본이 있는 workstation1 에서 한 번 만들어 커밋한다. 그 뒤 옮긴 서버에서 `check_data.py` 가 `OK` 를 내면 같은 데이터다.
-  ```bash
-  cd ~/developer/pbl && git pull
-  PYTHONPATH=. uv run python scripts/check_data.py --write Data
-  PYTHONPATH=. uv run python scripts/check_data.py --write test_data
-  git add scripts/data_manifests && git commit -m "Record the Data and test_data digests from workstation1"
+- `Data/`, `test_data/`, `data_v3/20261027example/` 의 기준은 2026-10-28 에 원본이 있는 workstation1 에서 `--write` 로 만들었다. `test_data/` 는 workstation1 의 2026-10-21 판이다 (AGENTS.md 7절). 옮긴 서버에서 `check_data.py` 가 `OK` 를 내면 같은 데이터다. 같은 날 workstation1 의 출력:
   ```
+  OK     data_v3/synthetic        파일 90개 일치
+  OK     data_v3/generated        파일 91개 일치
+  OK     tests/fixtures           파일 5개 일치
+  OK     data_v3/20261027example  파일 12개 일치
+  OK     Data                     파일 14875개 일치
+  OK     test_data                파일 9546개 일치
+  ```
+- workstation1 의 `tests/fixtures/` 는 레포 루트의 `fixtures/` 에 잘못 놓여 있었다. 5개 파일의 sha256 이 기준과 같아 2026-10-28 에 `tests/fixtures/` 로 옮겼다.
 
 ## 4. 옮긴 뒤 돌려 볼 것
 
