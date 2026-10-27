@@ -68,6 +68,7 @@ cutplan_agent/
   reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6. 2026-10-27 부터 --with-3d 일 때만 돈다
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), serve.sh (서버만), verify_ocr_output.py, requirements.txt
+  models/              모델 프로필: 역할마다 쓸 모델과 vLLM 옵션 (--ocr-profile, --reason-profile)
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (data/overview.md)
   reader/              reader 단계를 번호로 돌리기 (run_stages.py), 결과를 표와 그림으로 보기 (show_stages.py)
 skills/                reader 와 v2 가 프롬프트로 읽는 지식·프롬프트 문서 (01_core_knowledge, 02_prompts)

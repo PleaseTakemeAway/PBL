@@ -73,7 +73,7 @@ HF_HUB_DISABLE_XET=1 ~/venvs/vllm-0.31/bin/hf download Qwen/Qwen3.6-27B
 - PyPI 기본 `vllm`·`torch` 는 CUDA 13 용이라 드라이버 580 이상이 필요하다. `+cu129` wheel 은 CUDA 12 의 minor version 호환으로 드라이버 535 에서 돈다. 드라이버가 580 이상이면 `uv pip install vllm==0.31.0 --torch-backend=auto` 로 충분하다.
 - `torchcodec` 은 cu129 인덱스에 0.17 이 없어 PyPI 의 CUDA 13 판이 깔린다. 그대로 두면 vLLM 이 시작할 때 `libnvrtc.so.13` 을 못 찾고 죽으므로 CPU 판으로 바꾼다. vLLM 은 이것을 오디오·영상 디코딩에만 쓴다.
 - `HF_HUB_DISABLE_XET=1` 은 일반 HTTP 로 받게 한다. 이 서버에서는 xet 프로토콜이 초당 5MB 안팎으로 HTTP 보다 몇 배 느렸다.
-- 스크립트 기본값은 GPU 0 에 OCR, GPU 1,2,3 에 Qwen3.6-27B 를 pipeline parallel 로 올린다 ([reader/README.md](reader/README.md)). GPU 가 다르면 `--ocr-gpu`, `--reason-gpu`, `--reason-parallel` 로 바꾼다.
+- 스크립트 기본값은 GPU 0 에 OCR, GPU 1,2,3 에 Qwen3.6-27B 를 pipeline parallel 로 올린다 ([reader/README.md](reader/README.md)). GPU 가 다르면 `--ocr-gpu`, `--reason-gpu`, `--reason-parallel` 로 바꾼다. 모델을 바꿀 때는 아래 "모델 바꾸기" 의 프로필을 쓴다.
 
 `experiments.sh` 는 실행할 때마다 서버를 띄우고 끝나면 끈다. Qwen3.6-27B 는 뜨는 데 몇 분 걸리므로, 단계를 하나씩 돌리거나 여러 번 실험할 때는 `serve.sh` 로 서버만 띄워 둔다.
 
@@ -91,6 +91,37 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py \
 - `runs/vllm/<역할>.env` 는 서버가 health 검사를 통과하면 생기고, 서버가 내려가면 지워진다. 안에는 `CUTPLAN_<역할>_{MODEL,BASE_URL,PROVIDER,OUTPUT_FORMAT,API_KEY}` 와 `CUTPLAN_<역할>_MODE=api` 가 있다. `main.py`, 단계 스크립트, `make_clients()` 는 앞의 다섯 개를 읽고, `experiments.sh` 는 `MODE=api` 를 보고 그 역할의 서버를 새로 띄우지 않는다. 같은 셸에서 다시 `experiments.sh` 가 서버를 띄우게 하려면 새 셸을 연다.
 - 서버 로그는 `runs/vllm/<역할>_vllm.log` 에 쌓인다. 서버가 도중에 죽으면 `serve.sh` 가 로그 끝부분을 출력하고, 남은 서버도 끄고 멈춘다.
 - `serve.sh --dry-run` 은 실행할 `vllm serve` 명령을 그대로 출력한다. 옵션은 `experiments.sh` 의 서버 쪽 옵션과 같다 (`--help`).
+
+### 모델 바꾸기 (프로필)
+
+역할(OCR, reason)마다 어떤 모델을 쓸지는 `experiments/models/<이름>.sh` 프로필 하나로 정한다. `experiments.sh` 와 `serve.sh` 에 `--ocr-profile <이름>`, `--reason-profile <이름>` 을 주거나 `CUTPLAN_OCR_PROFILE`, `CUTPLAN_REASON_PROFILE` 을 설정한다. 기본값은 `deepseek-ocr-2` 와 `qwen3.6-27b` 로, 동료가 27/30 을 낸 모델이다. 판독 코드(`vlm.py`)는 모델 이름을 보지 않으므로 모델을 바꿀 때 Python 코드는 고치지 않는다.
+
+| 프로필 | 모델 | 맞춘 환경 |
+|---|---|---|
+| `deepseek-ocr-2` | `deepseek-ai/DeepSeek-OCR-2` | 24GB GPU 한 장의 50% |
+| `qwen3.6-27b` | `Qwen/Qwen3.6-27B` (BF16) | A5000 3장 pipeline parallel (`mlic` GPU 1,2,3) |
+| `qwen3.6-27b-fp8` | `Qwen/Qwen3.6-27B-FP8` | A5000 2장 tensor parallel (GPU 0,1). 아직 띄워 보지 않았다 |
+| `claude-sonnet-5`, `claude-haiku-4-5` | Anthropic API | `experiments_claude.sh` 와 같은 모델. 서버를 띄우지 않는다 |
+
+- 프로필은 bash 로 읽는 짧은 파일이다. `model` 과 `vllm_args=(...)` 를 쓰고, 필요하면 `gpu`, `parallel`, `mode`, `provider`, `base_url`, `api_key_env`, `trust_remote_code` 도 쓴다. 새 모델은 비슷한 프로필을 복사해 고친다. 레포에 넣지 않을 프로필은 파일 경로로 준다 (`--reason-profile ~/my-model.sh`).
+- 설정은 역할 기본값 → 프로필 → `CUTPLAN_<역할>_*` 환경 변수 → CLI 순으로 덮어쓴다. 그래서 `--reason-gpu`, `--reason-vllm-arg=...` 는 프로필 값보다 우선한다. `--reason-model` 은 모델 ID 만 바꾸고 프로필의 vLLM 옵션은 그대로 둔다.
+- reason 역할에는 프로필과 상관없이 `--structured-outputs-config.backend=xgrammar` 가 붙는다 (`json_schema` 출력용).
+- `serve.sh --dry-run` 으로 프로필이 만드는 `vllm serve` 명령을 먼저 확인한다.
+
+GPU 2장 서버에 reason 모델만 띄워 두고, OCR 은 다른 컴퓨터에서 필요할 때 띄우는 예:
+
+```bash
+# GPU 2장 서버 (tmux 등에서)
+./experiments/serve.sh reason --reason-profile qwen3.6-27b-fp8 --vllm-bin <vllm>
+
+# OCR 을 돌릴 컴퓨터: 서버의 8001 포트를 SSH 터널로 가져온다 (포트를 외부에 열지 않는다)
+ssh -N -L 8001:127.0.0.1:8001 <서버>
+# 다른 창에서. 12GB GPU 면 OCR 메모리 비율을 올린다
+./experiments/experiments.sh --python <python> --vllm-bin <vllm> \
+  --ocr-vllm-arg=--gpu-memory-utilization=0.80 \
+  --reason-profile qwen3.6-27b-fp8 --reason-mode api --reason-base-url http://127.0.0.1:8001/v1 \
+  --output-dir runs/reader/<새 폴더>
+```
 
 ## 4. 자주 나는 문제
 
