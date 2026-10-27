@@ -895,7 +895,8 @@ def _tessellate_arc(
 
 def _line_type(lt: str) -> str:
     s = (lt or "").upper()
-    if "CENTER" in s or "DASHDOT" in s:
+    # chain lines (axes, a head's tangent line) are references, not edges
+    if "CENTER" in s or "DASHDOT" in s or "PHANTOM" in s:
         return "center"
     if "HIDDEN" in s or "DASH" in s:
         return "hidden"

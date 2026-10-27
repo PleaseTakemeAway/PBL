@@ -189,6 +189,10 @@ def ask_unfold_params(part_type: str, analysis: dict, drawing, reason) -> dict |
     return data if isinstance(data, dict) else None
 
 
+# attributes["source"] of lines that dxf_reader cut from a curve
+CURVE_PIECES = {"ellipse", "spline", "spline_approx", "polyline_bulge"}
+
+
 def _front_profile(drawing) -> dict:
     """Visible horizontal lines at the top/bottom and vertical lines at the sides of the front view (mm)."""
     if drawing is None:
@@ -208,7 +212,6 @@ def _front_profile(drawing) -> dict:
     x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
     tol = 0.01 * max(x1 - x0, y1 - y0, 1e-9)
     horizontal = [(a, b) for a, b in lines if abs(a[1] - b[1]) <= tol]
-    vertical = [(a, b) for a, b in lines if abs(a[0] - b[0]) <= tol]
 
     def span(segs, axis, at, coord):
         vals = [
@@ -216,10 +219,19 @@ def _front_profile(drawing) -> dict:
         ]
         return max(vals) - min(vals) if vals else None
 
+    # straight sides only: pieces of a flattened ellipse, spline or arc are nearly vertical at a head's ends
+    straight = [
+        p.points
+        for p in front.primitives
+        if p.kind == "line"
+        and p.line_type == "visible"
+        and p.attributes.get("source") not in CURVE_PIECES
+        and "arc_center" not in p.attributes
+    ]
     side = [
         abs(a[1] - b[1])
-        for a, b in vertical
-        if min(abs(a[0] - x0), abs(a[0] - x1)) <= tol
+        for a, b in straight
+        if abs(a[0] - b[0]) <= tol and min(abs(a[0] - x0), abs(a[0] - x1)) <= tol
     ]
     return {
         "width": x1 - x0,

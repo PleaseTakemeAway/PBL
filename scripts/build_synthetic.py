@@ -39,8 +39,9 @@ import ezdxf
 
 # ----------------------------------------------------------------------------- 도면 30장
 # 형상·치수·재질·축척은 옛 데이터(data_v3/synthetic)와 같다. 바뀐 것은 그리는 법과 정답 식이다.
-# press_formed 는 2:1 반타원 헤드로 바꾸면서 직선부(flange)와 크라운 높이를 뺐다. 2:1 은 안쪽 면 기준이다
-# (안쪽 깊이 = 안지름/4, 높이 = 안지름/4 + t).
+# press_formed 는 2:1 반타원 헤드다. 2:1 은 안쪽 면 기준이다 (안쪽 깊이 = 안지름/4). 아래 끝에 짧은 직선부(SF)를
+# 둔다. 길이는 현업자 HEAD (안지름 1000, 직선부 30) 의 비율대로 안지름의 3% 를 mm 로 반올림했다.
+# 높이 = SF + 안지름/4 + t.
 # 구멍: (축, 지름, (x, y, z)) — 중심은 부품 좌표(mm). 축 z 는 수평판, 축 x 는 수직판(굽힘판의 세운 쪽)을 뚫는다.
 SPECS: list[dict] = [
     # flat: length(x), width(y), thickness(z)
@@ -117,18 +118,18 @@ SPECS: list[dict] = [
     dict(id="cone_0024", cls="cone",
          p=dict(large_outer_diameter=300, small_outer_diameter=200, height=200, thickness=3),
          holes=[], mat="SS400", scale=4),
-    # press_formed: 2:1 반타원 헤드, 축 z, 열린 쪽이 아래. outer_diameter, thickness
-    dict(id="press_formed_0025", cls="press_formed", p=dict(outer_diameter=150, thickness=6),
+    # press_formed: 2:1 반타원 헤드, 축 z, 열린 쪽이 아래. outer_diameter, thickness, straight_flange
+    dict(id="press_formed_0025", cls="press_formed", p=dict(outer_diameter=150, thickness=6, straight_flange=4),
          holes=[], mat="SA516-70", scale=2),
-    dict(id="press_formed_0026", cls="press_formed", p=dict(outer_diameter=300, thickness=6),
+    dict(id="press_formed_0026", cls="press_formed", p=dict(outer_diameter=300, thickness=6, straight_flange=9),
          holes=[], mat="SPHC", scale=4),
-    dict(id="press_formed_0027", cls="press_formed", p=dict(outer_diameter=200, thickness=6),
+    dict(id="press_formed_0027", cls="press_formed", p=dict(outer_diameter=200, thickness=6, straight_flange=6),
          holes=[], mat="SUS304", scale=2),
-    dict(id="press_formed_0028", cls="press_formed", p=dict(outer_diameter=300, thickness=6),
+    dict(id="press_formed_0028", cls="press_formed", p=dict(outer_diameter=300, thickness=6, straight_flange=9),
          holes=[], mat="SS400", scale=4),
-    dict(id="press_formed_0029", cls="press_formed", p=dict(outer_diameter=150, thickness=4),
+    dict(id="press_formed_0029", cls="press_formed", p=dict(outer_diameter=150, thickness=4, straight_flange=4),
          holes=[], mat="SUS304", scale=2),
-    dict(id="press_formed_0030", cls="press_formed", p=dict(outer_diameter=200, thickness=6),
+    dict(id="press_formed_0030", cls="press_formed", p=dict(outer_diameter=200, thickness=6, straight_flange=6),
          holes=[], mat="SPHC", scale=2),
 ]  # fmt: skip
 
@@ -220,17 +221,17 @@ def half_ellipse_length(a: float, b: float, n: int = 20000) -> float:
 def head_blank(p: dict) -> dict:
     """2:1 반타원 헤드 원판 지름 = 두께 가운데 반타원의 길이(꼭대기를 지나 한쪽 끝에서 반대쪽 끝까지) + 2 × 직선부.
     현업자 정답 HEAD (안지름 1000, t 20, 직선부 30): 반축 510, 260 → 1241.6 + 30 + 30 = 1301.6.
-    두께 가운데 타원은 안쪽 타원(반축 ID/2, ID/4)에서 t/2 바깥이다. 이 도면들은 직선부가 없어 + 2·SF 는 0 이고,
-    트림 여유는 넣지 않는다. 계산 문서 4.2 의 약산식 1.2 × Dm 과의 차이는 docs/v3_upgrade.md 5절."""
-    t = p["thickness"]
+    두께 가운데 타원은 안쪽 타원(반축 ID/2, ID/4)에서 t/2 바깥이다. 트림 여유는 넣지 않는다.
+    계산 문서 4.2 의 약산식 1.2 × Dm 과의 차이는 docs/v3_upgrade.md 5절."""
+    t, sf = p["thickness"], p["straight_flange"]
     di = p["outer_diameter"] - 2 * t
     a, b = (di + t) / 2, di / 4 + t / 2
     arc = half_ellipse_length(a, b)
     return {
-        "formula": "Db = 두께 가운데 반타원의 길이 + 2 × SF, 반축 (ID + t)/2, ID/4 + t/2 (직선부 없음, 트림 여유 없음)",
+        "formula": "Db = 두께 가운데 반타원의 길이 + 2 × SF, 반축 (ID + t)/2, ID/4 + t/2 (트림 여유 없음)",
         "mean_diameter": di + t,
         "meridian_length": round(arc, 2),
-        "blank_diameter": round(arc, 2),
+        "blank_diameter": round(arc + 2 * sf, 2),
     }
 
 
@@ -245,6 +246,9 @@ class View:
     height: float
     prims: list[tuple] = field(default_factory=list)
     holes: list[float] = field(default_factory=list)  # 이 뷰에 원으로 보이는 구멍 지름
+    dims: list[tuple] = field(
+        default_factory=list
+    )  # 전체 크기 말고 더 그리는 세로 치수
 
     def line(self, layer, p, q):
         self.prims.append(("line", layer, p, q))
@@ -267,6 +271,13 @@ class View:
     def ellipse(self, layer, c, a, b, u0, u1):
         """가로 반축 a, 세로 반축 b 인 타원의 매개변수 u0..u1 (라디안) 구간."""
         self.prims.append(("ellipse", layer, c, a, b, u0, u1))
+
+    def text(self, at, s, height):
+        self.prims.append(("text", "TEXT", at, s, height))
+
+    def dim(self, p, q, value, right=False):
+        """p 에서 q 까지의 세로 치수. right 이면 뷰 오른쪽에 둔다."""
+        self.dims.append((p, q, value, right))
 
     def hole(self, c, d, cross):
         """원으로 보이는 구멍과 중심선 십자."""
@@ -412,27 +423,41 @@ def draw_cone(p, holes, k):
 
 
 def draw_head(p, holes, k):
-    """2:1 반타원 헤드, 열린 쪽이 아래. 2:1 은 안쪽 면 기준이다 (현업자 도면 HEAD 와 같다): 안쪽 면은 반축
-    ID/2, ID/4 인 타원이다. 바깥 면은 반축을 t 씩 늘린 타원으로 그린다 (타원을 t 만큼 평행 이동한 곡선은 타원이
-    아니어서 이렇게 그린다. 꼭대기와 양 끝에서는 정확하다). 직선부는 없다."""
-    od, t = p["outer_diameter"], p["thickness"]
+    """2:1 반타원 헤드, 열린 쪽이 아래. 현업자 도면 HEAD 처럼 그린다: 2:1 은 안쪽 면 기준이라 안쪽 면은 반축
+    ID/2, ID/4 인 타원이다. 타원 아래 끝(TL, 접선)에서 길이 SF 의 수직 직선부가 이어지고, TL 에 가상선과 "TL"
+    글자, 오른쪽에 SF 치수를 둔다. 타원 끝의 접선이 수직이라 직선부와 꺾이지 않고 이어진다. 바깥 면은 반축을
+    t 씩 늘린 타원으로 그린다 (타원을 t 만큼 평행 이동한 곡선은 타원이 아니어서 이렇게 그린다. 꼭대기와 양 끝에서는
+    정확하고, 양 끝 접선도 수직이다)."""
+    od, t, sf = p["outer_diameter"], p["thickness"], p["straight_flange"]
     a, b = od / 2 - t, (od - 2 * t) / 4  # 안쪽 반축
+    h = sf + b + t
     ext = 2.5 * k
     views = {}
     for name in ("front", "right"):
-        v = View(od, b + t)
+        v = View(od, h)
         v.line("OUTLINE", (0, 0), (od, 0))
-        v.ellipse("OUTLINE", (od / 2, 0), a + t, b + t, 0, math.pi)
-        v.ellipse("HIDDEN", (od / 2, 0), a, b, 0, math.pi)
-        v.line("CENTER", (od / 2, -ext), (od / 2, b + t + ext))
+        for x, layer in (
+            (0, "OUTLINE"),
+            (t, "HIDDEN"),
+            (od - t, "HIDDEN"),
+            (od, "OUTLINE"),
+        ):
+            v.line(layer, (x, 0), (x, sf))
+        v.ellipse("OUTLINE", (od / 2, sf), a + t, b + t, 0, math.pi)
+        v.ellipse("HIDDEN", (od / 2, sf), a, b, 0, math.pi)
+        v.line("PHANTOM", (0, sf), (od, sf))
+        v.line("CENTER", (od / 2, -ext), (od / 2, h + ext))
         views[name] = v
+    front = views["front"]
+    front.dim((od, 0), (od, sf), sf, right=True)
+    front.text((od + 2 * k, sf + k), "TL", TEXT_H * k)
     c = (od / 2, od / 2)
     top = View(od, od)
     top.circle("OUTLINE", c, od / 2)
     top.circle("HIDDEN", c, a)
     top.cross(c, od / 2 + ext)
     views["top"] = top
-    return views, (od, od, b + t)
+    return views, (od, od, h)
 
 
 SHAPES = {
@@ -491,6 +516,7 @@ def new_document(k: float):
         ("OUTLINE", 7, "CONTINUOUS"),
         ("HIDDEN", 4, "HIDDEN"),
         ("CENTER", 1, "CENTER"),
+        ("PHANTOM", 6, "PHANTOM2"),  # 가상선 (경판의 TL)
         ("DIM", 3, "CONTINUOUS"),
         ("TEXT", 2, "CONTINUOUS"),
         ("FRAME", 8, "CONTINUOUS"),
@@ -522,21 +548,28 @@ def put(msp, pr, ox, oy):
             end_param=u1,
             dxfattribs=att,
         )
+    elif kind == "text":
+        (x, y), text, h = pr[2], pr[3], pr[4]
+        msp.add_text(text, dxfattribs={**att, "height": h, "insert": (ox + x, oy + y)})
 
 
-def add_dimension(doc, msp, p1, p2, vertical: bool, value: float, k: float):
+def add_dimension(
+    doc, msp, p1, p2, vertical: bool, value: float, k: float, right: bool = False
+):
     """선형 치수 하나. 치수 블록(*D)에 치수선·보조선·끝 사선·글자를 LINE 과 TEXT 로 넣고, DIMENSION 에는
-    측정값(group 42)을 적는다. reader 는 둘 다 읽는다 (dxf_reader.py 의 DIMENSION)."""
+    측정값(group 42)을 적는다. reader 는 둘 다 읽는다 (dxf_reader.py 의 DIMENSION). 세로 치수는 기본이 왼쪽이고
+    right 이면 오른쪽이다."""
     off, tick, th = DIM_OFFSET * k, TICK * k, TEXT_H * k
     blk = doc.blocks.new_anonymous_block(type_char="D")
     att = {"layer": "DIM"}
     if vertical:
-        x = p1[0] - off
+        side = 1 if right else -1
+        x = p1[0] + side * off
         a, b = (x, p1[1]), (x, p2[1])
         blk.add_line(a, b, dxfattribs=att)
         blk.add_line(p1, a, dxfattribs=att)
         blk.add_line(p2, b, dxfattribs=att)
-        mid = (x - 0.6 * th - th / 2, (p1[1] + p2[1]) / 2)
+        mid = (x + side * (0.6 * th + th / 2), (p1[1] + p2[1]) / 2)
         rot = 90
     else:
         y = p1[1] - off
@@ -653,6 +686,12 @@ def build_one(spec: dict, out: Path) -> dict:
     ):
         add_dimension(doc, msp, p1, p2, vertical, value, k)
         dims.append({"view": view, "axis": axis, "value": value})
+    for name, v in views.items():  # 그 밖의 세로 치수 (경판 직선부)
+        ox, oy = origins[name]
+        for p, q, value, right in v.dims:
+            p1, p2 = (ox + p[0], oy + p[1]), (ox + q[0], oy + q[1])
+            add_dimension(doc, msp, p1, p2, True, value, k, right)
+            dims.append({"view": name, "axis": "z", "value": value})
 
     notes = {}
     for name in ("top", "right"):

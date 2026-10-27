@@ -7,8 +7,10 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from cutplan_agent.reader.dxf_adapter import load_dxf_document
 from cutplan_agent.reader.dxf_reader import read_dxf
-from cutplan_agent.reader.unfold import develop
+from cutplan_agent.reader.unfold import develop, fallback_params
+from cutplan_agent.reader.vlm import VLMClient, VLMConfig
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -52,7 +54,11 @@ def reader_params(label: dict) -> tuple[str, dict]:
             "cone_height": p["height"],
             "thickness": t,
         }
-    return "head", {"inner_dia": p["outer_diameter"] - 2 * t, "thickness": t}
+    return "head", {
+        "inner_dia": p["outer_diameter"] - 2 * t,
+        "thickness": t,
+        "straight_flange": p["straight_flange"],
+    }
 
 
 READER_KEYS = {
@@ -109,23 +115,40 @@ class BuildSyntheticTest(unittest.TestCase):
             (443.87, 291.8, 59.18),
         )
 
-    def test_head_is_a_half_ellipse_without_straight_flange(self):
+    def test_head_is_a_half_ellipse_on_a_short_straight_flange(self):
         label = self.labels["press_formed_0027"]
-        self.assertNotIn("flange", label["params"])
-        self.assertEqual(label["extents"], [200, 200, 53])  # 안쪽 깊이 188/4 + t
-        # 두께 가운데 반타원 (반축 97, 50) 의 길이
-        self.assertEqual(label["flat_pattern"]["blank_diameter"], 236.85)
-        entities, _ = read_dxf(self.out / "press_formed_0027" / "press_formed_0027.dxf")
+        self.assertEqual(label["params"]["straight_flange"], 6)  # 안지름 188 의 3%
+        self.assertEqual(label["extents"], [200, 200, 59])  # SF + 안쪽 깊이 188/4 + t
+        # 두께 가운데 반타원 (반축 97, 50) 의 길이 236.85 + 2 × SF
+        self.assertEqual(label["flat_pattern"]["blank_diameter"], 248.85)
+        dxf = self.out / "press_formed_0027" / "press_formed_0027.dxf"
+        entities, _ = read_dxf(dxf)
         ellipse = [e for e in entities if e.attributes.get("source") == "ellipse"]
         self.assertTrue(ellipse)
         self.assertFalse(
             [e for e in entities if e.kind == "arc" and e.layer == "OUTLINE"]
         )
+        self.assertTrue([e for e in entities if e.layer == "PHANTOM"])  # TL
+
+    def test_reader_measures_the_straight_flange(self):
+        off = VLMClient(VLMConfig(model=""), "ocr")
+        for name, label in sorted(self.labels.items()):
+            if label["class"] != "press_formed":
+                continue
+            with TemporaryDirectory() as work:
+                doc = load_dxf_document(self.out / name / f"{name}.dxf", off, off, work)
+            title = {"title_block": {"thickness_mm": label["thickness"]}}
+            params, _ = fallback_params("head", title, doc)
+            self.assertEqual(
+                params["straight_flange"], label["params"]["straight_flange"], name
+            )
 
     def test_formulas_reproduce_the_practitioner_answers(self):
         # data_v3/20261027example 의 정답 전개도 (docs/v3_upgrade.md 5.2절). 안지름 1000, t 20
-        head = gen.head_blank({"outer_diameter": 1040, "thickness": 20})
-        self.assertAlmostEqual(head["meridian_length"] + 2 * 30, 1301.6, delta=0.05)
+        head = gen.head_blank(
+            {"outer_diameter": 1040, "thickness": 20, "straight_flange": 30}
+        )
+        self.assertAlmostEqual(head["blank_diameter"], 1301.6, delta=0.05)
         cone = gen.cone_blank(
             {
                 "large_outer_diameter": 1000 + 2 * 20 / math.cos(math.radians(30)),

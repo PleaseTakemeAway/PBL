@@ -4,7 +4,7 @@ docs/data/synthetic.md 의 그림을 그린다. 옛 데이터(동료 생성기)�
     PYTHONPATH=. uv run python scripts/synthetic_figures.py [--out docs/data/synthetic]
 
 그림의 숫자는 옛 label.json 과 새 생성기의 식에서 계산한다. 데이터 폴더는 읽지 않는다.
-  press_profile.png  press_formed_0027 단면: 옛 원호 + 직선부, 새 2:1 반타원
+  press_profile.png  press_formed_0027 단면: 옛 원호 + 직선부, 새 직선부 + 2:1 반타원
   cone_sector.png    cone_0019 전개 부채꼴: 옛 각도와 새 각도, 바깥 호 길이와 원둘레
   head_blank.png     현업자 HEAD: 원판 지름 = 두께 가운데 선의 길이 (계산 문서 1.2 × Dm 과 비교)
   cone_wall.png      현업자 CONE: 판 두께를 끝면에서 가로로 재면 t / cos α
@@ -30,7 +30,8 @@ _spec.loader.exec_module(gen)
 
 
 def press_profile(out: Path):
-    """press_formed_0027 (외경 200, t 6). 옛 도면: 반지름 125 원호 + 높이 15 직선부. 새 도면: 안쪽 반축 94, 47 타원."""
+    """press_formed_0027 (외경 200, t 6). 옛 도면: 반지름 125 원호 + 높이 15 직선부. 새 도면: 직선부 6 위에 안쪽
+    반축 94, 47 타원."""
     fig, axes = plt.subplots(1, 2, figsize=(11, 3.6), sharey=True)
     # 옛 도면 (DXF 에서 읽은 값: 원호 중심 (100, -60), 반지름 125, 직선부 0..15)
     ax = axes[0]
@@ -62,11 +63,28 @@ def press_profile(out: Path):
     ax.set_title("옛 도면: 원호(R125) + 직선부 15, 높이 65")
     # 새 도면
     ax = axes[1]
+    sf = 6
     ax.plot([0, 200], [0, 0], "k")
+    for x, style in ((0, "k"), (6, "k--"), (194, "k--"), (200, "k")):
+        ax.plot([x, x], [0, sf], style)
     u = [math.pi * i / 200 for i in range(201)]
-    ax.plot([100 + 100 * math.cos(v) for v in u], [53 * math.sin(v) for v in u], "k")
-    ax.plot([100 + 94 * math.cos(v) for v in u], [47 * math.sin(v) for v in u], "k--")
-    ax.set_title("새 도면: 안쪽 2:1 반타원 (반축 94, 47), 높이 53")
+    ax.plot(
+        [100 + 100 * math.cos(v) for v in u], [sf + 53 * math.sin(v) for v in u], "k"
+    )
+    ax.plot(
+        [100 + 94 * math.cos(v) for v in u], [sf + 47 * math.sin(v) for v in u], "k--"
+    )
+    ax.plot([0, 200], [sf, sf], color="m", ls=(0, (8, 2, 1, 2, 1, 2)), lw=0.8)
+    ax.text(203, sf + 2, "TL", color="m")
+    ax.annotate(
+        "직선부 6: 타원 끝이 수직이라 꺾이지 않음",
+        (200, sf / 2),
+        (150, -20),
+        arrowprops={"arrowstyle": "->", "color": "red"},
+        color="red",
+        ha="center",
+    )
+    ax.set_title("새 도면: 직선부 6 + 안쪽 2:1 반타원 (반축 94, 47), 높이 59")
     for ax in axes:
         ax.set_aspect("equal")
         ax.set_xlim(-25, 225)

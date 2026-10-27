@@ -107,7 +107,10 @@ def expected_params(label: dict) -> dict:
             "cone_height": h,
         }
     if cls == "press_formed":
-        return {"inner_dia": p["outer_diameter"] - 2 * t}
+        want = {"inner_dia": p["outer_diameter"] - 2 * t}
+        if "straight_flange" in p:  # 옛 합성 데이터에는 없다 (flange)
+            want["straight_flange"] = p["straight_flange"]
+        return want
     if cls == "bent_sheet":
         return {
             "width": p["width"],
