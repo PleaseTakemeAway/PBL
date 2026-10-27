@@ -44,6 +44,13 @@ STAGES = (
     "confirm",
     "export",
 )
+# The 3D stages: wireframe candidates, the model's pick among them, STEP/report export.
+# Since 2026-10-27 the reader ends at the flat pattern (develop), and these do not run unless
+# asked for (run_drawing(three_d=True), --with-3d); without that their stage files say skipped
+# with THREE_D_OFF. The code stays because document (08) builds the DrawingDocument they read.
+# See docs/v3_upgrade.md 1.1.
+THREE_D = ("reconstruct", "confirm", "export")
+THREE_D_OFF = "3D stages are off (docs/v3_upgrade.md 1.1); --with-3d runs them"
 # Optional stage before the DXF chain (stages/convert.py): DWG or DXF -> the DXF that read opens.
 # Its file is 00_convert.json. It is not in STAGES, so main.py --batch and stages/run.py, which
 # start at read with a DXF, do not run it.

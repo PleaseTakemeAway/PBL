@@ -490,7 +490,16 @@ class DxfAdapterTests(unittest.TestCase):
                 0,
             )
             self.assertEqual(
-                main([str(dxf), "--no-vlm", "--output-dir", str(Path(tmp) / "out")]), 0
+                main(
+                    [
+                        str(dxf),
+                        "--no-vlm",
+                        "--with-3d",
+                        "--output-dir",
+                        str(Path(tmp) / "out"),
+                    ]
+                ),
+                0,
             )
             self.assertTrue((Path(tmp) / "out" / "reconstruction.step").exists())
             prov = json.loads(
@@ -514,6 +523,7 @@ class DxfAdapterTests(unittest.TestCase):
                         "--input-mode",
                         "dxf",
                         "--no-vlm",
+                        "--with-3d",
                         "--output-dir",
                         str(output),
                     ]

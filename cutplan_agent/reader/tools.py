@@ -9,7 +9,8 @@ Tools:
   list_drawings      DXF files under a folder, with the workspace each one gets
   stage_status       which stages a workspace has, and their status
   show_stage         one stage's summary, review items and model replies
-  run_<stage>        one stage (13 tools: run_read ... run_export)
+  run_<stage>        one stage (run_read ... run_develop; with three_d also the 3D stages
+                     run_reconstruct, run_confirm, run_export)
   run_stages         a range of stages in order, like stages/run.py
 
 The models the stages call (OCR, reasoning) are fixed when the tools are built; the
@@ -28,6 +29,7 @@ from typing import Any, Callable
 from cutplan_agent.reader.stages.run import MODULES, run_drawing
 from cutplan_agent.reader.stages.workspace import (
     STAGES,
+    THREE_D,
     StageNotReady,
     Workspace,
     headline,
@@ -146,10 +148,15 @@ class ReaderTools:
         output_dir: str | Path,
         clients: tuple[VLMClient, VLMClient],
         input_dir: str | Path = "data_v3/synthetic",
+        three_d: bool = False,
     ):
         self.output_dir = Path(output_dir)
         self.input_dir = Path(input_dir)
         self.clients = {"ocr": clients[0], "reason": clients[1]}
+        # The 3D stages get no tool and run_stages skips them unless three_d
+        # (docs/v3_upgrade.md 1.1).
+        self.three_d = three_d
+        self.stages = tuple(s for s in STAGES if three_d or s not in THREE_D)
         self.tools = {t.name: t for t in self._build()}
 
     # ------------------------------------------------------------------ dispatch
@@ -225,7 +232,8 @@ class ReaderTools:
                 self.show_stage,
             ),
         ]
-        for stage in STAGES:
+        run_names = {"type": "string", "enum": list(self.stages)}
+        for stage in self.stages:
             tools.append(
                 Tool(
                     f"run_{stage}",
@@ -246,8 +254,11 @@ class ReaderTools:
                 schema(
                     {
                         "work": WORK,
-                        "first": {**STAGE_NAME, "description": "default read"},
-                        "last": {**STAGE_NAME, "description": "default export"},
+                        "first": {**run_names, "description": "default read"},
+                        "last": {
+                            **run_names,
+                            "description": f"default {self.stages[-1]}",
+                        },
                         "drawing": {
                             "type": "string",
                             "description": "DXF file path; needed when first is read",
@@ -340,12 +351,13 @@ class ReaderTools:
         self,
         work: str,
         first: str = "read",
-        last: str = "export",
+        last: str | None = None,
         drawing: str | None = None,
     ) -> dict:
+        last = last or self.stages[-1]
         ws = self.workspace(work)
-        if first not in STAGES or last not in STAGES:
-            return {"error": f"stages are {list(STAGES)}"}
+        if first not in self.stages or last not in self.stages:
+            return {"error": f"stages are {list(self.stages)}"}
         if STAGES.index(first) > STAGES.index(last):
             return {"error": "first comes after last"}
         if first == "read" and not drawing:
@@ -358,6 +370,7 @@ class ReaderTools:
                 (self.clients["ocr"], self.clients["reason"]),
                 first=first,
                 last=last,
+                three_d=self.three_d,
                 on_stage=lambda stage, record: done.append(stage_result(ws, record)),
             )
         except StageNotReady as exc:

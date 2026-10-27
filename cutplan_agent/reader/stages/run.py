@@ -3,10 +3,14 @@
 Every stage writes <work>/stages/NN_<stage>.json, including stages that an option or an
 earlier result skips, so the folder shows what happened at each step.
 
+The 3D stages (reconstruct, confirm, export) are skipped unless --with-3d is given: the reader
+ends at the flat pattern (develop) since 2026-10-27 (docs/v3_upgrade.md 1.1).
+
 PYTHONPATH=. python cutplan_agent/reader/stages/run.py <drawing.dxf> <work> [--to STAGE]
 PYTHONPATH=. python cutplan_agent/reader/stages/run.py <work> --from STAGE [--to STAGE]
     --from STAGE  start here and reuse the earlier stage files already in <work>
     --to STAGE    stop after this stage
+    --with-3d     also run the 3D stages
 """
 
 import argparse
@@ -32,6 +36,8 @@ from cutplan_agent.reader.stages import (
 from cutplan_agent.reader.stages.workspace import (
     CONVERT,
     STAGES,
+    THREE_D,
+    THREE_D_OFF,
     StageNotReady,
     Workspace,
     clients_from_args,
@@ -66,6 +72,7 @@ def run_drawing(
     analyze_only: bool = False,
     unfold: bool = True,
     confirm: bool = True,
+    three_d: bool = False,
     units: str | None = None,
     tolerance: float | None = None,
     max_candidates: int = 10,
@@ -109,6 +116,9 @@ def run_drawing(
         disabled.update({s: "--no-unfold" for s in ("unfold_params", "develop")})
     if not confirm:
         disabled["confirm"] = "--no-confirm"
+    if not three_d:
+        for s in THREE_D:
+            disabled.setdefault(s, THREE_D_OFF)
     plan = STAGES[STAGES.index(first) : STAGES.index(last) + 1]
     records: dict[str, dict] = {}
     for i, stage in enumerate(plan):
@@ -151,6 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--analyze-only", action="store_true")
     parser.add_argument("--no-unfold", action="store_true")
     parser.add_argument("--no-confirm", action="store_true")
+    parser.add_argument("--with-3d", action="store_true", help="also run the 3D stages")
     parser.add_argument("--units", choices=["mm", "cm", "m", "inch"])
     parser.add_argument("--tolerance", type=float)
     parser.add_argument("--max-candidates", type=int, default=10)
@@ -183,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
             analyze_only=args.analyze_only,
             unfold=not args.no_unfold,
             confirm=not args.no_confirm,
+            three_d=args.with_3d,
             units=args.units,
             tolerance=args.tolerance,
             max_candidates=args.max_candidates,

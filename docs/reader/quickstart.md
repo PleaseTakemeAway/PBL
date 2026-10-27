@@ -81,9 +81,11 @@ uv run python scripts/reader/run_stages.py $W 4-6 --show     # 여러 단계를 
 | 8 | document | 3D 복원용 front/top/right 정리 |
 | 9 | unfold_params | **[추론 모델]** 전개 파라미터 |
 | 10 | develop | 전개 계산 → `flat_pattern.*` |
-| 11 | reconstruct | 3D 후보 만들기 |
-| 12 | confirm | **[추론 모델]** 3D 후보 고르기 |
-| 13 | export | `report.md`, STEP 쓰기 |
+| 11 | reconstruct | (기본 꺼짐) 3D 후보 만들기 |
+| 12 | confirm | (기본 꺼짐) **[추론 모델]** 3D 후보 고르기 |
+| 13 | export | (기본 꺼짐) `report.md`, STEP 쓰기 |
+
+11~13 은 3D 단계라 기본으로 돌지 않고 `skipped` 파일만 남는다. 돌리려면 `--with-3d` 를 준다 ([stages.md](stages.md)).
 
 단계 파일을 직접 실행해도 같다: `uv run python cutplan_agent/reader/stages/<단계 이름>.py $W` (01 은 `read.py $DXF $W`).
 

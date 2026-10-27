@@ -245,7 +245,16 @@ class VisionAdapterTests(unittest.TestCase):
                 0,
             )
             self.assertEqual(
-                main([str(png), "--no-vlm", "--output-dir", str(Path(tmp) / "out")]), 0
+                main(
+                    [
+                        str(png),
+                        "--no-vlm",
+                        "--with-3d",
+                        "--output-dir",
+                        str(Path(tmp) / "out"),
+                    ]
+                ),
+                0,
             )
             params = json.loads(
                 (Path(tmp) / "out" / "parameters.json").read_text(encoding="utf-8")

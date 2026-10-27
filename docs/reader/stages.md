@@ -5,6 +5,7 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 - 단계마다 파이썬 파일이 하나씩 있고 ([`cutplan_agent/reader/stages/`](../../cutplan_agent/reader/stages/)), 각각 따로 실행된다.
 - `main.py --batch --input-mode dxf` 도 이 단계들을 차례로 부른다. 그래서 한 번에 돌린 결과와 단계별로 손으로 돌린 결과가 같다 (`tests/test_stages.py` 가 확인한다).
 - 단계는 앞 단계가 남긴 파일만 읽는다. 앞 단계를 다시 돌리지 않고 한 단계만 다른 모델로 다시 돌릴 수 있다.
+- 3D 단계(11 `reconstruct`, 12 `confirm`, 13 `export`)는 2026-10-27 부터 기본으로 돌지 않는다. 판독은 10 `develop` 의 전개도에서 끝난다 ([../v3_upgrade.md](../v3_upgrade.md) 1.1). 세 단계의 파일은 `skipped` 로 남고 `reason` 은 `3D stages are off (docs/v3_upgrade.md 1.1); --with-3d runs them` 이다. `main.py`, `stages/run.py`, `orchestrator.py` 에 `--with-3d` 를 주면 예전처럼 돈다. 코드는 지우지 않았다. 08 `document` 가 3D 쪽 `DrawingDocument` 를 만들기 때문이다.
 
 적용 범위는 DXF 입력(`--input-mode dxf`, 기본 `--dxf-mode auto`)이다. 이미지·PDF 입력(`--input-mode vision`), `--dxf-mode layers`, `--batch` 없이 도면 1장을 주는 실행은 아직 예전처럼 한 번에 돈다.
 
@@ -24,7 +25,7 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
     sheet_analysis.json  ⑦ 판독 결과 전체
     candidates.png       ⑫ 원래 뷰와 복원 후보 투영을 나란히 그린 그림
   flat_pattern.json/.dxf/.png             ⑩ 전개도
-  provenance.json, report.md, reconstruction.step, parameters.json   ⑬ 3D 복원 결과
+  provenance.json, report.md, reconstruction.step, parameters.json   ⑬ 3D 복원 결과 (--with-3d 일 때만)
   prediction.json                         --batch 만: 예측 요약과 정답 비교
 ```
 
@@ -54,9 +55,9 @@ DXF 도면 1장을 13단계로 나눠 한 단계씩 돌리고, 단계마다 결�
 | 08 | `document` | 라벨 붙은 뷰를 3D 복원용 front/top/right 계약으로 바꾼다 (호 분할, left/bottom/back 미러, 치수 부착, 축척 검사). 네스팅 도면은 여기서 멈춘다 | | 01, 06, 07 | `DrawingDocument` 전체 | `dxf_adapter.build_document` |
 | 09 | `unfold_params` | 정해진 형상의 전개 파라미터를 읽는다. 모델이 비운 값은 전체 치수로 채운다 | 추론 (skill 문서 3개) | 07, 08 | 파라미터와 필드별 출처(`sources`), 모델 호출 | `unfold.read_unfold_params` |
 | 10 | `develop` | 전개 공식을 코드로 계산하고 전개도를 쓴다 | | 09 | 블랭크 값, `flat_pattern.*` | `unfold.develop_unfold` |
-| 11 | `reconstruct` | 3D 와이어프레임 후보를 만들고 검증기로 순위를 매긴다. 06 에서 복원 불가로 판단하면 건너뛴다 | | 07, 08 | 후보, 검증 결과, review 요청 전체 | `reconstruct/pipeline.py` |
-| 12 | `confirm` | 추론 모델이 원래 뷰와 후보 투영을 비교해 하나를 고른다. 검증기 순위가 우선이고, 다르면 review 에 남긴다 | 추론 | 11 | 고른 후보, 바뀐 review 요청, `candidates.png` | `vision_adapter.confirm_candidates` |
-| 13 | `export` | `provenance.json`, `report.md`, 유효 후보가 있으면 `reconstruction.step`, `parameters.json` | | 11, 12 | 결과 요약 | `reconstruct/step6.py` |
+| 11 | `reconstruct` | (기본 꺼짐, `--with-3d`) 3D 와이어프레임 후보를 만들고 검증기로 순위를 매긴다. 06 에서 복원 불가로 판단하면 건너뛴다 | | 07, 08 | 후보, 검증 결과, review 요청 전체 | `reconstruct/pipeline.py` |
+| 12 | `confirm` | (기본 꺼짐, `--with-3d`) 추론 모델이 원래 뷰와 후보 투영을 비교해 하나를 고른다. 검증기 순위가 우선이고, 다르면 review 에 남긴다 | 추론 | 11 | 고른 후보, 바뀐 review 요청, `candidates.png` | `vision_adapter.confirm_candidates` |
+| 13 | `export` | (기본 꺼짐, `--with-3d`) `provenance.json`, `report.md`, 유효 후보가 있으면 `reconstruction.step`, `parameters.json` | | 11, 12 | 결과 요약 | `reconstruct/step6.py` |
 
 단계별 skill 문서는 [`reader/knowledge.py`](../../cutplan_agent/reader/knowledge.py) 의 `STAGE_TOPICS` 에 고정돼 있다 (06: `unfold_rules`, `unfold_extract` / 09: 여기에 `drawing_conventions_kr` 추가).
 
@@ -93,7 +94,7 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $DXF $W --no-vlm
 PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $DXF $W --to sheet <모델 옵션>   # 07 까지만
 ```
 
-`run.py` 는 `main.py --batch` 의 `--analyze-only`, `--no-unfold`, `--no-confirm`, `--units`, `--tolerance`, `--max-candidates`, `--projection` 을 그대로 받는다. 옵션으로 건너뛴 단계도 `skipped` 파일을 남긴다.
+`run.py` 는 `main.py --batch` 의 `--analyze-only`, `--no-unfold`, `--no-confirm`, `--with-3d`, `--units`, `--tolerance`, `--max-candidates`, `--projection` 을 그대로 받는다. 옵션으로 건너뛴 단계도 `skipped` 파일을 남긴다.
 
 ### 3.2 한 단계씩
 

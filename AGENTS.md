@@ -91,7 +91,7 @@
 
 ## 7. 알려진 상태와 할 일 (2026-10-23)
 
-- 단위 테스트는 112건이다: 동료의 v3 테스트 88건과 이 레포에서 쓴 `test_stages.py` 6건, `test_cp_parse.py` 5건, `test_l3_formulas.py` 8건, `test_reader_tools.py` 3건, `test_orchestrator.py` 2건. 이 레포의 24건은 모두 통과한다. v3 88건은 `tests/fixtures/` 가 있고 tesseract 가 없던 로컬(2026-10-21)에서 11건이 실패했다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 와 tesseract 가 둘 다 없는 `mlic` 에서는 17건이 실패한다 (2026-10-23 확인, 모두 v3 테스트). 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
+- 단위 테스트는 113건이다: 동료의 v3 테스트 88건과 이 레포에서 쓴 `test_stages.py` 7건, `test_cp_parse.py` 5건, `test_l3_formulas.py` 8건, `test_reader_tools.py` 3건, `test_orchestrator.py` 2건. 이 레포의 25건은 모두 통과한다. v3 88건은 `tests/fixtures/` 가 있고 tesseract 가 없던 로컬(2026-10-21)에서 11건이 실패했다. tesseract 미설치 7건, 원인 미확인 4건이다. 동료가 올린 상태에서는 실험 스크립트 GPU 기본값과 어긋난 테스트 2건도 실패했는데, 2026-10-22 에 기본값을 GPU 0 / 1,2,3 으로 바꾸면서 고쳤다. `tests/fixtures/` 와 tesseract 가 둘 다 없는 `mlic` 에서는 17건이 실패한다 (2026-10-23 확인, 모두 v3 테스트). 미확인 4건은 `test_dxf_layer_adapter`, `test_two_up_cutting_plan_yields_nine_captioned_plates`, `test_cli_analyze_only_and_reconstruct`, `test_cli_image_end_to_end` 이다.
 - smoke test 의 t10 중량이 `docs/agent/skills.md` 2절의 2026-10-01 기록과 다르다. 기록은 5,657 kg, 2026-10-21 에는 5,828 kg 이었다. 수정 전 코드에 툴킷을 붙여도 같으므로 이후 변경 때문은 아니다. 원인은 모른다. 2026-10-23 에 헤드 원판 식을 바꾼 뒤에는 5,835.2 kg 이다 (총 6132.2 kg 과 같은 실행).
 - Google Drive 원본은 일부만 처리돼 있다. 커팅플랜은 있는데 입력 도면이 없는 KDM 워크오더가 21개다.
 - cutplan_agent 의 VLM 경로(L1·L2)는 `docs/agent/skills.md` 기준으로 한 번도 실행된 적이 없다.

@@ -19,6 +19,11 @@
 
 3D 코드는 지우지 않고 실행에서만 뺀다. 08 `document` 가 3D 쪽 모델 클래스(`reconstruct/models.py` 의 `DrawingDocument`)를 같이 써서, 지우면 리팩터링이 커지기 때문이다.
 
+- 기본 실행(`main.py`, `main.py --batch`, `stages/run.py`, `orchestrator.py`)에서 11~13 단계 파일은 `skipped` 로 남는다. `reason` 은 `3D stages are off (docs/v3_upgrade.md 1.1); --with-3d runs them` 이다. 배치에서 도면 상태는 `predicted` 다. `report.md`, `provenance.json`, `reconstruction.step`, `parameters.json` 은 생기지 않는다.
+- `--with-3d` 를 주면 예전과 같이 돈다. 단계 목록은 `cutplan_agent/reader/stages/workspace.py` 의 `THREE_D` 에 한 번만 있다.
+- orchestrator 에는 3D 단계의 tool 이 없다. system prompt 도 10단계만 나열한다 ([reader/orchestrator.md](reader/orchestrator.md) 3절).
+- 3D 를 빼기 전후 비교 결과는 커밋 메시지에 적었다. 요약하면 01~10 단계 파일, 전개도, `accuracy.md` 는 같고, `--with-3d` 출력은 빼기 전과 같다.
+
 ## 2. "완벽하게" 의 기준
 
 합성 30장 전부에서 아래가 성립하면 완주로 본다. 기준은 작업하면서 고치고, 고칠 때마다 날짜를 적는다.

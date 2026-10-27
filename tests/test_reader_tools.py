@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 from test_dxf_adapter import synthetic_sheet
 
-from cutplan_agent.reader.stages.workspace import STAGES
+from cutplan_agent.reader.stages.workspace import STAGES, THREE_D
 from cutplan_agent.reader.tools import ReaderTools
 from cutplan_agent.reader.vlm import VLMClient, VLMConfig
 
@@ -27,7 +27,13 @@ class ReaderToolsTest(unittest.TestCase):
     def test_tool_list_covers_every_stage(self):
         tools = ReaderTools("out", no_models())
         for stage in STAGES:
-            self.assertIn(f"run_{stage}", tools.tools)
+            if stage in THREE_D:  # off unless three_d (docs/v3_upgrade.md 1.1)
+                self.assertNotIn(f"run_{stage}", tools.tools)
+            else:
+                self.assertIn(f"run_{stage}", tools.tools)
+        with_3d = ReaderTools("out", no_models(), three_d=True)
+        for stage in STAGES:
+            self.assertIn(f"run_{stage}", with_3d.tools)
         self.assertEqual(
             tools.tools["run_read"].parameters["required"], ["work", "drawing"]
         )

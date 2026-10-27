@@ -104,7 +104,9 @@ class ReconstructionTests(unittest.TestCase):
     def test_cli_exports_and_step_reference_integrity(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            self.assertEqual(main([str(EXAMPLE), "--output-dir", str(root)]), 0)
+            self.assertEqual(
+                main([str(EXAMPLE), "--with-3d", "--output-dir", str(root)]), 0
+            )
             step = (root / "reconstruction.step").read_text(encoding="utf-8")
             definitions = re.findall(r"^#(\d+)=", step, re.MULTILINE)
             references = re.findall(r"#(\d+)", step)
@@ -132,7 +134,8 @@ class ReconstructionTests(unittest.TestCase):
             source = root / "bad.json"
             source.write_text(json.dumps(value), encoding="utf-8")
             self.assertEqual(
-                main([str(source), "--output-dir", str(root / "output")]), 2
+                main([str(source), "--with-3d", "--output-dir", str(root / "output")]),
+                2,
             )
             self.assertFalse((root / "output" / "reconstruction.step").exists())
             self.assertTrue((root / "output" / "report.md").exists())
@@ -156,16 +159,23 @@ class ReconstructionTests(unittest.TestCase):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
             out = root / "output"
-            self.assertEqual(main([str(EXAMPLE), "--output-dir", str(out)]), 0)
+            self.assertEqual(
+                main([str(EXAMPLE), "--with-3d", "--output-dir", str(out)]), 0
+            )
             before = (out / "reconstruction.step").read_bytes()
-            self.assertEqual(main([str(EXAMPLE), "--output-dir", str(out)]), 1)
+            self.assertEqual(
+                main([str(EXAMPLE), "--with-3d", "--output-dir", str(out)]), 1
+            )
             self.assertEqual((out / "reconstruction.step").read_bytes(), before)
             bad = self.source()
             bad["metadata"]["dimensions"]["x"] = 101
             source = root / "bad.json"
             source.write_text(json.dumps(bad), encoding="utf-8")
             self.assertEqual(
-                main([str(source), "--output-dir", str(out), "--overwrite"]), 2
+                main(
+                    [str(source), "--with-3d", "--output-dir", str(out), "--overwrite"]
+                ),
+                2,
             )
             self.assertFalse((out / "reconstruction.step").exists())
             self.assertFalse((out / "parameters.json").exists())

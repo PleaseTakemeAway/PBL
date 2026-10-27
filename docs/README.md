@@ -62,7 +62,7 @@ cutplan_agent/
   reader/              v3 도면 판독: DXF·이미지 → 형상 분류 → 전개도. main.py 가 CLI
   reader/stages/       DXF 판독 13단계. 단계마다 따로 실행되고, main.py --batch 가 차례로 부른다
   reader/tools.py, reader/orchestrator.py  13단계를 tool 로 노출하고, 모델이 자연어 명령에 따라 부르는 루프
-  reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6
+  reconstruct/         v3 3D 복원: models, geometry, pipeline, step1~6. 2026-10-27 부터 --with-3d 일 때만 돈다
 tests/                 reader·reconstruct 단위 테스트 (fixtures/ 는 git 제외)
 experiments/           v3 실험 스크립트: experiments*.sh (vLLM 서버 + 배치), serve.sh (서버만), verify_ocr_output.py, requirements.txt
 scripts/               Data/dataset · part_class_dataset · test_data 구축 스크립트 (data/overview.md)

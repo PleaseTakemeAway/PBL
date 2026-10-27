@@ -65,7 +65,8 @@ class OrchestrateTest(unittest.TestCase):
         backend.start("system", "command", list(tools.tools.values()))
         names = [o["properties"]["tool"]["const"] for o in backend.schema()["anyOf"]]
         self.assertEqual(names, [*tools.tools, "finish"])
-        self.assertIn("run_confirm", backend.messages[0]["content"])
+        self.assertIn("run_develop", backend.messages[0]["content"])
+        self.assertNotIn("run_confirm", backend.messages[0]["content"])  # 3D is off
         body = backend.body()
         self.assertNotIn("tools", body)
         self.assertEqual(body["response_format"]["type"], "json_schema")

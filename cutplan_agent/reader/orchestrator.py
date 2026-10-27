@@ -34,24 +34,36 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from cutplan_agent.reader.stages.workspace import STAGES, write_json
+from cutplan_agent.reader.stages.workspace import write_json
 from cutplan_agent.reader.tools import ReaderTools, Tool
 from cutplan_agent.reader.vlm import make_clients
 
-SYSTEM = f"""너는 DXF 도면 판독 파이프라인을 운영한다. 사용자의 요청을 읽고 tool 을 불러 일을 한 뒤, 무엇을 했고 결과가 어떤지 한국어로 짧게 보고한다.
 
-판독은 13단계이고 순서가 정해져 있다: {" → ".join(STAGES)}.
+def system_prompt(stages: tuple[str, ...]) -> str:
+    """The orchestrator's instructions for the stages that have tools (tools.stages)."""
+    model_stages = "title_ocr(OCR), title_fields, view_labels, unfold_params" + (
+        ", confirm(추론)" if "confirm" in stages else "(추론)"
+    )
+    three_d = (
+        " view_labels 가 3D 복원 불가로 판단하면 reconstruct 부터 skipped 다."
+        if "reconstruct" in stages
+        else ""
+    )
+    return f"""너는 DXF 도면 판독 파이프라인을 운영한다. 사용자의 요청을 읽고 tool 을 불러 일을 한 뒤, 무엇을 했고 결과가 어떤지 한국어로 짧게 보고한다.
+
+판독은 {len(stages)}단계이고 순서가 정해져 있다: {" → ".join(stages)}.
 - 도면 1장마다 작업 폴더(work)가 하나 있다. list_drawings 가 도면 경로(drawing)와 work 를 알려준다.
 - 각 단계는 앞 단계가 work 에 남긴 파일만 읽는다. 앞 단계가 없거나 failed 이면 not_ready 가 돌아온다.
 - 한 단계를 다시 돌리면 그 뒤 단계 파일은 지워지므로 뒤 단계도 다시 돌려야 한다.
-- 모델을 쓰는 단계는 title_ocr(OCR), title_fields, view_labels, unfold_params, confirm(추론) 이다. 모델 호출이 실패해도 단계는 done 이 되고 model_calls 의 ok=false 와 error 로 드러난다. 이때 그 단계의 결과는 폴백 값이다.
-- 네스팅 도면은 document 부터 skipped 가 정상이다. view_labels 가 3D 복원 불가로 판단하면 reconstruct 부터 skipped 다.
+- 모델을 쓰는 단계는 {model_stages} 이다. 모델 호출이 실패해도 단계는 done 이 되고 model_calls 의 ok=false 와 error 로 드러난다. 이때 그 단계의 결과는 폴백 값이다.
+- 네스팅 도면은 document 부터 skipped 가 정상이다.{three_d}
 - 처음부터 끝까지 그대로 돌리면 될 때는 run_stages 한 번으로 돌린다. 중간 결과를 보고 판단해야 하면 run_<단계> 를 하나씩 부른다.
 - 이미 돌린 단계가 있으면 stage_status 로 확인하고 필요한 단계부터 돌린다.
 - 길이·치수를 직접 계산하지 않는다. 결과 값은 tool 결과에 있는 것만 인용한다.
 - 요청에 없는 일은 하지 않는다. 정답 파일(label.json)은 읽지 않는다.
 
 보고에는 돌린 단계와 상태(done/skipped/failed), 핵심 결과(형상, 전개 블랭크 등), review 항목이나 모델 오류가 있으면 그것을 적는다."""
+
 
 SCHEMA_RULES = """
 
@@ -364,7 +376,7 @@ def orchestrate(
 ) -> str:
     """Ask, run the tools the model calls, send the results back; repeat until the model
     answers without a tool call. Returns the answer."""
-    backend.start(SYSTEM, command, list(tools.tools.values()))
+    backend.start(system_prompt(tools.stages), command, list(tools.tools.values()))
     t0 = time.time()
     answer = f"(stopped after {max_turns} turns without an answer)"
     try:
@@ -481,6 +493,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--no-vlm", action="store_true", help="stages run without models"
     )
+    parser.add_argument(
+        "--with-3d",
+        action="store_true",
+        help="also give the 3D stages as tools (off since 2026-10-27, docs/v3_upgrade.md 1.1)",
+    )
     args = parser.parse_args(argv)
 
     provider, model, backend = make_backend(args)
@@ -493,7 +510,7 @@ def main(argv: list[str] | None = None) -> int:
         ocr_provider=args.ocr_provider,
         reason_provider=args.reason_provider,
     )
-    tools = ReaderTools(args.output_dir, clients, args.input_dir)
+    tools = ReaderTools(args.output_dir, clients, args.input_dir, three_d=args.with_3d)
     log = Log(
         args.output_dir / "orchestrator" / datetime.now().strftime("%Y%m%d-%H%M%S")
     )
