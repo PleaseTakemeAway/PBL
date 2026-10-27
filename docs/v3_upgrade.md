@@ -48,6 +48,15 @@
 
 합성 도면 생성기는 레포에 없다. DXF 첫 줄 주석은 `cutplan_agent_v2 data_v3 generator`, `label.json` 의 출처는 `synthetic:make_data_v3` 인데, 2026-10-27 에 레포 전체, git 이력 전체, `mlic` 홈 아래의 `.py` 를 찾아도 없었다. git 은 원격(`PleaseTakemeAway/pbl`)의 모든 브랜치와 태그를 받아 `git log --all -S` 로 두 문자열을 찾았고, 문서 커밋 하나만 나왔다. 동료 원본인 태그 `archive/cutplan_v3` (253020c, eef59cb, 7199ea6) 와 `archive/data_script` (148e703) 의 파일도 따로 봤다. 판독기, 데이터 스크립트, 그 스크립트들의 `.pyc` 뿐이고, `ezdxf.new` 로 DXF 를 만드는 곳은 테스트의 작은 예제뿐이다. 같은 날 `mlic` 의 `~/노바투스2026` (팀 공유본을 rsync 한 것. `cutplan_agent_v3/`, `Data/`) 도 압축되지 않은 파일 전체를 바이트로 찾았지만 없었다. 이 폴더의 코드 파일은 v3 판독기와 테스트뿐이고 `data_v3/synthetic` 자체도 없다. DXF 주석이 `cutplan_agent_v2` 를 가리키므로 동료 서버의 `/home/hwang/yechanhwang/PBL_2026/cutplan_agent_v2` ([AGENTS.md](../AGENTS.md) 6절) 에 있었을 것이다. 이 레포의 v2 (`cutplan_agent/`) 에는 없다. 같은 날 동료가 `scripts/build_part_class_dataset.py` 를 생성기로 알려 줬지만 다른 데이터셋의 스크립트였다. 이 스크립트는 실제 KDM 커팅플랜에서 잘라낸 부품 전개 DXF(`Data/dataset/KDM/*/*/unfold/`)를 512 px PNG 로 그리고, 부품 이름으로 class (cylinder, cone, head, ring, flat) 를 붙여 `Data/part_class_dataset/` (이미지 ↔ class) 를 만든다. 합성 도면의 형상 5종(flat, bent_sheet, cylinder, cone, press_formed), 3면도, 표제란, `label.json`, `SYN-000NN` 을 만드는 코드는 없다. 레포 판과 동료 원본(태그 `archive/data_script`, 598줄)과 그 `.pyc` 3개를 모두 찾아봤다.
 
+같은 날 동료는 합성 도면이 "만든 것이 아니라 회사 부품 도면 중 쉬운 것을 가져온 것" 이라고 했다. `data_v3/synthetic` 의 파일은 이와 맞지 않는다. 동료가 말한 것은 `Data/part_class_dataset` (실제 부품 전개 ↔ class) 으로 보인다.
+
+- 30장 모두 DXF 첫 줄이 `999` 주석 `cutplan_agent_v2 data_v3 generator` 이고, `label.json` 의 `source` 는 `synthetic:make_data_v3`, 도면 번호는 `SYN-000NN` 이다.
+- 형상마다 6장의 엔티티 구성이 똑같고 치수만 다르다 (틀에 치수를 넣어 그린 것). 치수는 모두 2~400 mm 의 정수나 .5 다. 실제 부품 1,789개(`Data/part_class_dataset/dataset.csv`)는 긴 변이 중앙값 685 mm, 최대 13,875 mm 다.
+- 합성 30장의 전개 크기와 ±1 mm 안에서 같은 실제 부품은 하나도 없다.
+- 재질은 SS400, SPHC, SUS304, SPCC, SA516-70 이다. 실제 부품은 A283-C, SA516-70, SA285-C, SA240-316L 순으로 많다. SPCC·SPHC 는 실제 부품표에 거의 없는 박판 재질이다.
+- class 가 다르다. 합성은 flat, bent_sheet, cylinder, cone, press_formed 이고, 실제 부품 데이터셋은 cylinder, cone, head, ring, flat 이다.
+- 옛 press 도면은 원호가 직선부와 37° 꺾여 만난다 (4.1절). 사람이 CAD 로 그린 경판 도면에서는 나오지 않는 모양이다.
+
 1. **생성기를 레포에 새로 쓴다.** 옛 데이터를 재현하지 않는다 (2026-10-27 결정). 옛 정답의 식이 회사 계산 문서와 다르고 틀린 것이 확인돼서(4.2·4.3절), 재현해도 틀린 정답을 다시 만들 뿐이기 때문이다. 형상·치수·재질·축척은 옛 데이터와 같게 두고, 그리는 법과 정답 식만 회사 기준으로 새로 썼다: [`scripts/build_synthetic.py`](../scripts/build_synthetic.py), 설명은 [data/synthetic.md](data/synthetic.md). 옛 정답과의 차이는 `--compare` 로 만드는 `compare.md` 에 있다.
 2. **형상별로 하나씩 검증한다.** 도면(3면도, 숨은선, 치수)과 정답(`params`, `flat_pattern`)이 실제 제작 형상과 맞는지 사람이 보고, 틀린 곳은 4절에 적는다.
 3. **고친다.** 생성기를 고쳐 데이터를 다시 만든다. 한 커밋에 한 문제만 고치고, 바뀐 도면과 정답을 커밋 메시지에 적는다. 전개 식이 바뀌면 reader 의 전개 코드(`cutplan_agent/reader/unfold.py`)도 같이 본다.
