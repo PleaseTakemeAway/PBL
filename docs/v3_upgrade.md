@@ -85,7 +85,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 
 - 도면별 결과와 틀린 이유: `runs/reader/gen1027/local_new/score.md`. 30장에 약 25분 (3묶음 동시, 16:07~16:32).
 - 모델 없이(`--no-vlm`, `runs/reader/gen1027/novlm_new`): 표제란 30/30, 뷰 18/30, 나머지 0 (형상은 모델만 정한다).
-- 형상을 답한 26장은 모두 맞았다. 못 맞힌 4장은 13번.
+- 형상을 답한 26장은 모두 맞았다. 못 맞힌 4장은 13번. 같은 코드를 동료 서버(GPU 한 장씩)에서 돌리면 형상 30/30 이다 (2026-10-28, [server_handoff.md](server_handoff.md) 6.3절). 어느 도면이 잘리는지가 실행마다 달라서다.
 - 틀린 원인은 4절 13~18번이다. 11번(원만 있는 뷰)은 뷰 13장 중 12장의 원인이다.
 - 처음에는 10묶음으로 돌렸는데 KV 캐시가 차서 생성 속도가 25 → 4.5 tok/s 로 떨어지고 06 단계 요청이 120초 제한(`VLMConfig.timeout`)에 걸려 `ReadTimeout` 이 났다. 그 결과는 버렸다. 제한 시간은 이제 `CUTPLAN_{OCR,REASON}_TIMEOUT` 으로 바꿀 수 있고, `batch_parallel.sh` 가 900초로 둔다. 기준선 실행에는 `ReadTimeout` 이 없다.
 - 1% 기준의 한계: bent_sheet_0008 은 모델이 굽힘 반경 0 을 6 (= 두께)으로 읽었는데 전개 길이 오차가 0.73% 라 전개는 맞음으로 나온다. 그래서 치수를 따로 본다.
@@ -109,7 +109,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 | 10 | 2026-10-27 | 옆에서 본 구멍에 중심선이 없다 | 구멍이 있는 11장 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 11 | 2026-10-27 | reader 가 원만 있는 뷰를 뷰 후보에서 놓친다 (뷰 3개 중 2개만 잡힘) | cylinder 우측면도, press 평면도. 옛·새 데이터 모두 | reader 05 `views` | 남음 |
 | 12 | 2026-10-27 | reader 표제란 정규식이 `THIRD ANGLE` 과 `PART NAME` 을 읽지 못한다 | 30장 모두. 옛·새 데이터 모두 | reader 02 `title_regex` | 남음 |
-| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (공백을 수천 줄 반복하거나 `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선) | 하네스: 잘리면 다시 묻기, 공백 제한 | 남음 |
+| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (공백을 수천 줄 반복하거나 `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 잘리면 다시 묻기, 공백 제한 | 남음 |
 | 14 | 2026-10-27 | 09 에서 모델이 콘 대경을 외경 그대로 `large_inner_dia` 에 넣는다 (소경은 모델이 비워 fallback 이 외경 − 2t 로 맞게 채움) | cone_0019~0022 | 하네스: 외형 치수와 대조 | 남음 |
 | 15 | 2026-10-27 | 09 에서 모델이 2:1 타원형 경판을 `HEMI` 로 판단해 계수 1.414 를 쓴다. press_formed_0025 는 외경을 안지름으로 읽었다 | press_formed_0025~0028·0030 | 하네스: 높이/지름 = 1/4 이면 2:1 | 남음 |
 | 16 | 2026-10-27 | `fallback_params` 가 직선부 없는 새 경판 도면에서 타원 끝을 직선부(`side_height`) 2.4~3.6 mm 로 잰다 | press_formed 6장 | reader `unfold.py` 의 `_front_profile`·`fallback_params` | 남음 |

@@ -20,7 +20,7 @@
 | | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
 | | [v3_upgrade.md](v3_upgrade.md) | v3 고도화 (2026-10-27~): 합성 도면 생성기를 다시 쓰고 검증해, 합성 30장을 모든 단계에서 정답과 맞게 완주한다. 기준, 계획, 합성 도면의 이상한 점과 처리 |
-| | [server_handoff.md](server_handoff.md) | 동료 서버로 옮겨 이어 하기 (2026-10-27): 동료의 29/30 이 무엇인지, 서버에서 처음 할 일, 재현·비교 순서, 이 브랜치의 상태 |
+| | [server_handoff.md](server_handoff.md) | 동료 서버로 옮겨 이어 하기 (2026-10-27): 동료의 29/30 이 무엇인지, 서버에서 처음 할 일, 재현·비교 순서, 이 브랜치의 상태, 서버에서 확인한 것과 재현 결과 (6절) |
 | | [company_brief.md](company_brief.md) | 회사 담당자에게 보내는 설명 자료 (2026-10-27): 처리 과정, 합성 도면 검증 방법과 결과, 확인 요청. 같은 내용의 슬라이드는 `presentation/build_company_brief.py` |
 | | [presentation.md](presentation.md) | 발표 슬라이드(`presentation/`)를 만드는 스크립트, 미리보기, 여러 브랜치에서 고치는 법, 슬라이드 숫자의 출처 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
