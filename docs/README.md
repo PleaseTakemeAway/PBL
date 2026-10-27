@@ -34,6 +34,7 @@
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |
 | `data/` | [overview.md](data/overview.md) | 데이터 지도, 스크립트 ①~⑥ 의 입출력, 정답과 평가 |
 | | [transfer.md](data/transfer.md) | 데이터를 다른 서버로 옮기기: 무엇을 옮기고 무엇을 만드는지, 레포 루트 기준 경로, `scripts/check_data.py` 로 확인 |
+| | [synthetic_changes_company.md](data/synthetic_changes_company.md) | 회사 전달용 데이터 변경 설명 (2026-10-28): 변경 전후·이유·검증 범위·현업자 HEAD 미해결 문제·확인 요청 |
 | | [synthetic.md](data/synthetic.md) | 합성 도면 생성기(`scripts/build_synthetic.py`): 만드는 명령, 그리는 규칙, 정답 식과 근거, 옛 데이터에서 무엇이 왜 틀렸나 |
 | | [dataset_structure.md](data/dataset_structure.md) | `Data/dataset/` 의 폴더 구조와 Drive 원본의 의미 |
 | | [part_class_rules.md](data/part_class_rules.md) | 부품 이름 정규화와 형상 class 결정 규칙 |

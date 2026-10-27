@@ -11,6 +11,7 @@
 | `presentation/build_roadmap.py` | "다음 단계: 로컬 AI 가 도구를 골라 쓰게" 파트 (13장, 약 15분) → `roadmap.pptx`. `v2_v3` 다음에 발표한다. 두 덱은 내용이 겹치지 않는다 (숫자는 기준선으로만 다시 부른다). 할 일 둘 → tool calling → Claude 대신 로컬 AI 의 에이전트 시제품과 그 기록 → 도구를 부르는 두 방식 → 실제 도면에 적용 → 다음 주 → 최종 목표 |
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
+| `presentation/build_synthetic_changes_company.py` | 회사 검토용 합성 데이터 변경 설명 (12장) → `synthetic_changes_company.pptx`. [data/synthetic_changes_company.md](data/synthetic_changes_company.md)와 같은 범위. 콘·경판 변경 전후 모식도, 굽힘판·제도 정비, 직선부 측정과 미해결 문제, 검증 범위·회사 확인 사항. 과거 모델 점수를 최신 변경의 성능으로 인용하지 않는다 |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -114,3 +115,14 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵과 v4.md 8절을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, v4 8절 → 부품표 단계 (채점 포함), v4 8절 '이번 범위 밖' → 판재 크기, 4 · 5번 → 하네스 장치 비교 (표준 tool calling 비교 포함), 7번 → 뒷단 연결. 날짜는 정하지 않았다 |
 
 참고: `runs/reader/data_v3_claude_batch_10141611` 은 같은 합성 30장을 Claude(Sonnet 5 추론, Haiku 4.5 OCR)로 돌려 25/30 이다 (2026-10-14). 날짜와 코드가 27/30 실행과 달라 로컬과 Claude 를 비교하는 근거로 쓰지 않았다. "로컬 AI 가 Claude 보다 작고 도면을 보는 눈이 약하다"는 팀의 판단이고, 같은 조건에서 잰 숫자는 아직 없다 ([harness_engineering.md](harness_engineering.md) 2.1절 5번).
+
+## 7. 회사 전달용 데이터 변경 설명 (2026-10-28)
+
+기존 `company_brief.pptx`는 10월 27일 실행 결과 중심이다. 10월 28일의 현업자 정답 식·직선부 변경까지 전달할 때는 새 덱과 [설명서](data/synthetic_changes_company.md)를 사용한다. 원본 고객 도면 이미지는 넣지 않고 기존 합성 모식도 4개를 사용한다. `cone_sector.png`는 이전 평균지름 단계의 모식도이므로 현재 반경은 설명서 본문과 슬라이드 노트에 명시했다.
+
+```bash
+PYTHONPATH=. uv run --with python-pptx python presentation/build_synthetic_changes_company.py
+PYTHONPATH=. uv run python presentation/render.py presentation/synthetic_changes_company.pptx
+```
+
+출력은 `presentation/synthetic_changes_company.pptx`, 미리보기는 `presentation/build/synthetic_changes_company.pdf` 및 같은 이름의 슬라이드별 PNG다. PPTX·PDF는 git에 넣지 않는다. 최근 Claude 작업은 커밋 `2807e44`·`7005fa6`·`f111ea8`과 `docs/v3_upgrade.md` 5.4~5.5절을 근거로 확인했다. 세션 대화 원문을 읽었다는 뜻은 아니다. 검증 숫자는 해당 작업 기록에서 인용했으며 이 덱 생성은 AI 성능 재시험이 아니다.
