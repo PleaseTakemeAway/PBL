@@ -144,11 +144,9 @@ class BuildSyntheticTest(unittest.TestCase):
             self.assertEqual(len(lines), len(set(lines)), name)
 
     def test_reader_development_matches_the_labels(self):
-        # 생성기와 reader 는 전개 식을 따로 구현했다. 같은 치수를 넣으면 같은 값이 나와야 한다.
+        # 생성기와 reader 는 전개 식을 따로 구현했다. 같은 치수를 넣으면 같은 값이 나와야 한다 (30장).
         for label in self.labels.values():
             part_type, params = reader_params(label)
-            if part_type == "head":
-                continue  # reader 의 헤드 식은 아직 경험식 (1.25~1.30 × ID)
             blank = develop(part_type, params)["blank"]
             for mine, theirs in READER_KEYS[part_type]:
                 self.assertAlmostEqual(

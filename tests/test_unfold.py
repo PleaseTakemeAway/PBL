@@ -212,8 +212,9 @@ class DevelopTests(unittest.TestCase):
         b = develop("head", {"inner_dia": 200, "thickness": 6, "straight_flange": 10})[
             "blank"
         ]
-        self.assertAlmostEqual(b["blank_diameter"], 1.275 * 200 + 20)
-        self.assertEqual(b["blank_diameter_range"], [1.25 * 200 + 20, 1.30 * 200 + 20])
+        self.assertAlmostEqual(
+            b["blank_diameter"], 1.2 * (200 + 6) + 20
+        )  # 2:1, Dm = ID + t
         with self.assertRaisesRegex(ValueError, "inner_dia"):
             develop("head", {"inner_dia": 0, "thickness": 6})
 

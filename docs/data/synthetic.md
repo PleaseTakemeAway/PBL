@@ -96,7 +96,7 @@ reader 가 읽는 것은 `class` 와 `flat_pattern` 이다 (`reader/batch.py`, `
 
 - **콘:** 부채꼴을 말면 바깥 호가 콘 큰 쪽의 원이 된다. 그래서 바깥 호 길이 R1 × θ 가 평균 원둘레 π × D1 과 같아야 한다. cone_0019 는 444.04 × 59.18° = 458.6, π × 146 = 458.7 이다. 생성기가 장마다 이 등식을 검사한다 (`cone_blank` 의 `assert`).
 - **헤드:** 2:1 반타원의 중립면 면적은 1.3802 × π(D/2)² 이다. 같은 면적의 원판 지름은 √1.3802 × D = 1.1748 × D 이다 (회사 문서 4.3절의 이론값 1.175). 이 값은 성형 여유가 없는 하한이다. 회사 약산식의 계수 1.2 는 이론값에 성형 여유를 조금 얹은 실무 값이다. v2 계산 skill 도 같은 식을 쓴다 (`cutplan_agent/skills/l3_rules.py` 의 `_head_blank`).
-- **reader 와 대조:** reader 의 전개 함수(`reader/unfold.py` 의 `develop`)에 같은 치수를 넣으면 flat·굽힘판·원통·콘 24장 모두 정답과 0.01 이내로 같다 (`test_reader_development_matches_the_labels`). 두 코드는 따로 썼다. 헤드는 reader 가 아직 경험식이라 7절에 적는다.
+- **reader 와 대조:** reader 의 전개 함수(`reader/unfold.py` 의 `develop`)에 같은 치수를 넣으면 30장 모두 정답과 0.01 이내로 같다 (`test_reader_development_matches_the_labels`). 두 코드는 따로 썼다. reader 의 헤드 식은 2026-10-27 에 경험식(1.25~1.30 × 안지름)에서 이 식으로 바꿨다 (`reader/unfold.py` 의 `head_blank_diameter`). 바꾸기 전에는 헤드 6장이 맞지 않았다.
 
 ## 5. 옛 데이터에서 바뀐 것과 이유
 
@@ -149,13 +149,12 @@ reader 가 읽는 것은 `class` 와 `flat_pattern` 이다 (`reader/batch.py`, `
 
 ## 6. 확인한 것 (2026-10-27, `mlic`)
 
-- `tests/test_build_synthetic.py` 7건 통과: 30장 생성, 실행마다 같은 파일, 콘 호 길이 = 평균 원둘레 (6장), 헤드는 타원이고 원호 외형선이 없음, K 계수 0.33, reader 가 치수 4개와 구멍 주기를 읽음(깨진 글자 없음), 중복 선 없음, reader 전개 값과 정답이 같음 (24장).
+- `tests/test_build_synthetic.py` 7건 통과: 30장 생성, 실행마다 같은 파일, 콘 호 길이 = 평균 원둘레 (6장), 헤드는 타원이고 원호 외형선이 없음, K 계수 0.33, reader 가 치수 4개와 구멍 주기를 읽음(깨진 글자 없음), 중복 선 없음, reader 전개 값과 정답이 같음 (30장, 헤드는 reader 식을 바꾼 뒤).
 - reader 를 모델 없이(`--no-vlm`) 새 30장과 옛 30장에 돌려 비교했다. 표제란 정규식 결과(도면 번호, 재질, 두께, 축척)와 뷰 후보 수는 30장 모두 같다. 도면을 쓰는 방식(손으로 쓴 DXF → ezdxf)을 바꿔도 reader 의 읽기는 달라지지 않았다.
 - 검토용 그림(`runs/render_drawings/synthetic_generated/`)을 press, 굽힘판, 콘에서 눈으로 봤다.
 
 ## 7. 남은 것
 
-- **reader 의 헤드 식:** reader 는 1.25~1.30 × 안지름(가운데 1.275) 경험식을 쓴다 (`reader/unfold.py` 의 `HEAD_BLANK_K`). 옛 정답에 맞추려고 남겨 둔 것이라 새 정답과 맞지 않는다. 회사 식 1.2 × Dm 으로 바꾸는 것은 reader 변경이라 따로 커밋한다.
 - **reader 가 원만 있는 뷰를 놓친다:** cylinder 의 우측면도와 press 의 평면도(동심원과 중심선만 있는 뷰)가 05 `views` 의 뷰 후보에서 빠져 뷰가 2개만 잡힌다. 옛 데이터에서도 같다. reader 문제라 [../v3_upgrade.md](../v3_upgrade.md) 4절에 적었다.
 - **표제란 정규식:** `THIRD ANGLE` (투상법)과 `PART NAME` 을 읽지 못한다 (02 의 `missing`). 옛 데이터에서도 같다.
 - **기본 입력 바꾸기:** `main.py`, `experiments/*.sh`, `orchestrator.py` 의 기본 입력은 아직 `data_v3/synthetic` 이다.

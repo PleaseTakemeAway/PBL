@@ -49,10 +49,41 @@ PARAM_KEYS = (
     "head_type",
     "straight_flange",
 )
-# 동료가 둔 경험계수 (2026-10-22 까지의 unfold_rules.md: "D_blank ≈ k × ID + 2 × SF_extra, k = 1.25~1.30").
-# 2026-10-23 부터 unfold_rules.md 와 v2 (skills/l3_rules.py) 는 회사 담당자 계산 문서의 형식별 식을 쓴다.
-# v3 는 data_v3/synthetic 의 press_formed 정답과 맞춰 두려고 그대로 둔다
-HEAD_BLANK_K = (1.25, 1.30)
+
+
+def head_blank_diameter(
+    di: float, t: float, sf: float, head_type: str | None, ikr: float = 0.0
+) -> tuple[float, str, list[str]]:
+    """헤드 원판 지름: 회사 계산 문서(shell_cone_head_unfold.md 4.2)의 형식별 약산식. Dm = ID + t, OD = ID + 2t.
+    v2 의 skills/l3_rules.py `_head_blank` 와 같은 식이고, 구매용 트림 여유와 10 mm 반올림은 넣지 않는다.
+    2026-10-27 까지는 동료가 둔 경험계수 1.25~1.30 × ID 를 썼다 (docs/data/synthetic.md 5.1)."""
+    dm, od = di + t, di + 2 * t
+    kind = (head_type or "").lower().replace(" ", "")
+    warnings: list[str] = []
+    if "hemi" in kind:
+        return (
+            1.414 * dm + 2 * sf,
+            "D_blank = 1.414 × Dm + 2 × SF (hemispherical)",
+            warnings,
+        )
+    if any(k in kind for k in ("tori", "f&d", "fd", "dish")):
+        if ikr <= 0:
+            ikr = 0.1 * od
+            warnings.append(f"no knuckle radius: IKR = 0.1 × OD = {ikr:.1f}")
+        return (
+            od + od / 24 + 2 * sf + 2 / 3 * ikr,
+            "D_blank = OD + OD/24 + 2 × SF + 2/3 × IKR (torispherical)",
+            warnings,
+        )
+    if "flat" in kind:
+        return (
+            dm + 2 * sf + (pi / 2 - 1) * ikr,
+            "D_blank = Dm + 2 × SF + (π/2 − 1) × IKR (flat flanged)",
+            warnings,
+        )
+    if kind and "2:1" not in kind and "ellip" not in kind:
+        warnings.append(f"unknown head type {head_type!r}: computed as 2:1 ellipsoidal")
+    return 1.2 * dm + 2 * sf, "D_blank = 1.2 × Dm + 2 × SF (2:1 ellipsoidal)", warnings
 
 
 def _missing(value: Any) -> bool:
@@ -414,20 +445,19 @@ def develop(part_type: str, params: dict) -> dict:
     else:  # head
         di = float(params["inner_dia"])
         sf = float(params.get("straight_flange") or 0.0)
-        k_mid = sum(HEAD_BLANK_K) / 2
-        d = k_mid * di + 2 * sf
+        d, formula, head_warnings = head_blank_diameter(
+            di, t, sf, params.get("head_type"), float(params.get("knuckle_radius") or 0)
+        )
+        warnings += head_warnings
         blank = {
-            "formula": "D_blank ≈ k × ID + 2 × SF (k = 1.25~1.30, empirical)",
+            "formula": formula,
             "blank_diameter": d,
-            "blank_diameter_range": [
-                HEAD_BLANK_K[0] * di + 2 * sf,
-                HEAD_BLANK_K[1] * di + 2 * sf,
-            ],
-            "k": k_mid,
+            "mean_diameter": di + t,
             "head_type": params.get("head_type"),
         }
         warnings.append(
-            "formed part: blank diameter is an empirical estimate (unfold_rules.md); forming practice governs"
+            "formed part: blank diameter is the approximation of shell_cone_head_unfold.md 4.2, "
+            "without trim allowance; forming practice governs"
         )
         outline = [_arc(0, 0, d / 2, 0, 2 * pi, 128)]
     for key, value in blank.items():
