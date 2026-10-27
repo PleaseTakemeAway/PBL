@@ -105,7 +105,7 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py \
 
 - 프로필은 bash 로 읽는 짧은 파일이다. `model` 과 `vllm_args=(...)` 를 쓰고, 필요하면 `gpu`, `parallel`, `mode`, `provider`, `base_url`, `api_key_env`, `trust_remote_code` 도 쓴다. 새 모델은 비슷한 프로필을 복사해 고친다. 레포에 넣지 않을 프로필은 파일 경로로 준다 (`--reason-profile ~/my-model.sh`).
 - 설정은 역할 기본값 → 프로필 → `CUTPLAN_<역할>_*` 환경 변수 → CLI 순으로 덮어쓴다. 그래서 `--reason-gpu`, `--reason-vllm-arg=...` 는 프로필 값보다 우선한다. `--reason-model` 은 모델 ID 만 바꾸고 프로필의 vLLM 옵션은 그대로 둔다.
-- reason 역할에는 프로필과 상관없이 `--structured-outputs-config.backend=xgrammar` 가 붙는다 (`json_schema` 출력용).
+- reason 역할에는 프로필과 상관없이 `--structured-outputs-config.backend=xgrammar` 와 `--structured-outputs-config.disable_any_whitespace=true` 가 붙는다 (`json_schema` 출력용. 뒤의 것은 JSON 사이 공백을 막아 답이 빈 줄로 잘리지 않게 한다, [v3_upgrade.md](v3_upgrade.md) 3.2절).
 - `serve.sh --dry-run` 으로 프로필이 만드는 `vllm serve` 명령을 먼저 확인한다.
 
 GPU 2장 서버에 reason 모델만 띄워 두고, OCR 은 다른 컴퓨터에서 필요할 때 띄우는 예:

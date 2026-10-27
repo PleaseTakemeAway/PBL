@@ -41,8 +41,11 @@ declare -A ocr_cli=() reason_cli=()
 ocr_cli_vllm_args=()
 reason_cli_vllm_args=()
 # vLLM options a role needs whatever the model: json_schema output needs XGrammar.
+# Without disable_any_whitespace the grammar lets the model fill the reply with
+# blank lines until max_tokens cuts the JSON (docs/v3_upgrade.md 4절 #13).
 ocr_role_vllm_args=()
-reason_role_vllm_args=(--structured-outputs-config.backend=xgrammar)
+reason_role_vllm_args=(--structured-outputs-config.backend=xgrammar
+                       --structured-outputs-config.disable_any_whitespace=true)
 # Final vLLM options, set by load_role: profile, then role, then CLI. Repeated
 # --*-vllm-arg options come last and can override any of these values.
 ocr_vllm_args=()

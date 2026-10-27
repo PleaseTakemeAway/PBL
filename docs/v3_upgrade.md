@@ -85,7 +85,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 
 - 도면별 결과와 틀린 이유: `runs/reader/gen1027/local_new/score.md`. 30장에 약 25분 (3묶음 동시, 16:07~16:32).
 - 모델 없이(`--no-vlm`, `runs/reader/gen1027/novlm_new`): 표제란 30/30, 뷰 18/30, 나머지 0 (형상은 모델만 정한다).
-- 형상을 답한 26장은 모두 맞았다. 못 맞힌 4장은 13번. 같은 코드를 동료 서버(GPU 한 장씩)에서 돌리면 형상 30/30 이다 (2026-10-28, [server_handoff.md](server_handoff.md) 6.3절). 어느 도면이 잘리는지가 실행마다 달라서다.
+- 형상을 답한 26장은 모두 맞았다. 못 맞힌 4장은 13번. 같은 코드를 동료 서버(GPU 한 장씩)에서 돌리면 형상 30/30 이다 (2026-10-28, [server_handoff.md](server_handoff.md) 6.3절). 어느 도면이 잘리는지가 실행마다 달라서다. 13번을 고친 뒤는 3.2절.
 - 틀린 원인은 4절 13~18번이다. 11번(원만 있는 뷰)은 뷰 13장 중 12장의 원인이다.
 - 처음에는 10묶음으로 돌렸는데 KV 캐시가 차서 생성 속도가 25 → 4.5 tok/s 로 떨어지고 06 단계 요청이 120초 제한(`VLMConfig.timeout`)에 걸려 `ReadTimeout` 이 났다. 그 결과는 버렸다. 제한 시간은 이제 `CUTPLAN_{OCR,REASON}_TIMEOUT` 으로 바꿀 수 있고, `batch_parallel.sh` 가 900초로 둔다. 기준선 실행에는 `ReadTimeout` 이 없다.
 - 1% 기준의 한계: bent_sheet_0008 은 모델이 굽힘 반경 0 을 6 (= 두께)으로 읽었는데 전개 길이 오차가 0.73% 라 전개는 맞음으로 나온다. 그래서 치수를 따로 본다.
@@ -101,6 +101,28 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 | 2 | 2026-10-27 | 콘 전개 정답이 틀렸다. 반경은 외경 기준이고 각도는 다른 식이다 | `cone_0019`~`0024` 6장, `flat_pattern` | 생성기: 회사 식 (4.2절, data/synthetic.md 5.1절) | 고침 |
 | 3 | 2026-10-27 | press_formed 블랭크 지름 정답의 계수(1.3415)가 회사 계산 문서와 다르다 | press_formed 6장, `flat_pattern.blank_diameter` | 생성기와 reader: 1.2 × Dm (4.3절, data/synthetic.md 5.1절) | 고침 |
 | 4 | 2026-10-27 | 굽힘 K 계수가 회사 규칙과 다르다 (R = 0 인데 0.40, 규칙은 0.33) | bent_sheet 6장 | 생성기: 회사 규칙 (data/synthetic.md 5.1절) | 고침 |
+### 3.2 답 잘림(#13)을 고친 뒤 (2026-10-28, 동료 서버)
+
+#13 을 두 군데서 고쳤다.
+
+- **판단 서버:** `experiments/vllm_common.sh` 가 reason 역할에 `--structured-outputs-config.disable_any_whitespace=true` 를 붙인다. 스키마 문법이 JSON 사이의 공백을 허용해서 모델이 빈 줄을 `max_tokens` 까지 반복하던 경우를 막는다. 2026-10-28 이후 띄운 서버에만 적용된다.
+- **클라이언트:** `cutplan_agent/reader/vlm.py` 의 `VLMClient.ask` 는 스키마 출력이 `max_tokens` 에서 잘리면 (`finish_reason` `length`, Anthropic `max_tokens`) "모든 reason·note 를 한 문장으로" 라는 지시를 붙여 한 번 더 묻는다. 잘린 첫 답은 기록의 `retry` 에 남는다. 잘리지 않았는데 JSON 이 아닌 답(산문, 코드 펜스)은 예전처럼 다시 묻지 않고 실패로 둔다. 모든 모델 호출 기록에 `finish_reason` 이 생겼다.
+
+같은 서버(GPU 4·5)·같은 명령(`batch_parallel.sh ... 3`)으로 옛·새 데이터를 두 번씩 돌렸다. 결과는 `runs/reader/fix13/{old,new}_{1,2}`.
+
+| 실행 | 형상 | 다시 물은 도면 (모두 두 번째에 성공) | 06 최장 시간 |
+|---|---:|---|---:|
+| 고치기 전 `server1027/v3_old` (옛) | 29/30 | (없음, flat_0002 잘림) | 72.6 s |
+| `fix13/old_1` (옛) | 30/30 | 없음 | 54.8 s |
+| `fix13/old_2` (옛) | 30/30 | 없음 | 61.1 s |
+| 고치기 전 `server1027/v3_new` (새) | 30/30 | (없음) | 54.2 s |
+| `fix13/new_1` (새) | 30/30 | press_formed_0026 | 86.7 s |
+| `fix13/new_2` (새) | 30/30 | cylinder_0017 | 87.1 s |
+
+- 공백을 막은 뒤에도 `reason` 을 길게 쓰다 잘리는 경우가 새 데이터에서 실행마다 1장씩 있었고, 다시 묻기가 둘 다 살렸다.
+- 새 데이터의 나머지 점수 (`new_1` / `new_2`): 단계 30/30, 표제란 30/30, 뷰 15/30, 치수 21 / 22, 전개 15 / 16, 전부 8 / 9. 뷰·치수·전개의 남은 오류는 4절 #11, #14~#18 이다.
+- 3묶음 동시로 30장에 약 12분 걸렸다 (옛·새 데이터를 같이 돌려 6묶음이 한 서버를 나눠 썼다).
+
 | 5 | 2026-10-27 | 굽힘선이 굽힘부 가운데가 아니라 시작점에 있다 | bent_sheet 6장, `flat_pattern.bend_lines` | 생성기 (data/synthetic.md 5.1절) | 고침 |
 | 6 | 2026-10-27 | 같은 숨은선이 두 번씩 들어 있다 | 10장, 72개 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 7 | 2026-10-27 | 구멍 주기 `2-Ø13` 이 `2-Ã˜13` 으로 깨진다 (UTF-8 로 썼는데 R2000 은 cp1252 로 읽힘) | 구멍이 있는 11장 | 생성기: `%%c` (data/synthetic.md 5.2절) | 고침 |
@@ -109,7 +131,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 | 10 | 2026-10-27 | 옆에서 본 구멍에 중심선이 없다 | 구멍이 있는 11장 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 11 | 2026-10-27 | reader 가 원만 있는 뷰를 뷰 후보에서 놓친다 (뷰 3개 중 2개만 잡힘) | cylinder 우측면도, press 평면도. 옛·새 데이터 모두 | reader 05 `views` | 남음 |
 | 12 | 2026-10-27 | reader 표제란 정규식이 `THIRD ANGLE` 과 `PART NAME` 을 읽지 못한다 | 30장 모두. 옛·새 데이터 모두 | reader 02 `title_regex` | 남음 |
-| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (공백을 수천 줄 반복하거나 `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 잘리면 다시 묻기, 공백 제한 | 남음 |
+| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (공백을 수천 줄 반복하거나 `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 판단 서버에 `disable_any_whitespace` (공백 반복 차단), `max_tokens` 에서 잘리면 짧게 한 번 다시 묻기 (`reader/vlm.py`, 2026-10-28, 3.2절) | 고침 |
 | 14 | 2026-10-27 | 09 에서 모델이 콘 대경을 외경 그대로 `large_inner_dia` 에 넣는다 (소경은 모델이 비워 fallback 이 외경 − 2t 로 맞게 채움) | cone_0019~0022 | 하네스: 외형 치수와 대조 | 남음 |
 | 15 | 2026-10-27 | 09 에서 모델이 2:1 타원형 경판을 `HEMI` 로 판단해 계수 1.414 를 쓴다. press_formed_0025 는 외경을 안지름으로 읽었다 | press_formed_0025~0028·0030 | 하네스: 높이/지름 = 1/4 이면 2:1 | 남음 |
 | 16 | 2026-10-27 | `fallback_params` 가 직선부 없는 새 경판 도면에서 타원 끝을 직선부(`side_height`) 2.4~3.6 mm 로 잰다 | press_formed 6장 | reader `unfold.py` 의 `_front_profile`·`fallback_params` | 남음 |

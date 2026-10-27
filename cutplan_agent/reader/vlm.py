@@ -66,6 +66,23 @@ def final_part_class(
     return value if value in PART_CLASSES else None
 
 
+# Appended when a constrained reply was cut at max_tokens and so is not valid
+# JSON (docs/v3_upgrade.md 4절 #13).
+SHORTER_RETRY = (
+    "\n\nYour previous answer was cut off before the JSON was complete. "
+    "Answer again with the same decisions, but keep every reason, note and "
+    "problem to one short sentence."
+)
+
+
+def _is_json(text: Any) -> bool:
+    try:
+        json.loads(text)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 @dataclass
 class VLMConfig:
     provider: str = "openai"
@@ -154,6 +171,9 @@ class VLMClient:
     config: VLMConfig
     role: str = "ocr"
     trace: list[dict] = field(default_factory=list)
+    # finish_reason of the last reply; "length" = cut at max_tokens (Anthropic
+    # max_tokens is stored as "length" too)
+    last_finish_reason: str | None = None
 
     @property
     def enabled(self) -> bool:
@@ -219,12 +239,21 @@ class VLMClient:
                 prompt += output_instructions(self.role, task)
                 if self.config.output_format == "json_schema":
                     kwargs["schema"] = response_schema(self.role, task)
-            if self.config.provider == "openai":
-                text = self._call_openai(prompt, images or [], system, **kwargs)
-            elif self.config.provider == "anthropic":
-                text = self._call_anthropic(prompt, images or [], system, **kwargs)
-            else:
-                raise ValueError(f"unsupported VLM provider: {self.config.provider}")
+            text = self._send(prompt, images or [], system, **kwargs)
+            if (
+                constrained
+                and self.last_finish_reason == "length"
+                and not _is_json(text)
+            ):
+                # Ask once more for a shorter answer; the cut reply stays in the trace.
+                rec["retry"] = {
+                    "raw": text[:4000] if isinstance(text, str) else text,
+                    "finish_reason": self.last_finish_reason,
+                }
+                text = self._send(
+                    prompt + SHORTER_RETRY, images or [], system, **kwargs
+                )
+            rec["finish_reason"] = self.last_finish_reason
             rec["raw"] = text if raw_ocr else text[:4000]
             if not isinstance(text, str) or not text.strip():
                 raise ValueError("empty model text response")
@@ -250,6 +279,14 @@ class VLMClient:
         finally:
             rec["seconds"] = round(time.time() - t0, 2)
             self.trace.append(rec)
+
+    def _send(self, prompt, images, system, **kwargs) -> str:
+        self.last_finish_reason = None
+        if self.config.provider == "openai":
+            return self._call_openai(prompt, images, system, **kwargs)
+        if self.config.provider == "anthropic":
+            return self._call_anthropic(prompt, images, system, **kwargs)
+        raise ValueError(f"unsupported VLM provider: {self.config.provider}")
 
     def _call_openai(
         self, prompt, images, system, *, schema: dict | None = None
@@ -294,6 +331,7 @@ class VLMClient:
                 f"OpenAI-compatible API {r.status_code}: {r.text[:2000]}"
             )
         choice = r.json()["choices"][0]
+        self.last_finish_reason = choice.get("finish_reason")
         message = choice["message"]
         content = message.get("content")
         if isinstance(content, list):
@@ -356,9 +394,12 @@ class VLMClient:
         )
         if not r.ok:
             raise RuntimeError(f"Anthropic API {r.status_code}: {r.text[:2000]}")
+        data = r.json()
+        stop = data.get("stop_reason")
+        self.last_finish_reason = "length" if stop == "max_tokens" else stop
         return "".join(
             block.get("text", "")
-            for block in r.json()["content"]
+            for block in data["content"]
             if block.get("type") == "text"
         )
 
