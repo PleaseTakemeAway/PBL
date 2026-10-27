@@ -92,6 +92,7 @@ PYTHONPATH=. uv run python scripts/build_synthetic.py --compare data_v3/syntheti
 - reader 의 경판 원판 식을 회사 식(2:1 경판 1.2 × Dm + 2SF)으로 바꿨다 (`cutplan_agent/reader/unfold.py`).
 - 새 데이터 기준선 (`mlic`, 로컬 모델): 형상 26/30, 전개 13/30, 전부 8/30. 남은 문제는 v3_upgrade.md 4절 #11~#18.
 - 브랜치 `synthetic` 은 이 브랜치의 앞부분이다 (생성기 전, 목표 문서만).
+- 2026-10-28 에 이 브랜치와 `colleague-server`, `model-profiles` 를 main 에 머지했다. 같은 날 정한 중간보고 범위는 [interim_report.md](interim_report.md).
 - 사용자가 아직 정하지 않은 것: 4절 #9 (굽힘판 바깥 모서리 원호) 확인, reader·실험의 기본 입력을 `data_v3/generated` 로 바꿀지.
 
 ## 6. 동료 서버에서 확인한 것 (2026-10-27~28)

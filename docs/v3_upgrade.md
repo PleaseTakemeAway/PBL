@@ -1,6 +1,6 @@
 # v3 고도화: 합성 도면부터 다시
 
-2026-10-27 에 목표를 바꿨다. 이 문서는 바뀐 목표, "완벽하게" 의 기준, 계획, 합성 도면에서 찾은 이상한 점과 그 처리를 적는다. 작업 브랜치는 `synthetic` 이다.
+2026-10-27 에 목표를 바꿨다. 이 문서는 바뀐 목표, "완벽하게" 의 기준, 계획, 합성 도면에서 찾은 이상한 점과 그 처리를 적는다. 2026-10-28 에 동료와 중간보고 범위를 정했다 (1.2절). 이 문서의 작업 브랜치(`synthetic`, `synthetic-generator`, `colleague-server`)는 2026-10-28 에 main 에 머지했다.
 
 ## 1. 무엇이 바뀌었나
 
@@ -23,6 +23,16 @@
 - `--with-3d` 를 주면 예전과 같이 돈다. 단계 목록은 `cutplan_agent/reader/stages/workspace.py` 의 `THREE_D` 에 한 번만 있다.
 - orchestrator 에는 3D 단계의 tool 이 없다. system prompt 도 10단계만 나열한다 ([reader/orchestrator.md](reader/orchestrator.md) 3절).
 - 3D 를 빼기 전후 비교 결과는 커밋 메시지에 적었다. 요약하면 01~10 단계 파일, 전개도, `accuracy.md` 는 같고, `--with-3d` 출력은 빼기 전과 같다.
+
+### 1.2 중간보고 범위 (2026-10-28 동료와 합의)
+
+1. **데이터:** `data_v3/synthetic` 은 회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장이다. 형상 종류는 회사 도면에서 골랐고, 도면 파일은 동료의 생성기(`make_data_v3.py`, 지금은 남아 있지 않다)가 그렸다. 회사 도면 파일을 그대로 가져온 것은 아니다 (3절의 근거).
+2. **결과:** 이 30장에서 로컬 모델(DeepSeek-OCR-2 + Qwen3.6-27B)로 형상 분류 29/30 이 나왔다 (동료 2026-10-15 실행 `xgrammar_batch`).
+3. **실패:** 못 맞힌 도면은 모델 답이 잘려 출력 형식(JSON)이 깨진 경우다. 다른 형상으로 잘못 답한 적은 한 번도 없다. 그래서 "쉬운 형상은 잘 분류한다" 고 보고한다. 답 잘림(#13)은 2026-10-28 에 고쳤다 (3.2절).
+4. **중간보고는 1~3 만 한다.** 2절의 나머지 기준(뷰, 치수, 전개)과 4절의 남은 이슈는 보고에 넣지 않는다.
+5. **실제 도면 읽기는 중간보고 뒤에 한다.** 필요한 데이터(`Data/`, `test_data/cases/`)를 옮기는 법은 [data/transfer.md](data/transfer.md).
+
+보고할 내용, 숫자의 출처, 다시 돌리는 명령은 [interim_report.md](interim_report.md) 에 모았다.
 
 ## 2. "완벽하게" 의 기준
 
@@ -48,7 +58,7 @@
 
 합성 도면 생성기는 레포에 없다. DXF 첫 줄 주석은 `cutplan_agent_v2 data_v3 generator`, `label.json` 의 출처는 `synthetic:make_data_v3` 인데, 2026-10-27 에 레포 전체, git 이력 전체, `mlic` 홈 아래의 `.py` 를 찾아도 없었다. git 은 원격(`PleaseTakemeAway/pbl`)의 모든 브랜치와 태그를 받아 `git log --all -S` 로 두 문자열을 찾았고, 문서 커밋 하나만 나왔다. 동료 원본인 태그 `archive/cutplan_v3` (253020c, eef59cb, 7199ea6) 와 `archive/data_script` (148e703) 의 파일도 따로 봤다. 판독기, 데이터 스크립트, 그 스크립트들의 `.pyc` 뿐이고, `ezdxf.new` 로 DXF 를 만드는 곳은 테스트의 작은 예제뿐이다. 같은 날 `mlic` 의 `~/노바투스2026` (팀 공유본을 rsync 한 것. `cutplan_agent_v3/`, `Data/`) 도 압축되지 않은 파일 전체를 바이트로 찾았지만 없었다. 이 폴더의 코드 파일은 v3 판독기와 테스트뿐이고 `data_v3/synthetic` 자체도 없다. DXF 주석이 `cutplan_agent_v2` 를 가리키므로 동료 서버의 `/home/hwang/yechanhwang/PBL_2026/cutplan_agent_v2` ([AGENTS.md](../AGENTS.md) 6절) 에 있었을 것이다. 이 레포의 v2 (`cutplan_agent/`) 에는 없다. 같은 날 동료가 `scripts/build_part_class_dataset.py` 를 생성기로 알려 줬지만 다른 데이터셋의 스크립트였다. 이 스크립트는 실제 KDM 커팅플랜에서 잘라낸 부품 전개 DXF(`Data/dataset/KDM/*/*/unfold/`)를 512 px PNG 로 그리고, 부품 이름으로 class (cylinder, cone, head, ring, flat) 를 붙여 `Data/part_class_dataset/` (이미지 ↔ class) 를 만든다. 합성 도면의 형상 5종(flat, bent_sheet, cylinder, cone, press_formed), 3면도, 표제란, `label.json`, `SYN-000NN` 을 만드는 코드는 없다. 레포 판과 동료 원본(태그 `archive/data_script`, 598줄)과 그 `.pyc` 3개를 모두 찾아봤다.
 
-같은 날 동료는 합성 도면이 "만든 것이 아니라 회사 부품 도면 중 쉬운 것을 가져온 것" 이라고 했다. `data_v3/synthetic` 의 파일은 이와 맞지 않는다. 동료가 말한 것은 `Data/part_class_dataset` (실제 부품 전개 ↔ class) 으로 보인다.
+같은 날 동료는 합성 도면이 "만든 것이 아니라 회사 부품 도면 중 쉬운 것을 가져온 것" 이라고 했다. `data_v3/synthetic` 의 파일은 도면을 그대로 가져온 것과는 맞지 않는다 (아래). 2026-10-28 에 동료와 정리한 설명은 "회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장" 이다 (1.2절). 형상 종류는 회사 도면에서 골랐고 도면은 생성기가 그렸다는 뜻이라 아래 사실과 맞는다.
 
 - 30장 모두 DXF 첫 줄이 `999` 주석 `cutplan_agent_v2 data_v3 generator` 이고, `label.json` 의 `source` 는 `synthetic:make_data_v3`, 도면 번호는 `SYN-000NN` 이다.
 - 형상마다 6장의 엔티티 구성이 똑같고 치수만 다르다 (틀에 치수를 넣어 그린 것). 치수는 모두 2~400 mm 의 정수나 .5 다. 실제 부품 1,789개(`Data/part_class_dataset/dataset.csv`)는 긴 변이 중앙값 685 mm, 최대 13,875 mm 다.
@@ -91,16 +101,6 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 - 1% 기준의 한계: bent_sheet_0008 은 모델이 굽힘 반경 0 을 6 (= 두께)으로 읽었는데 전개 길이 오차가 0.73% 라 전개는 맞음으로 나온다. 그래서 치수를 따로 본다.
 - 동료의 2026-10-18 결과(옛 데이터, 형상 27/30, 전개 11/30)와 같은 저울은 아니다. 옛 정답은 콘·경판이 틀려서 전개 점수가 낮게 나왔다.
 
-## 4. 이상한 점
-
-합성 도면에서 찾은 이상한 점을 하나씩 적는다. 처리는 코드(생성기·reader), 정답, 지식 문서 중 무엇을 고쳤는지 적는다.
-
-| # | 날짜 | 이상한 점 | 어디서 | 처리 | 상태 |
-|---|---|---|---|---|---|
-| 1 | 2026-10-27 | press_formed 경판 윤곽이 타원이 아니고, 직선과 만나는 곳에서 꺾인다 | `press_formed_0025`~`0030` 6장, 정면도·우측면도 | 생성기: 직선부 없는 2:1 반타원 (4.1절, [data/synthetic.md](data/synthetic.md) 5.2절) | 고침 |
-| 2 | 2026-10-27 | 콘 전개 정답이 틀렸다. 반경은 외경 기준이고 각도는 다른 식이다 | `cone_0019`~`0024` 6장, `flat_pattern` | 생성기: 회사 식 (4.2절, data/synthetic.md 5.1절) | 고침 |
-| 3 | 2026-10-27 | press_formed 블랭크 지름 정답의 계수(1.3415)가 회사 계산 문서와 다르다 | press_formed 6장, `flat_pattern.blank_diameter` | 생성기와 reader: 1.2 × Dm (4.3절, data/synthetic.md 5.1절) | 고침 |
-| 4 | 2026-10-27 | 굽힘 K 계수가 회사 규칙과 다르다 (R = 0 인데 0.40, 규칙은 0.33) | bent_sheet 6장 | 생성기: 회사 규칙 (data/synthetic.md 5.1절) | 고침 |
 ### 3.2 답 잘림(#13)을 고친 뒤 (2026-10-28, 동료 서버)
 
 #13 을 두 군데서 고쳤다.
@@ -123,6 +123,16 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 - 새 데이터의 나머지 점수 (`new_1` / `new_2`): 단계 30/30, 표제란 30/30, 뷰 15/30, 치수 21 / 22, 전개 15 / 16, 전부 8 / 9. 뷰·치수·전개의 남은 오류는 4절 #11, #14~#18 이다.
 - 3묶음 동시로 30장에 약 12분 걸렸다 (옛·새 데이터를 같이 돌려 6묶음이 한 서버를 나눠 썼다).
 
+## 4. 이상한 점
+
+합성 도면에서 찾은 이상한 점을 하나씩 적는다. 처리는 코드(생성기·reader), 정답, 지식 문서 중 무엇을 고쳤는지 적는다.
+
+| # | 날짜 | 이상한 점 | 어디서 | 처리 | 상태 |
+|---|---|---|---|---|---|
+| 1 | 2026-10-27 | press_formed 경판 윤곽이 타원이 아니고, 직선과 만나는 곳에서 꺾인다 | `press_formed_0025`~`0030` 6장, 정면도·우측면도 | 생성기: 직선부 없는 2:1 반타원 (4.1절, [data/synthetic.md](data/synthetic.md) 5.2절) | 고침 |
+| 2 | 2026-10-27 | 콘 전개 정답이 틀렸다. 반경은 외경 기준이고 각도는 다른 식이다 | `cone_0019`~`0024` 6장, `flat_pattern` | 생성기: 회사 식 (4.2절, data/synthetic.md 5.1절) | 고침 |
+| 3 | 2026-10-27 | press_formed 블랭크 지름 정답의 계수(1.3415)가 회사 계산 문서와 다르다 | press_formed 6장, `flat_pattern.blank_diameter` | 생성기와 reader: 1.2 × Dm (4.3절, data/synthetic.md 5.1절) | 고침 |
+| 4 | 2026-10-27 | 굽힘 K 계수가 회사 규칙과 다르다 (R = 0 인데 0.40, 규칙은 0.33) | bent_sheet 6장 | 생성기: 회사 규칙 (data/synthetic.md 5.1절) | 고침 |
 | 5 | 2026-10-27 | 굽힘선이 굽힘부 가운데가 아니라 시작점에 있다 | bent_sheet 6장, `flat_pattern.bend_lines` | 생성기 (data/synthetic.md 5.1절) | 고침 |
 | 6 | 2026-10-27 | 같은 숨은선이 두 번씩 들어 있다 | 10장, 72개 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 7 | 2026-10-27 | 구멍 주기 `2-Ø13` 이 `2-Ã˜13` 으로 깨진다 (UTF-8 로 썼는데 R2000 은 cp1252 로 읽힘) | 구멍이 있는 11장 | 생성기: `%%c` (data/synthetic.md 5.2절) | 고침 |

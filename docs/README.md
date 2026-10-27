@@ -19,7 +19,8 @@
 | `docs/` | [harness_engineering.md](harness_engineering.md) | 목표: 로컬 LLM 으로 orchestration 과 작업을 모두 하는 하네스. 지금 상태 판단과 로드맵 |
 | | [getting_started.md](getting_started.md) | uv 설치, `.env`, 실행 명령, 데이터·외부 도구, 자주 나는 문제 |
 | | [execution_flow.md](execution_flow.md) | 진입점, 실행 순서, 결과물, 두 코드가 같은 일을 다르게 하는 곳 |
-| | [v3_upgrade.md](v3_upgrade.md) | v3 고도화 (2026-10-27~): 합성 도면 생성기를 다시 쓰고 검증해, 합성 30장을 모든 단계에서 정답과 맞게 완주한다. 기준, 계획, 합성 도면의 이상한 점과 처리 |
+| | [v3_upgrade.md](v3_upgrade.md) | v3 고도화 (2026-10-27~): 합성 도면 생성기를 다시 쓰고 검증해, 합성 30장을 모든 단계에서 정답과 맞게 완주한다. 중간보고 범위 합의 (1.2절, 2026-10-28), 기준, 계획, 합성 도면의 이상한 점과 처리 |
+| | [interim_report.md](interim_report.md) | 중간보고 (2026-10-28 합의): 합성 30장의 형상 분류 결과, 실패 원인, 숫자의 출처와 다시 돌리는 명령 |
 | | [server_handoff.md](server_handoff.md) | 동료 서버로 옮겨 이어 하기 (2026-10-27): 동료의 29/30 이 무엇인지, 서버에서 처음 할 일, 재현·비교 순서, 이 브랜치의 상태, 서버에서 확인한 것과 재현 결과 (6절) |
 | | [company_brief.md](company_brief.md) | 회사 담당자에게 보내는 설명 자료 (2026-10-27): 처리 과정, 합성 도면 검증 방법과 결과, 확인 요청. 같은 내용의 슬라이드는 `presentation/build_company_brief.py` |
 | | [presentation.md](presentation.md) | 발표 슬라이드(`presentation/`)를 만드는 스크립트, 미리보기, 여러 브랜치에서 고치는 법, 슬라이드 숫자의 출처 |
@@ -32,8 +33,8 @@
 | | [code_v3.md](reader/code_v3.md) | `experiments.sh` 실행 흐름과 파일별 역할, 출력 구조 |
 | | [framework.md](reader/framework.md) | 구성도와 모델·결정론 처리의 경계 |
 | `data/` | [overview.md](data/overview.md) | 데이터 지도, 스크립트 ①~⑥ 의 입출력, 정답과 평가 |
-| | [synthetic.md](data/synthetic.md) | 합성 도면 생성기(`scripts/build_synthetic.py`): 만드는 명령, 그리는 규칙, 정답 식과 근거, 옛 데이터에서 무엇이 왜 틀렸나 |
 | | [transfer.md](data/transfer.md) | 데이터를 다른 서버로 옮기기: 무엇을 옮기고 무엇을 만드는지, 레포 루트 기준 경로, `scripts/check_data.py` 로 확인 |
+| | [synthetic.md](data/synthetic.md) | 합성 도면 생성기(`scripts/build_synthetic.py`): 만드는 명령, 그리는 규칙, 정답 식과 근거, 옛 데이터에서 무엇이 왜 틀렸나 |
 | | [dataset_structure.md](data/dataset_structure.md) | `Data/dataset/` 의 폴더 구조와 Drive 원본의 의미 |
 | | [part_class_rules.md](data/part_class_rules.md) | 부품 이름 정규화와 형상 class 결정 규칙 |
 | | [cutplan_cases.md](data/cutplan_cases.md) | 회사에서 받은 설비 2개의 테스트셋 (`test_data/cases/`): 정답 형식, 읽는 규칙, 알려진 문제, 기존 데이터와 비교 |

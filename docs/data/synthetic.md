@@ -1,6 +1,6 @@
 # 합성 도면: 생성기와 정답 식
 
-reader 를 평가할 합성 도면 30장을 만드는 [`scripts/build_synthetic.py`](../../scripts/build_synthetic.py) 의 사용법, 도면을 그리는 규칙, 정답 식과 그 근거를 적는다. 옛 데이터(`data_v3/synthetic`, 동료 생성기)에서 무엇이 왜 틀렸고 새 식은 왜 맞는지는 5절에 있다. 2026-10-27 에 썼다 (`synthetic-generator` 브랜치).
+reader 를 평가할 합성 도면 30장을 만드는 [`scripts/build_synthetic.py`](../../scripts/build_synthetic.py) 의 사용법, 도면을 그리는 규칙, 정답 식과 그 근거를 적는다. 옛 데이터(`data_v3/synthetic`)는 회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장이다. 동료의 생성기 `make_data_v3.py` 가 그렸는데 이 생성기는 남아 있지 않아 다시 만들 수 없고, 옮겨서 쓴다 ([transfer.md](transfer.md)). 옛 데이터에서 무엇이 왜 틀렸고 새 식은 왜 맞는지는 5절에 있다. 2026-10-27 에 썼다 (`synthetic-generator` 브랜치).
 
 ## 1. 만들기와 확인
 
