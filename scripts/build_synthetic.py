@@ -5,9 +5,12 @@ reader 평가용 합성 도면 30장(형상 5종 × 6장)을 DXF·PNG·label.jso
         [--only <id 일부>] [--no-png] [-q]
 
 도면 1장에는 부품 하나를 3면도(3각법, 정면도·평면도·우측면도)로 그리고 A3 틀과 표제란을 넣는다.
-정답(label.json)의 전개 값은 회사 계산 기준 문서의 식으로 계산한다.
+정답(label.json)의 전개 값은 회사 기준으로 계산한다. 회사 현업자가 그려 준 정답 전개도(data_v3/20261027example,
+2026-10-27)가 계산 문서와 다른 곳은 현업자 정답을 따른다 (docs/v3_upgrade.md 5절).
 
-  - 원통·콘·헤드: skills/01_core_knowledge/shell_cone_head_unfold.md (평균지름 = 외경 − 두께)
+  - 원통: skills/01_core_knowledge/shell_cone_head_unfold.md 2.1 (평균지름 = 외경 − 두께)
+  - 콘: 같은 문서 3.1.1. 평균지름은 끝면에서 가로로 잰다: 외경 − t / cos α (현업자 정답)
+  - 헤드: 두께 가운데 반타원의 길이 + 2 × 직선부 (현업자 정답. 계산 문서 4.2 의 1.2 × Dm 대신)
   - 굽힘판 K 계수: skills/01_core_knowledge/unfold_rules.md 30행
 
 식은 이 파일에 직접 썼다. reader(cutplan_agent/reader/unfold.py)의 식을 가져다 쓰지 않는다. 그래야 reader 와
@@ -36,7 +39,8 @@ import ezdxf
 
 # ----------------------------------------------------------------------------- 도면 30장
 # 형상·치수·재질·축척은 옛 데이터(data_v3/synthetic)와 같다. 바뀐 것은 그리는 법과 정답 식이다.
-# press_formed 는 2:1 반타원 헤드로 바꾸면서 직선부(flange)와 크라운 높이를 뺐다 (높이 = 외경/4).
+# press_formed 는 2:1 반타원 헤드로 바꾸면서 직선부(flange)와 크라운 높이를 뺐다. 2:1 은 안쪽 면 기준이다
+# (안쪽 깊이 = 안지름/4, 높이 = 안지름/4 + t).
 # 구멍: (축, 지름, (x, y, z)) — 중심은 부품 좌표(mm). 축 z 는 수평판, 축 x 는 수직판(굽힘판의 세운 쪽)을 뚫는다.
 SPECS: list[dict] = [
     # flat: length(x), width(y), thickness(z)
@@ -182,19 +186,21 @@ def cylinder_blank(p: dict) -> dict:
 def cone_blank(p: dict) -> dict:
     """동심 콘: 평균지름 D1, D2 와 높이 H 로 sin α = (D1 − D2) / 2S, R1 = D1 / (2 sin α),
     R2 = D2 / (2 sin α), θ = 360° × sin α (shell_cone_head_unfold.md 3.1.1).
+    평균지름은 끝면에서 가로로 잰 두께 가운데다. 판 두께 t 는 면에 수직이라 가로로는 t / cos α 이고,
+    평균지름 = 외경 − t / cos α 다 (현업자 정답 CONE: 안지름 1000, t 20, α 30° → D1 = 1023.09).
     검산: 바깥 호 길이 R1·θ = π·D1 (콘 대경 쪽 평균 원둘레)."""
-    t = p["thickness"]
-    d1 = mean_diameter(p["large_outer_diameter"], t)
-    d2 = mean_diameter(p["small_outer_diameter"], t)
-    h = p["height"]
+    t, h = p["thickness"], p["height"]
+    big, small = p["large_outer_diameter"], p["small_outer_diameter"]
+    across = t / math.cos(math.atan((big - small) / 2 / h))  # 가로로 잰 판 두께
+    d1, d2 = big - across, small - across
     s = math.hypot(h, (d1 - d2) / 2)
     sin_a = (d1 - d2) / (2 * s)
     r1, r2 = d1 / (2 * sin_a), d2 / (2 * sin_a)
     theta = 360 * sin_a
     assert abs(r1 * math.radians(theta) - math.pi * d1) < 1e-6
     return {
-        "formula": "sin α = (D1 − D2)/2S, R1 = D1/(2 sin α), R2 = D2/(2 sin α), θ = 360° sin α",
-        "mean_diameters": [d1, d2],
+        "formula": "D = OD − t/cos α; sin α = (D1 − D2)/2S, R1 = D1/(2 sin α), R2 = D2/(2 sin α), θ = 360° sin α",
+        "mean_diameters": [round(d1, 3), round(d2, 3)],
         "slant": round(s, 2),
         "sector_outer_radius": round(r1, 2),
         "sector_inner_radius": round(r2, 2),
@@ -202,17 +208,29 @@ def cone_blank(p: dict) -> dict:
     }
 
 
-HEAD_K = 1.2  # 2:1 반타원 헤드 원판 약산식 계수 (shell_cone_head_unfold.md 4.2)
+def half_ellipse_length(a: float, b: float, n: int = 20000) -> float:
+    """반축 a, b 인 타원의 반 둘레. ds = √(a² sin² u + b² cos² u) du 를 u = 0..π 에서 중점법으로 적분한다."""
+    du = math.pi / n
+    return du * sum(
+        math.hypot(a * math.sin((i + 0.5) * du), b * math.cos((i + 0.5) * du))
+        for i in range(n)
+    )
 
 
 def head_blank(p: dict) -> dict:
-    """2:1 반타원 헤드 원판 지름 Db = 1.2 × Dm (shell_cone_head_unfold.md 4.2). 직선부가 없어 + 2·SF 는 0,
-    트림 여유는 제작사마다 달라 넣지 않는다. 이론값(중립면 면적 동등)은 약 1.175 × Dm 이다 (같은 문서 4.3)."""
-    dm = mean_diameter(p["outer_diameter"], p["thickness"])
+    """2:1 반타원 헤드 원판 지름 = 두께 가운데 반타원의 길이(꼭대기를 지나 한쪽 끝에서 반대쪽 끝까지) + 2 × 직선부.
+    현업자 정답 HEAD (안지름 1000, t 20, 직선부 30): 반축 510, 260 → 1241.6 + 30 + 30 = 1301.6.
+    두께 가운데 타원은 안쪽 타원(반축 ID/2, ID/4)에서 t/2 바깥이다. 이 도면들은 직선부가 없어 + 2·SF 는 0 이고,
+    트림 여유는 넣지 않는다. 계산 문서 4.2 의 약산식 1.2 × Dm 과의 차이는 docs/v3_upgrade.md 5절."""
+    t = p["thickness"]
+    di = p["outer_diameter"] - 2 * t
+    a, b = (di + t) / 2, di / 4 + t / 2
+    arc = half_ellipse_length(a, b)
     return {
-        "formula": "Db = 1.2 × Dm, Dm = OD − t (직선부 없음, 트림 여유 없음)",
-        "mean_diameter": dm,
-        "blank_diameter": round(HEAD_K * dm, 2),
+        "formula": "Db = 두께 가운데 반타원의 길이 + 2 × SF, 반축 (ID + t)/2, ID/4 + t/2 (직선부 없음, 트림 여유 없음)",
+        "mean_diameter": di + t,
+        "meridian_length": round(arc, 2),
+        "blank_diameter": round(arc, 2),
     }
 
 
@@ -394,25 +412,27 @@ def draw_cone(p, holes, k):
 
 
 def draw_head(p, holes, k):
-    """2:1 반타원 헤드, 열린 쪽이 아래. 바깥 면은 반축 OD/2, OD/4 인 타원이다. 안쪽 면은 반축을 t 씩 줄인
-    타원으로 그린다 (타원을 t 만큼 평행 이동한 곡선은 타원이 아니어서 도면에서는 이렇게 그린다). 직선부는 없다."""
+    """2:1 반타원 헤드, 열린 쪽이 아래. 2:1 은 안쪽 면 기준이다 (현업자 도면 HEAD 와 같다): 안쪽 면은 반축
+    ID/2, ID/4 인 타원이다. 바깥 면은 반축을 t 씩 늘린 타원으로 그린다 (타원을 t 만큼 평행 이동한 곡선은 타원이
+    아니어서 이렇게 그린다. 꼭대기와 양 끝에서는 정확하다). 직선부는 없다."""
     od, t = p["outer_diameter"], p["thickness"]
-    a, b = od / 2, od / 4
+    a, b = od / 2 - t, (od - 2 * t) / 4  # 안쪽 반축
     ext = 2.5 * k
     views = {}
     for name in ("front", "right"):
-        v = View(od, b)
+        v = View(od, b + t)
         v.line("OUTLINE", (0, 0), (od, 0))
-        v.ellipse("OUTLINE", (a, 0), a, b, 0, math.pi)
-        v.ellipse("HIDDEN", (a, 0), a - t, b - t, 0, math.pi)
-        v.line("CENTER", (a, -ext), (a, b + ext))
+        v.ellipse("OUTLINE", (od / 2, 0), a + t, b + t, 0, math.pi)
+        v.ellipse("HIDDEN", (od / 2, 0), a, b, 0, math.pi)
+        v.line("CENTER", (od / 2, -ext), (od / 2, b + t + ext))
         views[name] = v
+    c = (od / 2, od / 2)
     top = View(od, od)
-    top.circle("OUTLINE", (a, a), a)
-    top.circle("HIDDEN", (a, a), a - t)
-    top.cross((a, a), a + ext)
+    top.circle("OUTLINE", c, od / 2)
+    top.circle("HIDDEN", c, a)
+    top.cross(c, od / 2 + ext)
     views["top"] = top
-    return views, (od, od, b)
+    return views, (od, od, b + t)
 
 
 SHAPES = {

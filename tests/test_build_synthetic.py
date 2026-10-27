@@ -40,9 +40,15 @@ def reader_params(label: dict) -> tuple[str, dict]:
             "thickness": t,
         }
     if cls == "cone":
+        big, small, h = (
+            p["large_outer_diameter"],
+            p["small_outer_diameter"],
+            p["height"],
+        )
+        across = t / math.cos(math.atan((big - small) / 2 / h))  # 가로로 잰 판 두께
         return "cone_frustum", {
-            "large_inner_dia": p["large_outer_diameter"] - 2 * t,
-            "small_inner_dia": p["small_outer_diameter"] - 2 * t,
+            "large_inner_dia": big - 2 * across,
+            "small_inner_dia": small - 2 * across,
             "cone_height": p["height"],
             "thickness": t,
         }
@@ -100,20 +106,40 @@ class BuildSyntheticTest(unittest.TestCase):
                 fp["sector_inner_radius"],
                 fp["sector_angle_deg"],
             ),
-            (444.04, 291.97, 59.18),
+            (443.87, 291.8, 59.18),
         )
 
     def test_head_is_a_half_ellipse_without_straight_flange(self):
         label = self.labels["press_formed_0027"]
         self.assertNotIn("flange", label["params"])
-        self.assertEqual(label["extents"], [200, 200, 50])
-        self.assertEqual(label["flat_pattern"]["blank_diameter"], 232.8)  # 1.2 × 194
+        self.assertEqual(label["extents"], [200, 200, 53])  # 안쪽 깊이 188/4 + t
+        # 두께 가운데 반타원 (반축 97, 50) 의 길이
+        self.assertEqual(label["flat_pattern"]["blank_diameter"], 236.85)
         entities, _ = read_dxf(self.out / "press_formed_0027" / "press_formed_0027.dxf")
         ellipse = [e for e in entities if e.attributes.get("source") == "ellipse"]
         self.assertTrue(ellipse)
         self.assertFalse(
             [e for e in entities if e.kind == "arc" and e.layer == "OUTLINE"]
         )
+
+    def test_formulas_reproduce_the_practitioner_answers(self):
+        # data_v3/20261027example 의 정답 전개도 (docs/v3_upgrade.md 5.2절). 안지름 1000, t 20
+        head = gen.head_blank({"outer_diameter": 1040, "thickness": 20})
+        self.assertAlmostEqual(head["meridian_length"] + 2 * 30, 1301.6, delta=0.05)
+        cone = gen.cone_blank(
+            {
+                "large_outer_diameter": 1000 + 2 * 20 / math.cos(math.radians(30)),
+                "small_outer_diameter": 422.6 + 2 * 20 / math.cos(math.radians(30)),
+                "height": (1000 - 422.6) / 2 / math.tan(math.radians(30)),
+                "thickness": 20,
+            }
+        )
+        self.assertAlmostEqual(cone["sector_outer_radius"], 1023.09, delta=0.01)
+        self.assertAlmostEqual(cone["sector_angle_deg"], 180.0, delta=0.01)
+        shell = gen.cylinder_blank(
+            {"outer_diameter": 1040, "length": 1500, "thickness": 20}
+        )
+        self.assertEqual((shell["length"], shell["width"]), (3204.42, 1500))
 
     def test_bent_sheet_uses_the_company_k_factor(self):
         fp = self.labels["bent_sheet_0007"]["flat_pattern"]

@@ -179,9 +179,10 @@ class DevelopTests(unittest.TestCase):
             },
         )["blank"]
         s = sqrt(150**2 + 25**2)
-        self.assertAlmostEqual(b["outer_radius"], s * 146 / 50)
+        d1m = 142 + 4 * s / 150  # mean diameter across the end plane: ID + t / cos α
+        self.assertAlmostEqual(b["outer_radius"], s * d1m / 50)
         self.assertAlmostEqual(b["outer_radius"] - b["inner_radius"], s)
-        self.assertAlmostEqual(b["outer_radius"] * b["angle_deg"] * pi / 180, pi * 146)
+        self.assertAlmostEqual(b["outer_radius"] * b["angle_deg"] * pi / 180, pi * d1m)
 
     def test_bent_sheet_setback_and_k_factor(self):
         b = develop(
@@ -212,9 +213,8 @@ class DevelopTests(unittest.TestCase):
         b = develop("head", {"inner_dia": 200, "thickness": 6, "straight_flange": 10})[
             "blank"
         ]
-        self.assertAlmostEqual(
-            b["blank_diameter"], 1.2 * (200 + 6) + 20
-        )  # 2:1, Dm = ID + t
+        # 2:1: mid-thickness half-ellipse (a = (ID + t)/2, b = ID/4 + t/2) + 2 SF
+        self.assertAlmostEqual(b["blank_diameter"], 251.38 + 20, delta=0.01)
         with self.assertRaisesRegex(ValueError, "inner_dia"):
             develop("head", {"inner_dia": 0, "thickness": 6})
 

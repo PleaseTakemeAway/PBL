@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import json
-from math import cos, degrees, isfinite, pi, radians, sin, sqrt, tan
+from math import atan, cos, degrees, isfinite, pi, radians, sin, sqrt, tan
 from pathlib import Path
 from typing import Any
 
@@ -54,8 +54,11 @@ PARAM_KEYS = (
 def head_blank_diameter(
     di: float, t: float, sf: float, head_type: str | None, ikr: float = 0.0
 ) -> tuple[float, str, list[str]]:
-    """헤드 원판 지름: 회사 계산 문서(shell_cone_head_unfold.md 4.2)의 형식별 약산식. Dm = ID + t, OD = ID + 2t.
-    v2 의 skills/l3_rules.py `_head_blank` 와 같은 식이고, 구매용 트림 여유와 10 mm 반올림은 넣지 않는다.
+    """헤드 원판 지름. Dm = ID + t, OD = ID + 2t. 구매용 트림 여유와 10 mm 반올림은 넣지 않는다.
+    2:1 반타원형은 회사 현업자의 정답 전개도(2026-10-27, docs/v3_upgrade.md 5절)대로 두께 가운데 반타원의 길이
+    (반축 (ID + t)/2, ID/4 + t/2) + 2 × SF 다. 계산 문서(shell_cone_head_unfold.md 4.2)의 약산식 1.2 × Dm + 2 × SF
+    보다 커서 2026-10-28 에 바꿨다. 받은 커팅플랜의 헤드 3개(docs/data/cutplan_cases.md 6절)와도 ±5 mm 로 맞는다.
+    나머지 형식은 계산 문서 4.2 의 약산식이다 (v2 의 skills/l3_rules.py `_head_blank` 와 같은 식).
     2026-10-27 까지는 동료가 둔 경험계수 1.25~1.30 × ID 를 썼다 (docs/data/synthetic.md 5.1)."""
     dm, od = di + t, di + 2 * t
     kind = (head_type or "").lower().replace(" ", "")
@@ -83,7 +86,17 @@ def head_blank_diameter(
         )
     if kind and "2:1" not in kind and "ellip" not in kind:
         warnings.append(f"unknown head type {head_type!r}: computed as 2:1 ellipsoidal")
-    return 1.2 * dm + 2 * sf, "D_blank = 1.2 × Dm + 2 × SF (2:1 ellipsoidal)", warnings
+    return (
+        half_ellipse_length(dm / 2, di / 4 + t / 2) + 2 * sf,
+        "D_blank = mid-thickness half-ellipse length (a = (ID + t)/2, b = ID/4 + t/2) + 2 × SF (2:1 ellipsoidal)",
+        warnings,
+    )
+
+
+def half_ellipse_length(a: float, b: float) -> float:
+    """Half the perimeter of an ellipse with semi-axes a, b (Ramanujan's second formula)."""
+    h = ((a - b) / (a + b)) ** 2
+    return pi * (a + b) * (1 + 3 * h / (10 + sqrt(4 - 3 * h))) / 2
 
 
 def _missing(value: Any) -> bool:
@@ -262,13 +275,17 @@ def fallback_params(part_type: str, analysis: dict, drawing) -> tuple[dict, list
         if large and small and large < small:
             large, small = small, large
         if large and small and z:
+            across = t / cos(
+                atan((large - small) / 2 / z)
+            )  # wall thickness measured across
             p.update(
-                large_inner_dia=large - 2 * t,
-                small_inner_dia=small - 2 * t,
+                large_inner_dia=large - 2 * across,
+                small_inner_dia=small - 2 * across,
                 cone_height=z,
             )
             notes.append(
-                f"front-view parallel sides OD {large:.1f}/{small:.1f} → ID = OD − 2t; height = z"
+                f"front-view parallel sides OD {large:.1f}/{small:.1f} → ID = OD − 2t/cos α "
+                f"= OD − {2 * across:.2f}; height = z"
             )
     elif part_type == "head" and t:
         od = x or profile.get("width")
@@ -354,15 +371,16 @@ def develop(part_type: str, params: dict) -> dict:
         }
         outline = [[(0, 0), (length, 0), (length, h), (0, h), (0, 0)]]
     elif part_type == "cone_frustum":
-        d1m, d2m = (
-            float(params["large_inner_dia"]) + t,
-            float(params["small_inner_dia"]) + t,
-        )
+        # Mean diameters are taken across the end planes: the plate is t thick normal to the
+        # wall, so t / cos α across (practitioner's answer, docs/v3_upgrade.md 5절).
+        d1i, d2i = float(params["large_inner_dia"]), float(params["small_inner_dia"])
         h = float(params["cone_height"])
-        if d1m <= d2m:
+        if d1i <= d2i:
             raise ValueError(
                 "cone_frustum: large_inner_dia must exceed small_inner_dia"
             )
+        across = t / cos(atan((d1i - d2i) / 2 / h))
+        d1m, d2m = d1i + across, d2i + across
         s = sqrt(h * h + ((d1m - d2m) / 2) ** 2)
         r1 = s * d1m / (d1m - d2m)
         r2 = r1 - s
@@ -370,7 +388,7 @@ def develop(part_type: str, params: dict) -> dict:
         if theta > 2 * pi:
             warnings.append("θ > 360°: split development required")
         blank = {
-            "formula": "R1 = s·D1m/(D1m−D2m), R2 = R1 − s, θ = π·D1m/R1",
+            "formula": "Dm = ID + t/cos α; R1 = s·D1m/(D1m−D2m), R2 = R1 − s, θ = π·D1m/R1",
             "slant": s,
             "outer_radius": r1,
             "inner_radius": r2,
@@ -456,8 +474,7 @@ def develop(part_type: str, params: dict) -> dict:
             "head_type": params.get("head_type"),
         }
         warnings.append(
-            "formed part: blank diameter is the approximation of shell_cone_head_unfold.md 4.2, "
-            "without trim allowance; forming practice governs"
+            "formed part: blank diameter without trim allowance; forming practice governs"
         )
         outline = [_arc(0, 0, d / 2, 0, 2 * pi, 128)]
     for key, value in blank.items():
