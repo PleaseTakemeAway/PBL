@@ -57,6 +57,8 @@
 - class 가 다르다. 합성은 flat, bent_sheet, cylinder, cone, press_formed 이고, 실제 부품 데이터셋은 cylinder, cone, head, ring, flat 이다.
 - 옛 press 도면은 원호가 직선부와 37° 꺾여 만난다 (4.1절). 사람이 CAD 로 그린 경판 도면에서는 나오지 않는 모양이다.
 
+같은 날 밤 동료 서버에서 받은 `cutplan_v2_transfer.tar.gz` 의 `data_v3/README.md` 에서 옛 생성기의 이름이 나왔다: `python tools\make_data_v3.py --out data_v3 --per-class 6 --seed 3`. 이 README 는 데이터를 "generated from the 3D parameters" 라고 적어, 위 판단과 맞는다. 파일 자체는 tar 에 없어 동료 서버에서 찾는다 ([server_handoff.md](server_handoff.md) 2·3절).
+
 1. **생성기를 레포에 새로 쓴다.** 옛 데이터를 재현하지 않는다 (2026-10-27 결정). 옛 정답의 식이 회사 계산 문서와 다르고 틀린 것이 확인돼서(4.2·4.3절), 재현해도 틀린 정답을 다시 만들 뿐이기 때문이다. 형상·치수·재질·축척은 옛 데이터와 같게 두고, 그리는 법과 정답 식만 회사 기준으로 새로 썼다: [`scripts/build_synthetic.py`](../scripts/build_synthetic.py), 설명은 [data/synthetic.md](data/synthetic.md). 옛 정답과의 차이는 `--compare` 로 만드는 `compare.md` 에 있다.
 2. **형상별로 하나씩 검증한다.** 도면(3면도, 숨은선, 치수)과 정답(`params`, `flat_pattern`)이 실제 제작 형상과 맞는지 사람이 보고, 틀린 곳은 4절에 적는다.
 3. **고친다.** 생성기를 고쳐 데이터를 다시 만든다. 한 커밋에 한 문제만 고치고, 바뀐 도면과 정답을 커밋 메시지에 적는다. 전개 식이 바뀌면 reader 의 전개 코드(`cutplan_agent/reader/unfold.py`)도 같이 본다.
