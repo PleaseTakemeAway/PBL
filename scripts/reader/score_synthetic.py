@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -93,10 +94,17 @@ def expected_params(label: dict) -> dict:
     if cls == "cylinder":
         return {"inner_dia": p["outer_diameter"] - 2 * t, "length": p["length"]}
     if cls == "cone":
+        # 지름은 끝면에서 가로로 잰다. 기운 벽의 두께는 가로로 t / cos α 다 (docs/v3_upgrade.md 5.4절)
+        big, small, h = (
+            p["large_outer_diameter"],
+            p["small_outer_diameter"],
+            p["height"],
+        )
+        across = t / math.cos(math.atan((big - small) / 2 / h))
         return {
-            "large_inner_dia": p["large_outer_diameter"] - 2 * t,
-            "small_inner_dia": p["small_outer_diameter"] - 2 * t,
-            "cone_height": p["height"],
+            "large_inner_dia": big - 2 * across,
+            "small_inner_dia": small - 2 * across,
+            "cone_height": h,
         }
     if cls == "press_formed":
         return {"inner_dia": p["outer_diameter"] - 2 * t}
