@@ -10,6 +10,7 @@
 | `presentation/build_v2_v3.py` | "도면 판독, 지금 어디까지 왔나" 파트 (19장, 약 20분) → `v2_v3.pptx`. v2 → v3 → v3 를 실제 도면 5장에 돌린 결과(성공·실패 사례)를 AI 를 모르는 청중에게 보인다. 2026-10-23 에 "도면 판독 orchestrator" 덱(`build_reader_orchestrator.py`, 커밋 7f543c2 까지)을 로드맵 덱으로 바꿨다가, 같은 날 지난 이야기는 이 파일로, 다음 이야기는 `build_roadmap.py` 로 나눴다 |
 | `presentation/build_roadmap.py` | "다음 단계: 로컬 AI 가 도구를 골라 쓰게" 파트 (13장, 약 15분) → `roadmap.pptx`. `v2_v3` 다음에 발표한다. 두 덱은 내용이 겹치지 않는다 (숫자는 기준선으로만 다시 부른다). 할 일 둘 → tool calling → Claude 대신 로컬 AI 의 에이전트 시제품과 그 기록 → 도구를 부르는 두 방식 → 실제 도면에 적용 → 다음 주 → 최종 목표 |
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
+| `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -23,6 +24,7 @@
 PYTHONPATH=. uv run --with python-pptx python presentation/build_v2_v3.py                # → presentation/v2_v3.pptx
 PYTHONPATH=. uv run --with python-pptx python presentation/build_roadmap.py               # → presentation/roadmap.pptx
 PYTHONPATH=. uv run --with python-pptx python presentation/build_dwg_dxf.py               # → presentation/dwg_dxf.pptx
+PYTHONPATH=. uv run --with python-pptx python presentation/build_company_brief.py         # → presentation/company_brief.pptx
 PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx               # → presentation/build/*.png
 ```
 

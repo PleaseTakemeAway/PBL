@@ -13,6 +13,8 @@ Environment variables (CLI flags override):
   CUTPLAN_OCR_OUTPUT_FORMAT   ignored: OCR always returns unrestricted raw text
   CUTPLAN_REASON_PROVIDER / _BASE_URL / _MODEL / _API_KEY   (reasoning VLM)
   CUTPLAN_REASON_OUTPUT_FORMAT   json_schema (default) | prompt (explicit compatibility mode)
+  CUTPLAN_OCR_TIMEOUT / CUTPLAN_REASON_TIMEOUT   seconds per request (default 120).
+    Raise it when several drawings share one server and requests queue.
 """
 
 from __future__ import annotations
@@ -91,6 +93,7 @@ class VLMConfig:
             output_format=os.getenv(
                 p + "OUTPUT_FORMAT", "raw" if role == "ocr" else "json_schema"
             ),
+            timeout=float(os.getenv(p + "TIMEOUT", "120")),
         )
         for k, v in overrides.items():
             if v is not None:

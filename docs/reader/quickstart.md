@@ -114,6 +114,21 @@ uv run python scripts/reader/run_stages.py $W --dxf $DXF --no-vlm   # 모델 없
 uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 끝까지 다시
 ```
 
+### 30장 전체를 돌리고 단계별로 채점하기
+
+서버(0절)가 떠 있어야 한다. 도면을 3묶음으로 나눠 동시에 돌린다. `mlic` 에서 30장에 약 20분 걸린다 (2026-10-27).
+
+```zsh
+experiments/batch_parallel.sh data_v3/generated runs/reader/gen1027/local_new 3
+uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new   # → score.md, score.json
+```
+
+- `batch_parallel.sh <데이터> <출력> [묶음 수] [main.py 옵션 ...]`: 묶음마다 `main.py --batch` 를 따로 띄운다. 출력은 `<출력>/shardK/<도면>/` 이고 로그는 `<출력>/shardK.log` 다. 묶음별 `accuracy.md` 는 그 묶음만의 점수라서 전체 점수는 `score_synthetic.py` 로 본다.
+- 묶음 수를 3 보다 늘리면 Qwen3.6-27B 서버의 KV 캐시가 차서 전체가 오히려 느려졌다 (10묶음에서 생성 속도 25 → 4.5 tok/s).
+- 동시에 돌리면 요청이 서버에서 기다리므로 기본 제한 시간 120초를 넘긴다. 그래서 스크립트가 `CUTPLAN_OCR_TIMEOUT`, `CUTPLAN_REASON_TIMEOUT` 을 900초로 둔다. 넘기면 그 모델 단계가 `done` 인데 결과가 비고, `trace` 에 `ReadTimeout` 이 남는다.
+- 모델 없이: `experiments/batch_parallel.sh data_v3/generated <출력> 3 --no-vlm` (몇 초).
+- `score_synthetic.py` 의 항목은 [../v3_upgrade.md](../v3_upgrade.md) 2절 기준이다. 단계(01~10 모두 `done`), 표제란(도면 번호·축척·재질·두께), 뷰 이름, 형상, 치수(09 의 전개 파라미터. 정답 외경을 안지름 = 외경 − 2t 로 바꿔 0.5 mm 또는 0.5% 안), 전개(1% 이내). 도면별 표에 틀린 이유가 나온다.
+
 ## 6. 무엇이 어디에 남나
 
 | 위치 | 내용 |
@@ -132,7 +147,7 @@ uv run python scripts/reader/run_stages.py $W 6-13                  # 06 부터 
 |---|---|
 | `ModuleNotFoundError: No module named 'cutplan_agent'` | `export PYTHONPATH=.` 를 안 했다 (1절) |
 | 모델 단계가 `skipped (no OCR model configured)` | env 를 source 하지 않았다 (1절) |
-| 모델 단계가 `done` 인데 결과가 비어 있다 | 서버가 꺼졌거나 응답하지 않는다. `show_stages.py $W <단계>` 의 모델 호출 줄에 오류가 나온다. 0절의 `curl` 로 확인 |
+| 모델 단계가 `done` 인데 결과가 비어 있다 | 서버가 꺼졌거나 응답하지 않는다. `trace` 에 `ReadTimeout` 이면 제한 시간(기본 120초)을 넘긴 것이다: `export CUTPLAN_REASON_TIMEOUT=900` (OCR 은 `CUTPLAN_OCR_TIMEOUT`). `show_stages.py $W <단계>` 의 모델 호출 줄에 오류가 나온다. 0절의 `curl` 로 확인 |
 | `01(read) 을 돌리려면 --dxf <도면.dxf> 를 주거나 ...` | 새 작업 폴더에서는 01 에 `--dxf $DXF` 를 주거나, DWG 는 `0 --drawing "$DWG"` 로 00 을 먼저 돌린다 |
 | `00 convert: failed` ... `ezdxf cannot open` 또는 `empty model space` | LibreDWG 가 이 DWG 를 읽지 못했다 (D-1203 의 DWG 6개). AutoCAD 에서 저장한 DXF 를 받거나 같은 이름의 PDF 를 쓴다 |
 | 도면 경로에 공백·괄호가 있어 명령이 깨진다 | `DWG="..."` 처럼 따옴표로 담고 `"$DWG"` 로 쓴다 |
