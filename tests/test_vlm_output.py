@@ -120,6 +120,56 @@ class SharedVLMOutputTests(unittest.TestCase):
                 self.assertIn("json_schema is not supported", client.trace[-1]["error"])
                 self.assertTrue(client.trace[-1]["structured_output_requested"])
 
+    def test_reply_cut_at_max_tokens_is_asked_once_more_shorter(self):
+        full = json.dumps(reason_response())
+
+        def reply(provider, text, cut):
+            r = Mock(ok=True)
+            r.json.return_value = (
+                {
+                    "choices": [
+                        {
+                            "message": {"content": text},
+                            "finish_reason": "length" if cut else "stop",
+                        }
+                    ]
+                }
+                if provider == "openai"
+                else {
+                    "content": [{"type": "text", "text": text}],
+                    "stop_reason": "max_tokens" if cut else "end_turn",
+                }
+            )
+            return r
+
+        for provider in ("openai", "anthropic"):
+            for second_cut in (False, True):
+                with self.subTest(provider=provider, second_cut=second_cut):
+                    client = VLMClient(
+                        VLMConfig(provider=provider, model="reason"), "reason"
+                    )
+                    second = full[:40] if second_cut else full
+                    replies = [
+                        reply(provider, full[:40], True),
+                        reply(provider, second, second_cut),
+                    ]
+                    with patch("requests.post", side_effect=replies) as post:
+                        result = client.ask("Classify.", task="view_labels")
+                    self.assertEqual(post.call_count, 2)
+                    sent = json.dumps(post.call_args.kwargs["json"])
+                    self.assertIn("cut off before the JSON was complete", sent)
+                    rec = client.trace[-1]
+                    self.assertEqual(rec["retry"]["raw"], full[:40])
+                    self.assertEqual(rec["retry"]["finish_reason"], "length")
+                    if second_cut:
+                        self.assertIsNone(result)
+                        self.assertFalse(rec["ok"])
+                        self.assertIn("JSONDecodeError", rec["error"])
+                    else:
+                        self.assertEqual(result["part_class"], "bent_sheet")
+                        self.assertTrue(rec["ok"])
+                        self.assertNotEqual(rec["finish_reason"], "length")
+
     @unittest.skipUnless(
         importlib.util.find_spec("xgrammar"),
         "XGrammar is supplied by the vLLM server environment",

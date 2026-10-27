@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `cylinder` | 판을 말아 만드는 원통. 전개 = 직사각형 | L = π(ID + t), H = 코스 길이 | SHELL, CHANNEL, SKIRT, JACKET SHELL, 노즐 NECK / SLEEVE |
 | `cone` | 원뿔대. 전개 = 환형 부채꼴 | R1 = s·D1m/(D1m−D2m), θ = π·D1m/R1 | CONE |
-| `head` | 성형 헤드. 전개 = 블랭크 원판 | 블랭크 ≈ 1.25~1.30 × ID | HEAD, TOP/BTM HEAD, JACKET HEAD |
+| `head` | 성형 헤드. 전개 = 블랭크 원판 | 블랭크 = 형식별 약산식, 2:1 반타원은 1.2 × Dm + 2·SF (`shell_cone_head_unfold.md` 4.2. 2026-10-27 까지 reader 는 1.25~1.30 × ID) | HEAD, TOP/BTM HEAD, JACKET HEAD |
 | `ring` | 평판 링 (OD/ID). 분할 가능 | 평판 | 노즐 보강 PAD, LAP PLATE, INS. RING, FIRE CLIP, COMP RING |
 | `flat` | 평판 윤곽 그대로 | 평판 | RIB, BASE/WEB/WEAR PL, LUG, GUSSET, BAFFLE, COVER, STRIP, 원판형 IMP. PL |
 

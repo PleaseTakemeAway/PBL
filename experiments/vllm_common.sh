@@ -2,42 +2,58 @@
 # validation, and the local vLLM server lifecycle. Source this file; do not run it.
 # The caller sets server_log_dir before start_server and may set dry_run=1.
 
-# Edit these two blocks, use CUTPLAN_* environment variables, or pass CLI flags.
-# Precedence: CLI > environment > defaults below. API keys stay in the environment.
+# A role's settings come in layers, each overriding the one before:
+#   1. the role defaults below (ports, output format, where the role runs),
+#   2. the model profile, experiments/models/NAME.sh (model ID, vLLM limits),
+#   3. CUTPLAN_ROLE_* environment variables,
+#   4. CLI flags.
+# load_role applies them. API keys stay in the environment.
+models_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/models"
+role_fields=(mode model gpu parallel port provider base_url api_key_env output_format trust_remote_code)
 declare -A ocr=(
-  [mode]="${CUTPLAN_OCR_MODE:-local}"
-  [model]="${CUTPLAN_OCR_MODEL:-deepseek-ai/DeepSeek-OCR-2}"
-  [gpu]="${CUTPLAN_OCR_GPU:-0}"
-  [parallel]="${CUTPLAN_OCR_PARALLEL:-tensor}"
-  [port]="${CUTPLAN_OCR_PORT:-8000}"
-  [provider]="${CUTPLAN_OCR_PROVIDER:-openai}"
-  [base_url]="${CUTPLAN_OCR_BASE_URL:-}"
+  [profile]="${CUTPLAN_OCR_PROFILE:-deepseek-ocr-2}"
+  [mode]=local
+  [model]=""
+  [gpu]=0
+  [parallel]=tensor
+  [port]=8000
+  [provider]=openai
+  [base_url]=""
   [api_key_env]=""
-  [output_format]="${CUTPLAN_OCR_OUTPUT_FORMAT:-raw}"
+  [output_format]=raw
+  [trust_remote_code]=0
 )
 declare -A reason=(
-  [mode]="${CUTPLAN_REASON_MODE:-local}"
-  [model]="${CUTPLAN_REASON_MODEL:-Qwen/Qwen3.6-27B}"
-  [gpu]="${CUTPLAN_REASON_GPU:-1,2,3}"
-  [parallel]="${CUTPLAN_REASON_PARALLEL:-pipeline}"
-  [port]="${CUTPLAN_REASON_PORT:-8001}"
-  [provider]="${CUTPLAN_REASON_PROVIDER:-openai}"
-  [base_url]="${CUTPLAN_REASON_BASE_URL:-}"
+  [profile]="${CUTPLAN_REASON_PROFILE:-qwen3.6-27b}"
+  [mode]=local
+  [model]=""
+  [gpu]=1
+  [parallel]=tensor
+  [port]=8001
+  [provider]=openai
+  [base_url]=""
   [api_key_env]=""
-  [output_format]="${CUTPLAN_REASON_OUTPUT_FORMAT:-json_schema}"
+  [output_format]=json_schema
+  [trust_remote_code]=0
 )
+# CLI values, kept apart until load_role puts them on top.
+declare -A ocr_cli=() reason_cli=()
+ocr_cli_vllm_args=()
+reason_cli_vllm_args=()
+# vLLM options a role needs whatever the model: json_schema output needs XGrammar.
+# Without disable_any_whitespace the grammar lets the model fill the reply with
+# blank lines until max_tokens cuts the JSON (docs/v3_upgrade.md 4절 #13).
+ocr_role_vllm_args=()
+reason_role_vllm_args=(--structured-outputs-config.backend=xgrammar
+                       --structured-outputs-config.disable_any_whitespace=true)
+# Final vLLM options, set by load_role: profile, then role, then CLI. Repeated
+# --*-vllm-arg options come last and can override any of these values.
+ocr_vllm_args=()
+reason_vllm_args=()
 vllm_bin="${CUTPLAN_VLLM_BIN:-vllm}"
 startup_timeout="${CUTPLAN_VLLM_STARTUP_TIMEOUT:-7200}"
 allow_shared_gpus="${CUTPLAN_ALLOW_SHARED_GPUS:-0}"
 dry_run=0
-
-# These limits fit the default models' sequential drawing workflow on 24 GB GPUs
-# (RTX A5000): the last of Qwen's three pipeline stages holds the LM head and needs
-# 0.95 to leave room for a 16k-token request. Repeated --*-vllm-arg options are
-# appended last and can override any of these values.
-ocr_vllm_args=(--max-model-len=8192 --max-num-seqs=16 --gpu-memory-utilization=0.50)
-reason_vllm_args=(--max-model-len=16384 --max-num-seqs=16 --gpu-memory-utilization=0.95
-                  --structured-outputs-config.backend=xgrammar)
 server_pids=()
 server_roles=()
 
@@ -61,11 +77,11 @@ parse_option_value() {
 }
 
 set_role_option() {
-  local -n config="$1"
+  local -n cli="${1}_cli"
   case "$2" in
-    mode|model|gpu|parallel|port|provider|base_url|api_key_env|output_format) config["$2"]="$3" ;;
+    profile|mode|model|gpu|parallel|port|provider|base_url|api_key_env|output_format) cli["$2"]="$3" ;;
     vllm_arg)
-      local -n extra_args="${1}_vllm_args"
+      local -n extra_args="${1}_cli_vllm_args"
       extra_args+=("$3")
       ;;
     *) die "unknown option: --${1}-${2//_/-}" ;;
@@ -78,6 +94,57 @@ set_role_flag() {
   role="${role%%-*}"
   local field="${1#--$role-}"
   set_role_option "$role" "${field//-/_}" "$2"
+}
+
+# Print the profile names in experiments/models.
+list_profiles() {
+  local file
+  for file in "$models_dir"/*.sh; do
+    [[ -e "$file" ]] || continue
+    file="${file##*/}"
+    echo "  ${file%.sh}"
+  done
+}
+
+# Apply the profile, environment and CLI layers to a role. A profile is a name
+# in experiments/models or a path to a file of the same form. It may set any
+# role field and the array vllm_args; config[profile_mode] records the mode the
+# profile itself set, so serve.sh can refuse an API-only profile.
+load_role() {
+  local _role="$1"
+  local -n _config="$_role"
+  local -n _cli="${_role}_cli"
+  local -n _role_args="${_role}_role_vllm_args"
+  local -n _cli_args="${_role}_cli_vllm_args"
+  local -n _final_args="${_role}_vllm_args"
+  local _profile="${_cli[profile]:-${_config[profile]}}"
+  local _file _field _variable
+  local mode model gpu parallel port provider base_url api_key_env output_format trust_remote_code
+  local -a vllm_args=()
+  if [[ "$_profile" == */* || "$_profile" == *.sh ]]; then
+    _file="$_profile"
+  else
+    _file="$models_dir/$_profile.sh"
+  fi
+  if [[ ! -f "$_file" ]]; then
+    echo "error: $_role profile not found: $_profile. Profiles in experiments/models:" >&2
+    list_profiles >&2
+    exit 2
+  fi
+  . "$_file"
+  _config[profile]="$_profile"
+  _config[profile_mode]="${mode:-}"
+  for _field in "${role_fields[@]}"; do
+    [[ -z "${!_field:-}" ]] || _config[$_field]="${!_field}"
+  done
+  for _field in "${role_fields[@]}"; do
+    _variable="CUTPLAN_${_role^^}_${_field^^}"
+    [[ -z "${!_variable:-}" ]] || _config[$_field]="${!_variable}"
+  done
+  for _field in "${!_cli[@]}"; do
+    _config[$_field]="${_cli[$_field]}"
+  done
+  _final_args=("${vllm_args[@]}" "${_role_args[@]}" "${_cli_args[@]}")
 }
 
 check_server_settings() {
@@ -155,7 +222,7 @@ check_local_overlap() {
 
 print_role() {
   local -n config="$1"
-  echo "$1: mode=${config[mode]} model=${config[model]} provider=${config[provider]} output_format=${config[output_format]}"
+  echo "$1: profile=${config[profile]} mode=${config[mode]} model=${config[model]} provider=${config[provider]} output_format=${config[output_format]}"
   if [[ "${config[mode]}" == local ]]; then
     echo "  GPUs=${config[gpu]} parallel=${config[parallel]} port=${config[port]}"
   else
@@ -169,7 +236,6 @@ server_command() {
   local role="$1"
   local -n config="$role"
   local -n extra_args="${role}_vllm_args"
-  local trust_name="CUTPLAN_${role^^}_TRUST_REMOTE_CODE"
   local ids=()
   IFS=',' read -r -a ids <<< "${config[gpu]}"
   server_size="${#ids[@]}"
@@ -183,7 +249,7 @@ server_command() {
     "TRITON_ALLOW_NON_CONSTEXPR_GLOBALS=${TRITON_ALLOW_NON_CONSTEXPR_GLOBALS:-${CUTPLAN_TRITON_ALLOW_NON_CONSTEXPR_GLOBALS:-1}}"
   )
   server_argv=(serve "${config[model]}" --host 127.0.0.1 --port "${config[port]}" "--${config[parallel]}-parallel-size" "$server_size")
-  [[ "${!trust_name:-0}" != 1 ]] || server_argv+=(--trust-remote-code)
+  [[ "${config[trust_remote_code]}" != 1 ]] || server_argv+=(--trust-remote-code)
   server_argv+=("${extra_args[@]}")
 }
 

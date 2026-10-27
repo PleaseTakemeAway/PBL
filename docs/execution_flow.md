@@ -110,8 +110,10 @@ smoke test 는 ③ 의 `verify_part_spec` 부터 ⑥ 까지를 정해진 순서�
 ```
 DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추론 모델이 뷰와 형상(part_class)을 정함
           ─▶ reader: 전개 파라미터 → 전개도 (flat_pattern)
-          └▶ reconstruct: (복원 가능할 때) 3D 복원 step1~5 → 후보 확인 → STEP 내보내기 (step6)
+          └▶ reconstruct: (--with-3d 이고 복원 가능할 때) 3D 복원 step1~5 → 후보 확인 → STEP 내보내기 (step6)
 ```
+
+2026-10-27 부터 3D 복원(아래 흐름의 4~6, 단계 11~13)은 `--with-3d` 를 줄 때만 돈다. 판독은 전개도에서 끝나고, 배치의 도면 상태는 `predicted` 가 된다 ([v3_upgrade.md](v3_upgrade.md) 1.1).
 
 모델은 두 역할로 나뉜다. OCR 모델은 글자를 읽고, 추론 모델은 그 글자와 도면으로 JSON 판단을 낸다. reader 의 모델 호출은 모두 [`reader/vlm.py`](../cutplan_agent/reader/vlm.py) 의 `VLMClient.ask` 를 거친다. 모델이 꺼져 있거나 호출이 실패하면 `ask` 는 예외를 내지 않고 `None` 을 돌려주며, 호출한 단계는 미리 계산해 둔 결정적 결과를 쓴다. 호출 기록은 성공과 실패 모두 `trace` 에 남는다. `reconstruct` 는 `reader` 의 모듈을 쓰지 않고, `reader` 만 `reconstruct` 를 쓴다.
 
@@ -124,14 +126,14 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 | 복원 후보 확인 | 추론 모델 (`confirm_candidates`) | 건너뛴다 |
 | 이미지 입력의 글자 | OCR 모델 | tesseract |
 
-그래서 `--no-vlm` 은 오류 없이 끝까지 돌고 3D 복원과 STEP 까지 만들지만, 형상이 `None` 이라 전개 파라미터와 전개도 단계는 `skipped` ("no development for part_class None") 로 끝난다. `fallback_params` 는 모델이 형상을 정하고 치수를 일부 빠뜨렸을 때만 쓰인다.
+그래서 `--no-vlm` 은 오류 없이 끝까지 돌고 `--with-3d` 를 주면 3D 복원과 STEP 까지 만들지만, 형상이 `None` 이라 전개 파라미터와 전개도 단계는 `skipped` ("no development for part_class None") 로 끝난다. `fallback_params` 는 모델이 형상을 정하고 치수를 일부 빠뜨렸을 때만 쓰인다.
 
 ### 3.2 진입점
 
 | 파일 | 하는 일 |
 |---|---|
 | [`experiments/experiments.sh`](../experiments/experiments.sh) | 동료가 27/30 을 낸 실험. vLLM 서버 두 개를 띄우고 (OCR DeepSeek-OCR-2: GPU 0, 포트 8000 / 추론 Qwen3.6-27B: GPU 1,2,3 pipeline parallel, 포트 8001. 동료는 GPU 4, 5 를 썼다) `reader/main.py --batch --input-mode dxf` 로 `data_v3/synthetic` 30장을 돈 뒤 서버를 끈다. 변형: `experiments_local.sh` (GPU 0/1), `experiments_claude.sh` (Anthropic) |
-| [`experiments/serve.sh`](../experiments/serve.sh) | `experiments.sh` 와 같은 설정으로 vLLM 서버만 띄우고 Ctrl-C 까지 둔다. 서버가 뜨면 `runs/vllm/<역할>.env` 를 쓴다. 다른 셸에서 이것을 source 하면 `main.py`, 단계 스크립트, `experiments.sh` 가 떠 있는 서버를 쓴다 ([getting_started.md](getting_started.md) 3절). 두 스크립트는 역할 설정과 서버 관리를 [`experiments/vllm_common.sh`](../experiments/vllm_common.sh) 에서 함께 쓴다 |
+| [`experiments/serve.sh`](../experiments/serve.sh) | `experiments.sh` 와 같은 설정으로 vLLM 서버만 띄우고 Ctrl-C 까지 둔다. 서버가 뜨면 `runs/vllm/<역할>.env` 를 쓴다. 다른 셸에서 이것을 source 하면 `main.py`, 단계 스크립트, `experiments.sh` 가 떠 있는 서버를 쓴다 ([getting_started.md](getting_started.md) 3절). 두 스크립트는 역할 설정과 서버 관리를 [`experiments/vllm_common.sh`](../experiments/vllm_common.sh) 에서 함께 쓰고, 모델별 설정은 [`experiments/models/`](../experiments/models/) 의 프로필에서 읽는다 (`--ocr-profile`, `--reason-profile`) |
 | [`cutplan_agent/reader/main.py`](../cutplan_agent/reader/main.py) | CLI. 아래 세 모드 |
 | `tests/` | 단위 테스트. `PYTHONPATH=. python -m unittest discover -s tests` |
 
@@ -165,7 +167,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
       - `label_with_vlm` — 추론 모델이 뷰 종류, 투상법, 형상(`part_class`), 복원 가능 여부를 정한다
    2. `dxf_adapter.build_document` — 판독 결과를 `reconstruct/models.py` 의 `DrawingDocument` 로 만든다
    3. **`unfold.run_unfold`** ([`reader/unfold.py`](../cutplan_agent/reader/unfold.py)) — `extract_params` (추론 모델 `ask_unfold_params`, 모델이 비운 키는 기하 기반 `fallback_params`. 형상이 없으면 건너뛴다) → `develop` (전개 계산) → `export_flat_pattern`
-   4. 복원 가능하면 [`reconstruct/pipeline.py`](../cutplan_agent/reconstruct/pipeline.py) 의 `ReconstructionPipeline.run` — step1 도면 해석 → step2 뷰 매칭 → step3 후보 생성 → step4 후보 평가 → step5 모호성 정리
+   4. `--with-3d` 이고 복원 가능하면 [`reconstruct/pipeline.py`](../cutplan_agent/reconstruct/pipeline.py) 의 `ReconstructionPipeline.run` — step1 도면 해석 → step2 뷰 매칭 → step3 후보 생성 → step4 후보 평가 → step5 모호성 정리
    5. `vision_adapter.confirm_candidates` — 추론 모델이 복원 후보를 확인한다
    6. `step6.ReconstructionExporter` — `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`
    7. 추론이 모두 끝난 뒤(`finally`)에야 정답 `label.json` 을 읽어 비교한다. 정답이 추론에 섞이지 않게 하려는 순서다
@@ -191,7 +193,7 @@ PYTHONPATH=. python cutplan_agent/reader/main.py --batch --input-mode dxf --no-v
 
 ### 3.5 결과물
 
-도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `stages/` (DXF 입력의 단계 파일 13개), `analysis/` (`sheet.png`, `sheet_analysis.json` 등), `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`.
+도면마다 `<출력 폴더>/<도면 이름>/` 아래에 `stages/` (DXF 입력의 단계 파일 13개), `analysis/` (`sheet.png`, `sheet_analysis.json` 등), `prediction.json`, 전개에 성공하면 `flat_pattern.json`·`.dxf`·`.png`, `--with-3d` 일 때 복원 결과 `provenance.json`, `report.md`, `reconstruction.step`, `parameters.json`.
 
 ## 4. 같은 일을 하는 곳
 

@@ -10,6 +10,7 @@
 | `presentation/build_v2_v3.py` | "도면 판독, 지금 어디까지 왔나" 파트 (19장, 약 20분) → `v2_v3.pptx`. v2 → v3 → v3 를 실제 도면 5장에 돌린 결과(성공·실패 사례)를 AI 를 모르는 청중에게 보인다. 2026-10-23 에 "도면 판독 orchestrator" 덱(`build_reader_orchestrator.py`, 커밋 7f543c2 까지)을 로드맵 덱으로 바꿨다가, 같은 날 지난 이야기는 이 파일로, 다음 이야기는 `build_roadmap.py` 로 나눴다 |
 | `presentation/build_roadmap.py` | "다음 단계: 로컬 AI 가 도구를 골라 쓰게" 파트 (13장, 약 15분) → `roadmap.pptx`. `v2_v3` 다음에 발표한다. 두 덱은 내용이 겹치지 않는다 (숫자는 기준선으로만 다시 부른다). 할 일 둘 → tool calling → Claude 대신 로컬 AI 의 에이전트 시제품과 그 기록 → 도구를 부르는 두 방식 → 실제 도면에 적용 → 다음 주 → 최종 목표 |
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
+| `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -23,6 +24,7 @@
 PYTHONPATH=. uv run --with python-pptx python presentation/build_v2_v3.py                # → presentation/v2_v3.pptx
 PYTHONPATH=. uv run --with python-pptx python presentation/build_roadmap.py               # → presentation/roadmap.pptx
 PYTHONPATH=. uv run --with python-pptx python presentation/build_dwg_dxf.py               # → presentation/dwg_dxf.pptx
+PYTHONPATH=. uv run --with python-pptx python presentation/build_company_brief.py         # → presentation/company_brief.pptx
 PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx               # → presentation/build/*.png
 ```
 
@@ -95,6 +97,8 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 
 ## 6. 다음 단계 파트의 숫자 출처
 
+`v4.md` 는 2026-10-27 에 지웠다. `git show c71cca0:docs/v4.md` 로 본다.
+
 이야기 순서: 할 일 둘 (하네스, 실제 도면) → 하네스 → tool calling 은 v2 에서 본 그 방식 → Claude 대신 로컬 AI 의 에이전트 시제품 → 시연 → AI 가 남긴 기록 → 도구를 부르는 두 방식 → tool calling 으로 실제 도면 풀기 → 다음 주 → 최종 목표 → 전망. MCP 는 청중에게 소개한 적이 없어서 넣지 않았다.
 
 | 슬라이드의 내용 | 출처 |
@@ -106,7 +110,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/dwg_dxf.pptx     
 | 에이전트 구조: 도구 17개 = 판독 13단계 + 4 | [reader/orchestrator.md](reader/orchestrator.md) 3절 (`list_drawings`, `stage_status`, `show_stage`, `run_<단계>` 13개, `run_stages`) |
 | AI 의 판단 세 번 (글자 그대로, 줄임표로 줄였다) | `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 의 턴 1 · 2 · 3 `text`, 경과 6.1 · 16.9 · 133.0 초, `run_stages` 92.3 초. 보는 명령은 `scripts/reader/show_trajectory.py` |
 | 결과 표 예시 (SHELL t8, TOP HEAD t10, 두께는 부품표) | S-2120 정답 `parts.csv` 의 두께, v4.md 5.2절의 부품표 대조. tool calling 으로 만들 결과의 모양을 보이는 예시다 |
-| 다음 주에 할 일: 부품표 읽기 → 부품 목록 → 채점 → 도구로 등록 | [v4.md](v4.md) 8절의 계획을 따른다. 2026-10-23 에 이 덱에 먼저 적었던 계획(글자 찾기 · 확대 도구, 대조 검사, 표준 tool calling 확인, 채점표)과 비교해 v4 쪽으로 맞췄다: v4 는 코드만으로 하고 손으로 확인한 기댓값이 있다 (S-2120 정답 품번 22/22 가 부품표에, 재질 · 두께 21/22, v4.md 5.2절). 부품 목록이 '22종 중 1개' 를 직접 풀고, 두께도 부품표 SIZE 칸의 `t8` 을 코드가 읽어 18 오독이 생기지 않는다. 앞의 계획은 효과의 근거가 없었고, 채점표는 v4 3번과 겹치며, 표준 tool calling 확인은 공유 추론 서버를 다시 띄워야 한다 (최종 목표 5번 '하네스 장치 비교' 로 옮겼다). 4번 '도구로 등록' 은 v4.md 7절의 "만나는 곳은 새 단계를 `reader/tools.py` 에 tool 로 등록하는 부분" 이다 |
-| 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵과 [v4.md](v4.md) 8절을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, v4 8절 → 부품표 단계 (채점 포함), v4 8절 '이번 범위 밖' → 판재 크기, 4 · 5번 → 하네스 장치 비교 (표준 tool calling 비교 포함), 7번 → 뒷단 연결. 날짜는 정하지 않았다 |
+| 다음 주에 할 일: 부품표 읽기 → 부품 목록 → 채점 → 도구로 등록 | v4.md 8절의 계획을 따른다. 2026-10-23 에 이 덱에 먼저 적었던 계획(글자 찾기 · 확대 도구, 대조 검사, 표준 tool calling 확인, 채점표)과 비교해 v4 쪽으로 맞췄다: v4 는 코드만으로 하고 손으로 확인한 기댓값이 있다 (S-2120 정답 품번 22/22 가 부품표에, 재질 · 두께 21/22, v4.md 5.2절). 부품 목록이 '22종 중 1개' 를 직접 풀고, 두께도 부품표 SIZE 칸의 `t8` 을 코드가 읽어 18 오독이 생기지 않는다. 앞의 계획은 효과의 근거가 없었고, 채점표는 v4 3번과 겹치며, 표준 tool calling 확인은 공유 추론 서버를 다시 띄워야 한다 (최종 목표 5번 '하네스 장치 비교' 로 옮겼다). 4번 '도구로 등록' 은 v4.md 7절의 "만나는 곳은 새 단계를 `reader/tools.py` 에 tool 로 등록하는 부분" 이다 |
+| 최종 목표까지 7단계 | [harness_engineering.md](harness_engineering.md) 3절 로드맵과 v4.md 8절을 청중용으로 묶었다: 1번 → 판독을 단계로, 6번 → AI 가 도구 고르기, v4 8절 → 부품표 단계 (채점 포함), v4 8절 '이번 범위 밖' → 판재 크기, 4 · 5번 → 하네스 장치 비교 (표준 tool calling 비교 포함), 7번 → 뒷단 연결. 날짜는 정하지 않았다 |
 
 참고: `runs/reader/data_v3_claude_batch_10141611` 은 같은 합성 30장을 Claude(Sonnet 5 추론, Haiku 4.5 OCR)로 돌려 25/30 이다 (2026-10-14). 날짜와 코드가 27/30 실행과 달라 로컬과 Claude 를 비교하는 근거로 쓰지 않았다. "로컬 AI 가 Claude 보다 작고 도면을 보는 눈이 약하다"는 팀의 판단이고, 같은 조건에서 잰 숫자는 아직 없다 ([harness_engineering.md](harness_engineering.md) 2.1절 5번).

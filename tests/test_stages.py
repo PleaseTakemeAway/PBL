@@ -27,7 +27,13 @@ from cutplan_agent.reader.stages import (
     views,
 )
 from cutplan_agent.reader.stages.run import run_drawing
-from cutplan_agent.reader.stages.workspace import STAGES, StageNotReady, Workspace
+from cutplan_agent.reader.stages.workspace import (
+    STAGES,
+    THREE_D,
+    THREE_D_OFF,
+    StageNotReady,
+    Workspace,
+)
 from cutplan_agent.reader.vlm import PART_CLASSES, VLMClient, VLMConfig
 from cutplan_agent.reader.vlm_output import normalize_response
 
@@ -95,7 +101,7 @@ class StageTests(unittest.TestCase):
             (root / "in").mkdir()
             dxf = synthetic_sheet(root / "in" / "sheet.dxf", with_arc_detail=False)
             out = root / "out"
-            run_batch([dxf], clients(), out, input_mode="dxf")
+            run_batch([dxf], clients(), out, input_mode="dxf", three_d=True)
             batch = files(out / "sheet")
             shutil.rmtree(out)
 
@@ -129,6 +135,20 @@ class StageTests(unittest.TestCase):
                 for i, s in enumerate(STAGES)
             }
             self.assertEqual(set(statuses.values()), {"done"}, statuses)
+
+    def test_3d_stages_are_skipped_unless_asked_for(self):
+        with TemporaryDirectory() as tmp:
+            dxf = synthetic_sheet(Path(tmp) / "sheet.dxf", with_arc_detail=False)
+            ws = Workspace(Path(tmp) / "work")
+            records = run_drawing(dxf, ws.root, clients())
+            self.assertEqual(records["develop"]["status"], "done")
+            for stage in THREE_D:
+                self.assertEqual(ws.load(stage)["status"], "skipped")
+                self.assertEqual(ws.load(stage)["reason"], THREE_D_OFF)
+            self.assertFalse((ws.root / "report.md").exists())
+            out = Path(tmp) / "out"
+            result = run_batch([dxf], clients(), out, input_mode="dxf")
+            self.assertEqual(result["reconstruction"]["summary"]["predicted"], 1)
 
     def test_unfold_params_stage_keeps_the_model_reply(self):
         with TemporaryDirectory() as tmp:

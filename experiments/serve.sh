@@ -15,7 +15,9 @@ usage() {
 Usage: bash serve.sh [options] [ocr] [reason]
 Start local vLLM servers and keep them running until Ctrl-C. With no role named,
 start both: DeepSeek-OCR-2 on GPU 0 (port 8000) and Qwen3.6-27B pipelined over
-GPUs 1,2,3 (port 8001), with the same vLLM settings as experiments.sh.
+GPUs 1,2,3 (port 8001), with the same vLLM settings as experiments.sh. Another
+model is a profile in experiments/models:
+  bash serve.sh reason --reason-profile qwen3.6-27b-fp8
 
 When a server is ready, SERVE_DIR/ROLE.env is written; it is removed on exit.
 Source it in another shell, at the repo root, to use the running servers:
@@ -27,7 +29,9 @@ The files set CUTPLAN_ROLE_MODE=api, so experiments.sh starts no server for a
 sourced role.
 
 Role options (replace ROLE with ocr or reason):
-  --ROLE-model MODEL           Model ID for that role.
+  --ROLE-profile NAME|FILE     Model profile: experiments/models/NAME.sh or a file
+                               of that form. The flags below override it.
+  --ROLE-model MODEL           Model ID; keeps the profile's vLLM options.
   --ROLE-gpu IDS               GPU IDs, e.g. 0 or 1,2,3; count sets the parallel size.
   --ROLE-parallel tensor|pipeline
   --ROLE-port PORT             Local server port (OCR 8000, reason 8001).
@@ -104,7 +108,11 @@ done
 
 check_server_settings
 for role in "${roles[@]}"; do
-  set_role_option "$role" mode local
+  load_role "$role"
+  declare -n config="$role"
+  [[ "${config[profile_mode]}" != api ]] || die "$role profile ${config[profile]} is an API model; there is no server to start"
+  config[mode]=local
+  unset -n config
   configure_role "$role"
 done
 (( ${#roles[@]} < 2 )) || check_local_overlap

@@ -61,10 +61,12 @@ PYTHONPATH=. uv run python cutplan_agent/reader/orchestrator.py "cone_0019 판�
 | tool | 하는 일 |
 |---|---|
 | `list_drawings(folder?, name?)` | DXF 목록과 도면마다의 작업 폴더(`work`), 이미 있는 단계 |
-| `stage_status(work)` | 13단계 각각의 상태: done, skipped(이유), failed(오류), not run |
+| `stage_status(work)` | 13단계 각각의 상태: done, skipped(이유), failed(오류), not run. 3D 단계(11~13)는 기본으로 skipped 다 |
 | `show_stage(work, stage)` | 한 단계의 요약, review 항목, 모델 원문 앞부분 1500자 |
-| `run_<단계>(work, …)` | 13개. 설명은 단계 스크립트 docstring 의 첫 문단과 `in :` 줄이다. 옵션: `run_read(drawing)`, `run_views(gap_ratio)`, `run_view_labels(projection_default)`, `run_document(units)`, `run_reconstruct(tolerance, max_candidates)` |
-| `run_stages(work, first?, last?, drawing?)` | 여러 단계를 차례로 (`stages/run.py` 의 `run_drawing`) |
+| `run_<단계>(work, …)` | 기본 10개(`run_read` … `run_develop`), `--with-3d` 면 13개. 설명은 단계 스크립트 docstring 의 첫 문단과 `in :` 줄이다. 옵션: `run_read(drawing)`, `run_views(gap_ratio)`, `run_view_labels(projection_default)`, `run_document(units)`, `run_reconstruct(tolerance, max_candidates)` |
+| `run_stages(work, first?, last?, drawing?)` | 여러 단계를 차례로 (`stages/run.py` 의 `run_drawing`). `last` 의 기본은 tool 이 있는 마지막 단계(기본 `develop`) |
+
+2026-10-27 부터 3D 단계(`reconstruct`, `confirm`, `export`)는 tool 이 없고, `run_stages` 도 이 단계들을 `skipped` 로 남긴다 ([../v3_upgrade.md](../v3_upgrade.md) 1.1). 그래서 tool 은 기본 14개다. system prompt 도 tool 이 있는 단계만 나열한다 (`orchestrator.py` 의 `system_prompt`). `--with-3d` 를 주면 tool 17개, prompt 는 그 전과 같다. 아래 2026-10-23 시연 기록은 3D 를 빼기 전이라 tool 이 17개였다.
 
 - 단계 모델(OCR, 추론)은 tool 을 만들 때 고정한다. orchestrator 모델은 모델을 바꿀 수 없다.
 - 틀린 tool 이름, 없는 인자, 빠진 인자, 앞 단계가 없는 단계(`not_ready`), 단계 오류는 모두 `{"error": …}` 결과로 모델에게 돌아간다. 루프는 멈추지 않는다.

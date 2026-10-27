@@ -3,6 +3,9 @@
 With --input-mode dxf (and the default --dxf-mode auto) every drawing runs through the stage
 scripts in cutplan_agent/reader/stages/ (stages/run.py: run_drawing), which leave one file per
 stage under <output-dir>/<drawing id>/stages/. Other input modes keep the single-call path.
+
+3D reconstruction runs only with three_d=True (main.py --with-3d); otherwise a drawing ends at
+its flat pattern with status "predicted" (docs/v3_upgrade.md 1.1).
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from typing import Any, Iterable
 from cutplan_agent.reader.drawing_io import load_drawing
 from cutplan_agent.reader.stages.export import candidate_record as _candidate_record
 from cutplan_agent.reader.stages.run import run_drawing
+from cutplan_agent.reader.stages.workspace import THREE_D_OFF
 from cutplan_agent.reader.unfold import evaluate_against_label, run_unfold
 from cutplan_agent.reader.vlm import PART_CLASSES, VLMClient
 from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
@@ -273,6 +277,7 @@ def _run_dxf_stages(
     analyze_only: bool,
     unfold: bool,
     confirm: bool,
+    three_d: bool,
     units: str | None,
     tolerance: float | None,
     max_candidates: int,
@@ -299,6 +304,9 @@ def _run_dxf_stages(
         elif stage == "export" and out["status"] == "done":
             record["status"] = out["outcome"]
             record["reconstruction"] = out["reconstruction"]
+        elif stage == "export" and out.get("reason") == THREE_D_OFF:
+            record["status"] = "predicted"
+            record["reconstruction"] = {"attempted": False, "reason": THREE_D_OFF}
 
     stages = run_drawing(
         path,
@@ -307,6 +315,7 @@ def _run_dxf_stages(
         analyze_only=analyze_only,
         unfold=unfold,
         confirm=confirm,
+        three_d=three_d,
         units=units,
         tolerance=tolerance,
         max_candidates=max_candidates,
@@ -336,6 +345,7 @@ def run_batch(
     projection_default: str = "third",
     confirm: bool = True,
     unfold: bool = True,
+    three_d: bool = False,
 ) -> dict[str, Any]:
     """Predict every discovered DXF, reconstruct each drawing, then aggregate results."""
     inputs = list(inputs)
@@ -404,6 +414,7 @@ def run_batch(
                     analyze_only=analyze_only,
                     unfold=unfold,
                     confirm=confirm,
+                    three_d=three_d,
                     units=units,
                     tolerance=tolerance,
                     max_candidates=max_candidates,
@@ -444,7 +455,10 @@ def run_batch(
             # class → dimensions → development, independent of the 3D wireframe search below
             if unfold:
                 record["flat_pattern"] = run_unfold(analysis, drawing, reason, item_dir)
-            if analysis.get("reconstructable") is False:
+            if not three_d:
+                record["status"] = "predicted"
+                record["reconstruction"] = {"attempted": False, "reason": THREE_D_OFF}
+            elif analysis.get("reconstructable") is False:
                 record["status"] = "prediction_only"
                 record["reconstruction"] = {
                     "attempted": False,

@@ -2,6 +2,9 @@
 
 PYTHONPATH=. python cutplan_agent/reader/main.py tests/fixtures/box.json --output-dir output
 PYTHONPATH=. python cutplan_agent/reader/main.py part.dxf --analyze-only --reason-model qwen2.5vl:32b
+
+The 3D reconstruction runs only with --with-3d; without it a run ends at the flat pattern
+(docs/v3_upgrade.md 1.1).
 """
 
 import argparse
@@ -9,6 +12,7 @@ import sys
 from pathlib import Path
 
 from cutplan_agent.reader.drawing_io import load_drawing
+from cutplan_agent.reader.stages.workspace import THREE_D_OFF
 from cutplan_agent.reader.unfold import run_unfold
 from cutplan_agent.reconstruct.pipeline import ReconstructionPipeline
 from cutplan_agent.reconstruct.step6 import ReconstructionExporter
@@ -89,6 +93,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--dpi", type=int, default=200, help="Rasterization DPI for PDF/DXF inputs"
+    )
+    parser.add_argument(
+        "--with-3d",
+        action="store_true",
+        help="Also run the 3D reconstruction (off since 2026-10-27, docs/v3_upgrade.md 1.1)",
     )
     parser.add_argument(
         "--no-confirm",
@@ -172,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
                 projection_default=args.projection,
                 confirm=not args.no_confirm,
                 unfold=not args.no_unfold,
+                three_d=args.with_3d,
             )
         except (ValueError, RuntimeError, OSError) as exc:
             print(f"Batch failed: {exc}", file=sys.stderr)
@@ -310,6 +320,9 @@ def main(argv: list[str] | None = None) -> int:
                     args.output_dir,
                 )
             )
+        if not args.with_3d:
+            print(f"3D reconstruction skipped: {THREE_D_OFF}")
+            return 0
         tolerance = (
             args.tolerance
             if args.tolerance is not None
