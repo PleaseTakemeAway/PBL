@@ -6,6 +6,8 @@
 
 ## 1. 데이터 지도
 
+다른 서버로 옮길 때 무엇을 어느 경로에 두는지, 옮긴 뒤 어떻게 확인하는지는 [transfer.md](transfer.md).
+
 | 경로 | 무엇 | 만드는 곳 | 쓰는 곳 |
 |---|---|---|---|
 | `Data/20YY년 cutting plan/` | KDM 연도별 커팅플랜 원본 `*_CP.dwg` (2023·2024·2025). `images/` 에 PNG 와 DXF(`images/_dxf/`) 변환본 | 압축본 | `build_dataset.py`, `extract_part_unfolds.py` |
@@ -18,7 +20,7 @@
 | `test_data/` | 입력 도면·전개도·커팅플랜이 모두 있는 워크오더 39개 (KDM 38, HCE 1). `index.csv` 에 제외된 32개와 사유, 정답 부품이 가리키는 도면이 입력에 있는지 (`parts_ref_missing`) 도 있다 | 스크립트 ⑤⑥ | v2 `eval/run_experiments.py`, `eval/compare_outputs.py`, `eval/manual_vlm_run.py` |
 | `test_data/cutting_plan/` | 회사 담당자에게 받은 설비 2개 (S-2120, D-1203) 의 설계 도면과 커팅플랜 `CP.dwg`, 워크오더 번호를 적은 `note.md`. 다시 만들 수 없으니 지우지 않는다 | 회사 담당자 (2026-10-22) | 스크립트 ⑦ |
 | `test_data/cases/` | 위 폴더로 만든 테스트셋. 설비마다 입력 도면, 정답 `sheets`·`parts`·`pieces` CSV, 조각 DXF, 확인 그림. [cutplan_cases.md](cutplan_cases.md) | 스크립트 ⑦ | 아직 없다 |
-| `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 생성기는 레포에 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
+| `data_v3/synthetic/` | 합성 도면 30장. 형상 5종(flat, bent_sheet, cylinder, cone, press_formed) × 6장. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json` (class, 치수, 구멍). PNG 는 reader 의 `dxf_adapter.render` 로 다시 그린 것과 30장 모두 크기가 같고 화소 99.6% 이상이 같다 (폭 16 in, 146 dpi). 이 렌더러는 선 종류와 글꼴을 무시하고 글자를 DejaVu Sans 로 놓아 표 칸을 넘친다 | 동료 서버에서 rsync. 회사 도면에 흔한 쉬운 형상 5종(평판, 굽힘판, 원통, 콘, 경판)을 골라 프로그램으로 그린 도면 30장. 옛 생성기 `make_data_v3.py` 는 남아 있지 않아 다시 만들 수 없다 | v3 `experiments/experiments.sh` 의 기본 입력, `reader/main.py --batch` |
 | `data_v3/generated/` | 합성 도면 30장을 회사 계산 기준으로 새로 만든 것 (2026-10-27). 형상·치수는 `data_v3/synthetic` 과 같고, 그리는 법과 정답 식을 고쳤다. 폴더마다 `<id>.dxf`, `<id>.png`, `label.json`. [synthetic.md](synthetic.md) | `scripts/build_synthetic.py` | 아직 기본 입력이 아니다 |
 | `tests/fixtures/` | reader 단위 테스트 입력: `box.json`, `KD23041_CP.dxf`, HCE 스캔 `hce_*.png`. 고객 도면이 들어 있다 | 압축본 | `tests/` |
 | `runs/` | 실행 결과. v2 는 `runs/<job>/`, v3 는 `runs/reader/` (동료의 기준 결과 `deepseek_ocr_qwen_reasoning_skills` 등 포함) | 실행 | `eval/status.py`, `eval/compare_outputs.py`, 기준선 비교 |
