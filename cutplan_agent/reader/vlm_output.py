@@ -61,6 +61,10 @@ def _nullable(schema: dict) -> dict:
 
 _STRING = {"type": "string"}
 _NUMBER = {"type": "number"}
+# Free text a person reads (notes, reason, problems); no stage computes from
+# it. A model with no other place to think writes long reasons here and runs
+# out of max_tokens before the JSON closes (docs/v3_upgrade.md 3.4).
+PROSE_MAX_CHARS = 200
 _PROJECTION = {"type": "string", "enum": ["first", "third"]}
 TEXT_SCHEMA = _object(
     {
@@ -170,30 +174,58 @@ VLM_RESPONSE_SCHEMA = _object(
 )
 
 
-def response_schema(role: str, task: str) -> dict:
-    """Specialize the common shape: exactly one task block contains an object."""
+def response_schema(
+    role: str,
+    task: str,
+    *,
+    prose_limit: int = PROSE_MAX_CHARS,
+    view_reason: bool = True,
+) -> dict:
+    """Specialize the common shape: exactly one task block contains an object.
+
+    prose_limit caps the free-text fields (notes, reason, problems) in
+    characters; 0 leaves them unbounded. view_reason=False drops the per-view
+    reason from view_labels. The client does not reject over-long text: the
+    server grammar enforces the cap (docs/v3_upgrade.md 3.4).
+    """
     if role not in {"ocr", "reason"} or task not in TASK_BLOCKS:
         raise ValueError(f"unknown VLM role/task: {role}/{task}")
     schema = deepcopy(VLM_RESPONSE_SCHEMA)
-    schema["properties"]["role"]["enum"] = [role]
-    schema["properties"]["task"]["enum"] = [task]
+    props = schema["properties"]
+    props["role"]["enum"] = [role]
+    props["task"]["enum"] = [task]
     for block in TASK_BLOCKS.values():
-        schema["properties"][block] = (
-            schema["properties"][block]["anyOf"][0]
-            if block == TASK_BLOCKS[task]
-            else {"type": "null"}
+        props[block] = (
+            props[block]["anyOf"][0] if block == TASK_BLOCKS[task] else {"type": "null"}
         )
+    # deepcopy keeps _STRING shared between fields, so replace the prose
+    # fields instead of editing them in place.
+    prose = [(props, "notes")]
+    if task == "view_labels":
+        view = props["reasoning"]["properties"]["views"]["items"]
+        if view_reason:
+            prose.append((view["properties"], "reason"))
+        else:
+            del view["properties"]["reason"]
+            view["required"].remove("reason")
+    elif task == "candidate_confirmation":
+        confirmation = props["confirmation"]["properties"]
+        prose += [(confirmation, "reason"), (confirmation["problems"], "items")]
+    if prose_limit:
+        for parent, key in prose:
+            parent[key] = {**parent[key], "maxLength": prose_limit}
     return schema
 
 
-def output_instructions(role: str, task: str) -> str:
-    schema = response_schema(role, task)
+def output_instructions(role: str, task: str, **shape) -> str:
+    schema = response_schema(role, task, **shape)
     return (
         "\n\nOUTPUT CONTRACT (overrides any earlier output-format examples):\n"
         "Return ONE JSON object matching the schema below, without Markdown or prose. "
         f"Set role={json.dumps(role)}, task={json.dumps(task)}, schema_version=1. "
         f"Put the requested task values inside {TASK_BLOCKS[task]}; "
         "set the other task blocks to null. Put explanatory notes in the top-level notes string. "
+        "To quote text inside notes, a reason or a problem, use single quotes ('SHELL'). "
         "Use null for unknown scalar facts; never invent values or scores. "
         "All numeric values must be finite. Confidence must be between 0 and 1. "
         "Scale is a ratio string, e.g. 1/4. View IDs and candidate picks are positive integers.\n"
@@ -247,7 +279,7 @@ def _validate(value: Any, schema: dict, path: str = "response") -> None:
 
 
 def normalize_response(
-    data: Any, role: str, task: str, *, allow_legacy: bool = True
+    data: Any, role: str, task: str, *, allow_legacy: bool = True, **shape
 ) -> tuple[dict, bool]:
     """Validate the new envelope or migrate an old bare task JSON response.
 
@@ -260,7 +292,7 @@ def normalize_response(
         data = {"items": data}
     if not isinstance(data, dict):
         raise ValueError("VLM response must be a JSON object")
-    schema = response_schema(role, task)
+    schema = response_schema(role, task, **shape)
     legacy = not any(
         key in data for key in ("schema_version", "role", "task", *TASK_BLOCKS.values())
     )
@@ -294,7 +326,7 @@ def normalize_response(
             payload["views"] = [
                 {
                     key: item.get(key, "" if key == "reason" else None)
-                    for key in VIEW_SCHEMA["properties"]
+                    for key in fields["views"]["items"]["properties"]
                 }
                 if isinstance(item, dict)
                 else item

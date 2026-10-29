@@ -321,7 +321,9 @@ def label_views_vlm(
         f"Regions: {json.dumps(regions, ensure_ascii=False)}\n\n"
         "Skill part_type names map to part_class as: cylinder=cylinder, cone_frustum=cone, bent_sheet=bent_sheet, flat=flat, head (formed/dished)=press_formed, unknown=other. Decide part_class with the skill classification rules before reading any dimension.\n"
         "Fill the shared reasoning block with projection, part_class, part_class_scores, reconstructable_from_views and views.\n"
-        "Each view needs id, type, confidence, reason, overall_width_mm and overall_height_mm. "
+        "Each view needs id, type, confidence, "
+        + ("reason, " if reason.config.view_reason == "on" else "")
+        + "overall_width_mm and overall_height_mm. "
         "View type is front, top, bottom, right, left, back, section, detail, flat_pattern, isometric, table or other.\n"
         "Rules: exactly one front. part_class_scores must contain finite relative evidence scores (logits), not probabilities, for all six classes; higher means more likely. "
         "In third-angle projection the top view is ABOVE the front and the right view is to its RIGHT (first-angle is the opposite). "

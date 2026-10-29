@@ -139,7 +139,7 @@ class SkillLoadingTests(unittest.TestCase):
     def test_view_labels_request_part_class_skills(self):
         from cutplan_agent.reader.vision_adapter import label_views_vlm
 
-        reason = Mock(enabled=True, config=SimpleNamespace(model="m"))
+        reason = Mock(enabled=True, config=SimpleNamespace(model="m", view_reason="on"))
         reason.ask.return_value = None
         view = SimpleNamespace(
             id=1, bbox_px=(0, 0, 10, 10), text_items=[], counts=lambda: {}

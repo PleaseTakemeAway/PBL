@@ -8,10 +8,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
-from cutplan_agent.reader.vlm import VLMClient, VLMConfig, extract_json, read_ocr_task
+from cutplan_agent.reader.vlm import (
+    VLMClient,
+    VLMConfig,
+    extract_json,
+    read_ocr_task,
+    without_max_length,
+)
 from cutplan_agent.reader.vlm_output import (
     PART_CLASSES,
+    PROSE_MAX_CHARS,
     normalize_response,
+    output_instructions,
     response_schema,
 )
 
@@ -206,6 +214,12 @@ class SharedVLMOutputTests(unittest.TestCase):
         bad = reason_response()
         bad["reasoning"]["part_class"] = "banana"
         self.assertFalse(xgr.GrammarMatcher(compiled).accept_string(json.dumps(bad)))
+        # The grammar, not the client, holds a reason to PROSE_MAX_CHARS.
+        for length, accepted in ((PROSE_MAX_CHARS, True), (PROSE_MAX_CHARS + 1, False)):
+            long = reason_response()
+            long["reasoning"]["views"][0]["reason"] = "x" * length
+            matcher = xgr.GrammarMatcher(compiled)
+            self.assertEqual(matcher.accept_string(json.dumps(long)), accepted)
         self.assertFalse(xgr.GrammarMatcher(compiled).accept_string("```json\n"))
 
     def test_ocr_is_raw_for_all_providers_and_legacy_output_settings(self):
@@ -644,7 +658,10 @@ class SharedVLMOutputTests(unittest.TestCase):
                                 if provider == "openai"
                                 else body["output_config"]["format"]["schema"]
                             )
-                            self.assertEqual(actual, response_schema(role, task))
+                            expected = response_schema(role, task)
+                            if provider == "anthropic":
+                                expected = without_max_length(expected)
+                            self.assertEqual(actual, expected)
                         else:
                             self.assertNotIn("response_format", body)
                             self.assertNotIn("output_config", body)
@@ -714,6 +731,68 @@ class SharedVLMOutputTests(unittest.TestCase):
         ):
             self.assertEqual(VLMConfig.from_env("ocr").output_format, "prompt")
             self.assertEqual(VLMConfig.from_env("reason").output_format, "json_schema")
+
+    def test_prose_fields_are_capped_and_data_fields_are_not(self):
+        views = response_schema("reason", "view_labels")
+        view = views["properties"]["reasoning"]["properties"]["views"]["items"]
+        self.assertEqual(view["properties"]["reason"]["maxLength"], PROSE_MAX_CHARS)
+        self.assertEqual(views["properties"]["notes"]["maxLength"], PROSE_MAX_CHARS)
+        confirm = response_schema("reason", "candidate_confirmation")
+        block = confirm["properties"]["confirmation"]["properties"]
+        self.assertEqual(block["reason"]["maxLength"], PROSE_MAX_CHARS)
+        self.assertEqual(block["problems"]["items"]["maxLength"], PROSE_MAX_CHARS)
+        title = response_schema("reason", "title_block")
+        title_fields = title["properties"]["title_block"]
+        self.assertNotIn("maxLength", json.dumps(title_fields))
+        unbounded = response_schema("reason", "view_labels", prose_limit=0)
+        self.assertNotIn("maxLength", json.dumps(unbounded))
+        self.assertIn("single quotes", output_instructions("reason", "view_labels"))
+
+    def test_view_reason_off_drops_the_field_from_schema_and_prompt(self):
+        reply = {
+            "projection": "third",
+            "part_class": "flat",
+            "part_class_scores": {name: 0.0 for name in PART_CLASSES},
+            "reconstructable_from_views": True,
+            "views": [{"id": 1, "type": "front", "confidence": 0.9}],
+            "notes": "",
+        }
+        schema = response_schema("reason", "view_labels", view_reason=False)
+        self.assertNotIn('"reason"', json.dumps(schema["properties"]["reasoning"]))
+        response, _ = normalize_response(
+            reply, "reason", "view_labels", view_reason=False
+        )
+        wire = Mock(ok=True)
+        wire.json.return_value = {
+            "choices": [
+                {"message": {"content": json.dumps(response)}, "finish_reason": "stop"}
+            ]
+        }
+        env = {
+            "CUTPLAN_REASON_VIEW_REASON": "off",
+            "CUTPLAN_REASON_PROSE_LIMIT": str(PROSE_MAX_CHARS),
+        }
+        with patch.dict(os.environ, env):
+            client = VLMClient(VLMConfig.from_env("reason", model="m"), "reason")
+        with patch("requests.post", return_value=wire) as post:
+            result = client.ask("Classify.", task="view_labels")
+        self.assertEqual(result["views"][0]["type"], "front")
+        self.assertFalse(client.trace[-1]["schema_shape"]["view_reason"])
+        sent = post.call_args.kwargs["json"]["response_format"]["json_schema"]
+        self.assertEqual(sent["schema"], schema)
+        client.config.view_reason = "maybe"
+        self.assertIsNone(client.ask("Classify.", task="view_labels"))
+        self.assertIn("VIEW_REASON", client.trace[-1]["error"])
+
+    def test_environment_sets_prose_limit_and_view_reason(self):
+        with patch.dict(os.environ):
+            os.environ.pop("CUTPLAN_REASON_PROSE_LIMIT", None)
+            os.environ.pop("CUTPLAN_REASON_VIEW_REASON", None)
+            config = VLMConfig.from_env("reason")
+            self.assertEqual(config.prose_limit, PROSE_MAX_CHARS)
+            self.assertEqual(config.view_reason, "on")
+            os.environ["CUTPLAN_REASON_PROSE_LIMIT"] = "0"
+            self.assertEqual(VLMConfig.from_env("reason").prose_limit, 0)
 
 
 if __name__ == "__main__":

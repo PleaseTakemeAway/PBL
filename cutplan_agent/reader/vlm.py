@@ -15,6 +15,10 @@ Environment variables (CLI flags override):
   CUTPLAN_REASON_OUTPUT_FORMAT   json_schema (default) | prompt (explicit compatibility mode)
   CUTPLAN_OCR_TIMEOUT / CUTPLAN_REASON_TIMEOUT   seconds per request (default 120).
     Raise it when several drawings share one server and requests queue.
+  CUTPLAN_REASON_PROSE_LIMIT   characters per notes/reason/problem in the schema
+    (default 200, 0 = unbounded). Not sent to Anthropic, which does not support it.
+  CUTPLAN_REASON_VIEW_REASON   on (default) | off: off drops the per-view reason
+    from view_labels (docs/v3_upgrade.md 3.4).
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from typing import Any
 
 from cutplan_agent.reader.vlm_output import (
     PART_CLASSES,
+    PROSE_MAX_CHARS,
     normalize_response,
     output_instructions,
     response_schema,
@@ -93,6 +98,8 @@ class VLMConfig:
     max_tokens: int = 1500
     temperature: float = 0.0
     output_format: str = "json_schema"  # server-constrained reasoning; OCR ignores it
+    prose_limit: int = PROSE_MAX_CHARS  # characters per notes/reason/problem; 0 = none
+    view_reason: str = "on"  # on | off: ask view_labels for a reason per view
 
     @classmethod
     def from_env(cls, role: str, **overrides) -> "VLMConfig":
@@ -111,6 +118,8 @@ class VLMConfig:
                 p + "OUTPUT_FORMAT", "raw" if role == "ocr" else "json_schema"
             ),
             timeout=float(os.getenv(p + "TIMEOUT", "120")),
+            prose_limit=int(os.getenv(p + "PROSE_LIMIT", str(PROSE_MAX_CHARS))),
+            view_reason=os.getenv(p + "VIEW_REASON", "on"),
         )
         for k, v in overrides.items():
             if v is not None:
@@ -120,6 +129,18 @@ class VLMConfig:
     @property
     def enabled(self) -> bool:
         return bool(self.model)
+
+
+def without_max_length(schema: Any) -> Any:
+    """Drop string maxLength, which Anthropic structured outputs do not support.
+
+    The limit stays in the prompt's OUTPUT CONTRACT, so Claude still sees it.
+    """
+    if isinstance(schema, dict):
+        return {k: without_max_length(v) for k, v in schema.items() if k != "maxLength"}
+    if isinstance(schema, list):
+        return [without_max_length(v) for v in schema]
+    return schema
 
 
 def _b64(path: str | Path) -> tuple[str, str]:
@@ -232,13 +253,20 @@ class VLMClient:
                 "json_schema",
             }:
                 raise ValueError("OUTPUT_FORMAT must be prompt or json_schema")
+            if self.config.view_reason not in {"on", "off"}:
+                raise ValueError("VIEW_REASON must be on or off")
+            shape = {
+                "prose_limit": self.config.prose_limit,
+                "view_reason": self.config.view_reason == "on",
+            }
             kwargs = {}
             if task is not None and not raw_ocr:
                 if not want_json:
                     raise ValueError("task responses require want_json=True")
-                prompt += output_instructions(self.role, task)
+                rec["schema_shape"] = shape
+                prompt += output_instructions(self.role, task, **shape)
                 if self.config.output_format == "json_schema":
-                    kwargs["schema"] = response_schema(self.role, task)
+                    kwargs["schema"] = response_schema(self.role, task, **shape)
             text = self._send(prompt, images or [], system, **kwargs)
             if (
                 constrained
@@ -267,7 +295,7 @@ class VLMClient:
             )
             if task is not None and not raw_ocr:
                 response, legacy = normalize_response(
-                    result, self.role, task, allow_legacy=not constrained
+                    result, self.role, task, allow_legacy=not constrained, **shape
                 )
                 rec.update(response=response, legacy_response=legacy)
                 result = task_payload(response)
@@ -374,7 +402,7 @@ class VLMClient:
             body["system"] = system
         if schema is not None:
             body["output_config"] = {
-                "format": {"type": "json_schema", "schema": schema}
+                "format": {"type": "json_schema", "schema": without_max_length(schema)}
             }
         base = (
             self.config.base_url
