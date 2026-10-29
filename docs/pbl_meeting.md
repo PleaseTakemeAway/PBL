@@ -239,3 +239,10 @@ uv run python scripts/reader/score_synthetic.py runs/reader/meeting1030/R3_gener
 - JSON 잘림의 로직 수정(4.1절)과 모델 바꿔 끼우기(4.2절)는 사용자가 다른 세션·worktree 에서 한다. 4절은 그 작업의 맥락으로 남기고, 결과가 나오면 슬라이드에 반영한다.
 - 이 worktree(`pbl-meeting` 브랜치)는 레포 코드를 고치지 않는다. 실행, 집계, 슬라이드 스크립트(`presentation/`)만 한다.
 - 슬라이드는 이미 있는 실행 기록으로 먼저 만든다 (8절). R1~R4 와 시험 도면은 GPU 를 쓰므로 다른 세션의 실험과 겹치지 않게 사용자와 정한 뒤 돌린다.
+
+## 8. 만든 것 (2026-10-29)
+
+- 덱: `presentation/build_meeting.py` → `presentation/meeting.pptx` (69장). 만드는 명령과 숫자 출처는 [presentation.md](presentation.md) 1 · 8절.
+- 이미 있는 실행 기록으로 만들었다. ① 은 동료 실행, ③ 은 2026-10-28 04:23 실행이다. ② 와 2×2 는 실행 뒤 채운다.
+- 5절 계획과 다른 점: 시험 세트는 부록으로 옮겼다. 형상별 전 → 후 는 판독(① `sheet_labeled.png` 대 ③ `sheet.png`)과 전개(① `flat_pattern.png` 대 ③ 계산 · 정답 겹친 그림) 두 장씩이다. 남은 실패 #15 의 예시 press_formed_0026 은 반구가 아니라 FLAT FLANGED 로 읽은 경우라 "경판 종류를 잘못 고름" 으로 적었다.
+- 남은 일: R1~R4 와 시험 도면 실행 (GPU 를 다른 세션과 나눠 쓰는 것을 정한 뒤), 실험 1 · 2 결과 반영, 지금 main 으로 다시 돈 ③ 으로 그림 · 점수 바꾸기.
