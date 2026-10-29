@@ -12,7 +12,7 @@
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/build_synthetic_changes_company.py` | 회사 검토용 합성 데이터 변경 설명 (12장) → `synthetic_changes_company.pptx`. [data/synthetic_changes_company.md](data/synthetic_changes_company.md)와 같은 범위. 콘·경판 변경 전후 모식도, 굽힘판·제도 정비, 직선부 측정과 미해결 문제, 검증 범위·회사 확인 사항. 과거 모델 점수를 최신 변경의 성능으로 인용하지 않는다 |
-| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30, 101장) → `meeting.pptx`. 처음 오는 청중을 위해 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계 → 지난주까지의 결과 · 성공 · 실패 · 문제 → 하네스 장치 → 합성 도면 고도화 전 → 후 → 추가 실험(진행 중) → v4 순서. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
+| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30) 덱 두 개. `harness` → `meeting_harness.pptx` (49장): 지금 판독기가 어떻게 도는가. 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계(입력 → 처리 → 출력) → 하네스 장치와 tool calling, 부록 하네스 구조. `change` → `meeting_change.pptx` (60장): 합성 도면 판독의 전 → 후. 전(옛 합성 + 지난주까지의 판독기)의 성능 · 사례 · 문제 → 고친 것 → 점수 전 → 후 · 형상별 · 남은 실패 → 실험(진행 중) → v4, 부록 2×2 · 시험 도면. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -128,23 +128,32 @@ PYTHONPATH=. uv run python presentation/render.py presentation/synthetic_changes
 
 출력은 `presentation/synthetic_changes_company.pptx`, 미리보기는 `presentation/build/synthetic_changes_company.pdf` 및 같은 이름의 슬라이드별 PNG다. PPTX·PDF는 git에 넣지 않는다. 최근 Claude 작업은 커밋 `2807e44`·`7005fa6`·`f111ea8`과 `docs/v3_upgrade.md` 5.4~5.5절을 근거로 확인했다. 세션 대화 원문을 읽었다는 뜻은 아니다. 검증 숫자는 해당 작업 기록에서 인용했으며 이 덱 생성은 AI 성능 재시험이 아니다.
 
-## 8. PBL 미팅 덱의 숫자 출처 (2026-10-29)
+## 8. PBL 미팅 덱의 숫자 출처 (2026-10-29, 2026-10-30 에 두 덱으로 나눔)
 
-`presentation/build_meeting.py` 는 빌드할 때 아래 실행 폴더를 읽는다. 폴더가 없으면 그림 자리에 회색 상자, 점수 자리에 `–` 가 들어간다. 이 worktree 에서는 `runs/`, `data_v3/` 를 원래 clone 의 같은 폴더로 링크해 쓴다.
+`presentation/build_meeting.py` 는 빌드할 때 아래 실행 폴더를 읽는다. 덱 하나만 만들려면 `harness` 나 `change` 를 인자로 준다.
+
+```zsh
+PYTHONPATH=. uv run --with python-pptx python presentation/build_meeting.py            # 둘 다
+PYTHONPATH=. uv run python presentation/render.py presentation/meeting_change.pptx    # 미리보기
+```
+
+ 폴더가 없으면 그림 자리에 회색 상자, 점수 자리에 `–` 가 들어간다. 이 worktree 에서는 `runs/`, `data_v3/` 를 원래 clone 의 같은 폴더로 링크해 쓴다.
 
 | 덱의 이름 | 실행 | 무엇 |
 |---|---|---|
-| ① 동료 v3 | `runs/reader/deepseek_ocr_qwen_reasoning_skills` (2026-10-18) | 형상 27/30 (`accuracy.md`), 전개 11/30 과 도면별 오차 (`flat_patterns.md`, 옛 정답 기준), `analysis/sheet_labeled.png`, `flat_pattern.png`. 단계 파일이 없어 다른 항목은 "기록 없음" |
-| ③ 다시 묻기 전 | `runs/reader/gen1027/local_new` (2026-10-27) | `score.json`. 잘림 실패 7건은 단계 파일 trace 에서 셌다 ([pbl_meeting.md](pbl_meeting.md) 4.1절) |
-| ③ | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py), `analysis/sheet.png`. 다시 묻기(3cf2274) 뒤, 현업자 기준 식(2807e44) · 경판 직선부(f111ea8) 전의 코드다. 지금 main 으로 다시 돌린 결과(R4)가 나오면 이 경로를 바꾼다 |
+| 전 (지난주) | `runs/reader/deepseek_ocr_qwen_reasoning_skills` (동료 v3 253020c, 2026-10-18) | 형상 27/30 (`accuracy.md`), 전개 11/30 과 도면별 오차 (`flat_patterns.md`, 옛 정답 기준), `analysis/sheet_labeled.png`, `flat_pattern.png`. 단계 파일이 없어 다른 항목은 "안 잼" |
+| 전 (다시 잼) | `runs/reader/meeting1030/R2_synthetic_c71cca0` (c71cca0, 2026-10-30) | `score.json` (지금의 `score_synthetic.py` 로 옛 정답과 대조). 실행 조건과 결과는 [pbl_meeting.md](pbl_meeting.md) 3.1절 |
+| 후, 다시 묻기 전 | `runs/reader/gen1027/local_new` (2026-10-27) | `score.json`. 잘림 실패 7건은 단계 파일 trace 에서 셌다 ([pbl_meeting.md](pbl_meeting.md) 4.1절) |
+| 후 | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py), `analysis/sheet.png`. 다시 묻기(3cf2274) 뒤, 현업자 기준 식(2807e44) · 경판 직선부(f111ea8) 전의 코드다. 지금 main 으로 다시 돌린 결과(R4)가 나오면 이 경로를 바꾼다 |
 | 데이터 그림 | `docs/data/synthetic/*.png` | `scripts/synthetic_figures.py` |
 
-- 용어 파트의 도면 그림은 생성기가 그린 `data_v3/generated/<도면>/<도면>.png` 이다. 지난주 파트의 성공 사례 cylinder_0014 와 실패 사례 cylinder_0013 은 RUN1 의 그림과 `prediction.json` 의 `vlm_trace` (cylinder_0013 은 판단 AI 가 `part_class: cylinder` 로 시작했다가 이유를 반복하고 공백을 되풀이해 57.6초 만에 잘렸다).
+- 용어 파트의 도면 그림은 생성기가 그린 `data_v3/generated/<도면>/<도면>.png` 이다. 전 파트의 성공 사례 cylinder_0014 와 실패 사례 cylinder_0013 은 RUN1 의 그림과 `prediction.json` 의 `vlm_trace` (cylinder_0013 은 판단 AI 가 `part_class: cylinder` 로 시작했다가 이유를 반복하고 공백을 되풀이해 57.6초 만에 잘렸다).
 - 용어 파트의 'AI 를 부르는 법' 5장은 `reader/vlm.py` (VLMClient.ask, _call_openai), `reader/vlm_output.py` (output_instructions), `reader/knowledge.py` (skill_system_prompt, STAGE_TOPICS), `dxf_adapter.label_with_vlm` 의 지시문을 줄여 옮겼다. 영어 원문은 줄였고 뜻은 바꾸지 않았다.
 - 하네스 파트의 tool calling 6장은 `reader/tools.py` (Tool, _build, _stage_caller, call), `reader/orchestrator.py` (orchestrate 반복, OpenAITools · OpenAISchema · AnthropicTools, schema 의 anyOf) 를 옮겼다. 시연 표는 빌드할 때 `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 을 읽고, 도구 설명 예시는 같은 폴더의 `command.json` 에서 run_view_labels 를 줄였다.
 - 부록 '하네스 구조 1~5' 는 orchestrator.py 와 tools.py 를 개념으로 설명한다: 다섯 부품, 도구 상자(보이는 것 · 보이지 않는 것), 모델 연결부, 규칙을 거는 두 방법(글로 부탁 · 구조로 강제), 실패와 기록. 클래스 이름은 작은 '코드:' 글자와 발표자 노트에만 있다. 내용은 2026-10-29 main 의 코드를 읽고 옮겼다. 처음에는 클래스별 8장('코드 1~8', 859584f)이었다.
 - 판독 과정 파트는 단계마다 입력 → 처리 → 출력 세 칸이다. 칸의 값은 cone_0023 의 단계 파일(01 entity_counts, 02 title_block, 03 text, 04 fields · title_block, 06 decision.raw, 09 record, 10 blank)에서 빌드할 때 읽는다.
-- 판독 과정 파트의 예시 도면은 cone_0023 (③ 에서 모든 항목을 맞힌 콘)이다. 02 정규식이 도면 번호 SYN-00023 을 읽었고, 04 의 모델 답은 잘린 OCR 그림을 보고 SYN-000 이라 했지만 정규식 값이 남았다 (`02_title_regex.json`, `04_title_fields.json`).
-- 전 → 후 의 형상별 도면(`SHOWCASE`)은 ③ 에서 모두 맞힌 도면을 우선 골랐다. 원통과 경판은 그런 도면이 없어 뷰만 틀린 도면이다.
-- ③ 쪽 전개 그림은 `figures/10_develop.png` 의 왼쪽 절반(계산 결과와 정답 겹친 그림)을 잘라 `presentation/build/assets/` 에 둔 것이다. 09 치수 표는 `09_unfold_params.json` 의 `record.params` 와 `record.sources` 에서 그린다.
-- 2×2 (R1~R4), 시험 도면 3건, 실험 1·2 의 결과는 아직 없다. 덱에는 "실행 뒤 채움" 으로 자리만 있다.
+- 판독 과정 파트의 예시 도면은 cone_0023 (후에서 모든 항목을 맞힌 콘)이다. 02 정규식이 도면 번호 SYN-00023 을 읽었고, 04 의 모델 답은 잘린 OCR 그림을 보고 SYN-000 이라 했지만 정규식 값이 남았다 (`02_title_regex.json`, `04_title_fields.json`).
+- 전 → 후 의 형상별 도면(`SHOWCASE`)은 후에서 모두 맞힌 도면을 우선 골랐다. 원통과 경판은 그런 도면이 없어 뷰만 틀린 도면이다.
+- 후 쪽 전개 그림은 `figures/10_develop.png` 의 왼쪽 절반(계산 결과와 정답 겹친 그림)을 잘라 `presentation/build/assets/` 에 둔 것이다. 09 치수 표는 `09_unfold_params.json` 의 `record.params` 와 `record.sources` 에서 그린다.
+- 2×2 는 부록이다. R2 만 돌렸고 R4 칸은 RUN3 (10-28) 숫자로 대신한다. R1 · R3, 시험 도면 3건, 실험 1·2 의 결과는 아직 없다. 덱에는 "아직 안 돌림" 으로 자리만 있다.
+- 전 → 후 덱의 '전' 은 동료 v3 와 c71cca0 을 하나로 본다. 둘은 판독 계산이 같고, 다른 것은 단계 파일 · 기록 같은 사람이 보기 위한 정리다 ([pbl_meeting.md](pbl_meeting.md) 2.1절). 그래서 변천사 세 단계 슬라이드(①→②→③, ①→② 단계로 나눈 것)는 지웠다 (6c6f5f0 까지 있었다).

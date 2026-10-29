@@ -24,7 +24,7 @@
 | | [server_handoff.md](server_handoff.md) | 동료 서버로 옮겨 이어 하기 (2026-10-27): 동료의 29/30 이 무엇인지, 서버에서 처음 할 일, 재현·비교 순서, 이 브랜치의 상태, 서버에서 확인한 것과 재현 결과 (6절) |
 | | [company_brief.md](company_brief.md) | 회사 담당자에게 보내는 설명 자료 (2026-10-27): 처리 과정, 합성 도면 검증 방법과 결과, 확인 요청. 같은 내용의 슬라이드는 `presentation/build_company_brief.py` |
 | | [presentation.md](presentation.md) | 발표 슬라이드(`presentation/`)를 만드는 스크립트, 미리보기, 여러 브랜치에서 고치는 법, 슬라이드 숫자의 출처 |
-| | [pbl_meeting.md](pbl_meeting.md) | 2026-10-30 PBL 미팅 발표 계획: 세 단계 변천사(synthetic/cutplan_v3 → synthetic/reader → generated/reader+)의 before → after, 2×2 재실행, 모델 바꿔 끼우기, 슬라이드 구성 |
+| | [pbl_meeting.md](pbl_meeting.md) | 2026-10-30 PBL 미팅 발표 계획: 덱 두 개(하네스 동작, 전 → 후), 전(동료 v3 와 c71cca0 은 판독 계산이 같다)과 후(새 합성 · 지금 판독기)의 비교, 2×2 재실행, 모델 바꿔 끼우기, 슬라이드 구성 |
 | `agent/` (v2) | [skills.md](agent/skills.md) | skill 25개 분류표, KD25038 smoke test 기록, 다음 단계 |
 | | [skill_agent_framework.md](agent/skill_agent_framework.md) | 2026-10-01 의 설계 문서. 구현과 다른 부분이 있다 |
 | `reader/` (v3) | [quickstart.md](reader/quickstart.md) | 단계별 실행·결과 보기 명령만 모은 요약. 서버, 셸 준비, 단계를 번호로 돌리고 보기, 자주 나는 문제 |
