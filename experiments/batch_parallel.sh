@@ -6,6 +6,8 @@
 #
 # usage: experiments/batch_parallel.sh <data dir> <out dir> [N=3] [main.py options ...]
 # Run from anywhere; paths are taken relative to the current directory.
+# The servers are read from runs/vllm/{ocr,reason}.env, or from CUTPLAN_SERVE_DIR
+# when several serve.sh pairs run at once (serve.sh --serve-dir).
 # More than 3 subsets made the shared Qwen3.6-27B server on mlic slower overall
 # (docs/v3_upgrade.md 3.1절), so 3 is the default.
 set -euo pipefail
@@ -15,7 +17,8 @@ data="$(realpath "$1")"
 out="$(realpath -m "$2")"
 n="${3:-3}"
 shift $(( $# < 3 ? $# : 3 ))
-for env in "$repo_root/runs/vllm/ocr.env" "$repo_root/runs/vllm/reason.env"; do
+serve_dir="${CUTPLAN_SERVE_DIR:-$repo_root/runs/vllm}"
+for env in "$serve_dir/ocr.env" "$serve_dir/reason.env"; do
   if [[ -f "$env" ]]; then . "$env"; else echo "missing $env: start experiments/serve.sh first" >&2; exit 1; fi
 done
 # requests wait in the server queue while other subsets run; 120 s was not enough
