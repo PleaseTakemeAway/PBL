@@ -12,7 +12,7 @@
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/build_synthetic_changes_company.py` | 회사 검토용 합성 데이터 변경 설명 (12장) → `synthetic_changes_company.pptx`. [data/synthetic_changes_company.md](data/synthetic_changes_company.md)와 같은 범위. 콘·경판 변경 전후 모식도, 굽힘판·제도 정비, 직선부 측정과 미해결 문제, 검증 범위·회사 확인 사항. 과거 모델 점수를 최신 변경의 성능으로 인용하지 않는다 |
-| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30) 덱 두 개. `harness` → `meeting_harness.pptx` (49장): 지금 판독기가 어떻게 도는가. 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계(입력 → 처리 → 출력) → 하네스 장치와 tool calling, 부록 하네스 구조. `change` → `meeting_change.pptx` (60장): 합성 도면 판독의 전 → 후. 전(옛 합성 + 지난주까지의 판독기)의 성능 · 사례 · 문제 → 고친 것 → 점수 전 → 후 · 형상별 · 남은 실패 → 실험(진행 중) → v4, 부록 2×2 · 시험 도면. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
+| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30) 덱 두 개. `harness` → `meeting_harness.pptx` (49장): 지금 판독기가 어떻게 도는가. 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계(입력 → 처리 → 출력) → 하네스 장치와 tool calling, 부록 하네스 구조. `change` → `meeting_change.pptx` (58장): 합성 도면 판독의 전 → 후. 전(옛 합성 + 지난주까지의 판독기)의 성능 · 사례 · 문제 (회사 실제 도면은 다루지 않는다) → 고친 것 → 점수 전 → 후 · 형상별 · 남은 실패 → 실험(진행 중) → 정리, 부록 2×2 · 시험 도면. 다음 단계(v4)는 슬라이드 없이 현장에서 논의한다. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -155,5 +155,6 @@ PYTHONPATH=. uv run python presentation/render.py presentation/meeting_change.pp
 - 판독 과정 파트의 예시 도면은 cone_0023 (후에서 모든 항목을 맞힌 콘)이다. 02 정규식이 도면 번호 SYN-00023 을 읽었고, 04 의 모델 답은 잘린 OCR 그림을 보고 SYN-000 이라 했지만 정규식 값이 남았다 (`02_title_regex.json`, `04_title_fields.json`).
 - 전 → 후 의 형상별 도면(`SHOWCASE`)은 후에서 모두 맞힌 도면을 우선 골랐다. 원통과 경판은 그런 도면이 없어 뷰만 틀린 도면이다.
 - 후 쪽 전개 그림은 `figures/10_develop.png` 의 왼쪽 절반(계산 결과와 정답 겹친 그림)을 잘라 `presentation/build/assets/` 에 둔 것이다. 09 치수 표는 `09_unfold_params.json` 의 `record.params` 와 `record.sources` 에서 그린다.
+- '도면 고침 #1 · #6 · #7 · #8 · #9 · #10' 6장은 같은 도면의 같은 자리를 `data_v3/synthetic` (전) 과 `data_v3/generated` (후) 의 DXF 에서 잘라 빌드할 때 그린다 (`crop_drawing`, `DRAWING_FIXES`, 그림은 `presentation/build/assets/fix*.png`). 두 쪽에 같은 점선 배율(`$LTSCALE`)을 주고, 글자는 matplotlib 으로 쓴다 (ezdxf 는 Ø 의 속을 채워 그린다). DXF 파일은 바꾸지 않는다. 자를 좌표는 각 DXF 와 `label.json` 의 views 에서 읽었다.
 - 2×2 는 부록이다. R2 만 돌렸고 R4 칸은 RUN3 (10-28) 숫자로 대신한다. R1 · R3, 시험 도면 3건, 실험 1·2 의 결과는 아직 없다. 덱에는 "아직 안 돌림" 으로 자리만 있다.
 - 전 → 후 덱의 '전' 은 동료 v3 와 c71cca0 을 하나로 본다. 둘은 판독 계산이 같고, 다른 것은 단계 파일 · 기록 같은 사람이 보기 위한 정리다 ([pbl_meeting.md](pbl_meeting.md) 2.1절). 그래서 변천사 세 단계 슬라이드(①→②→③, ①→② 단계로 나눈 것)는 지웠다 (6c6f5f0 까지 있었다).

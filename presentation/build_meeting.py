@@ -1,7 +1,7 @@
 """PBL 미팅 (2026-10-30) 덱 두 개 → meeting_harness.pptx, meeting_change.pptx
 
   harness: 지금 판독기가 어떻게 도는가. 용어 → 예시 도면 한 장의 10단계 → 하네스 장치
-  change : 합성 도면 판독의 전 → 후. 전(지난주까지)의 문제 → 무엇을 고쳤나 → 결과 → 실험 · v4
+  change : 합성 도면 판독의 전 → 후. 전(지난주까지)의 문제 → 무엇을 고쳤나 → 결과 → 실험
 
 계획과 숫자의 출처는 docs/pbl_meeting.md 와 docs/presentation.md 8절. 청중은 교수님과 PBL
 회사 사람들이다. 합성 도면과 집계 숫자만 쓰고 고객 도면은 싣지 않는다.
@@ -51,7 +51,6 @@ from presentation.slides import (
     outline,
     page,
     picture,
-    real_sheet,
     road,
     shape,
     table,
@@ -66,11 +65,13 @@ RUN2 = RUNS / "meeting1030" / "R2_synthetic_c71cca0"
 RUN3 = RUNS / "company_synthetic_20261028_042351"
 RUN3_PRE = RUNS / "gen1027" / "local_new"
 FIG = ROOT / "docs" / "data" / "synthetic"
+OLD_DATA = ROOT / "data_v3" / "synthetic"  # 옛 합성 30장 (전)
+NEW_DATA = ROOT / "data_v3" / "generated"  # 새 생성기로 다시 그린 같은 30장 (후)
 ASSETS = ROOT / "presentation" / "build" / "assets"
 FOOTER = "PBL · 도면 판독 → 전개도 · 2026-10-30"
 
 # slide() 의 part 번호. 슬라이드 함수는 이 번호로 자기 파트를 적고, 덱마다 보일 파트를 고른다
-PARTS = ["용어", "판독 과정", "전", "하네스", "후", "실험", "v4"]
+PARTS = ["용어", "판독 과정", "전", "하네스", "후", "실험", "마무리"]
 DECKS = {
     "harness": (
         "presentation/meeting_harness.pptx",
@@ -80,7 +81,7 @@ DECKS = {
     "change": (
         "presentation/meeting_change.pptx",
         "합성 도면 판독: 전 → 후",
-        ["전", "후", "실험", "v4"],
+        ["전", "후", "실험"],
     ),
 }
 ITEMS = ["단계", "표제란", "뷰", "형상", "치수", "전개", "전부"]
@@ -302,7 +303,6 @@ AGENDA = {
         ("전", "지난주까지: 범위와 성능, 성공 · 실패 사례, 그리고 무엇이 문제였나"),
         ("후", "정답 · 하네스 · 코드 · 채점을 어떻게 고쳤고, 결과가 어떻게 달라졌나"),
         ("실험", "진행 중인 실험 두 가지: JSON 답 잘림, 모델 바꿔 끼우기"),
-        ("v4", "실제 도면을 부품표부터 읽는 다음 단계"),
     ],
 }
 
@@ -432,7 +432,7 @@ def goal_change_slide(d):
         [
             {"text": "지난주까지", "bold": True, "color": GRAY, "size": 20},
             {"text": "합성 30장: 형상 27/30, 전개 11/30", "bullet": True},
-            {"text": "다음 일은 실제 도면 (v4)", "bullet": True},
+            {"text": "다음 일은 실제 도면", "bullet": True},
             {"text": "단계별로 맞았는지 숫자가 없음", "bullet": True},
         ],
         size=18,
@@ -456,7 +456,7 @@ def goal_change_slide(d):
                 "text": "단계마다 채점 (표제란 · 뷰 · 형상 · 치수 · 전개)",
                 "bullet": True,
             },
-            {"text": "v4 는 그 다음으로 미룸", "bullet": True},
+            {"text": "실제 도면은 그 다음으로 미룸", "bullet": True},
         ],
         fill=ORANGE_TINT,
         size=18,
@@ -1020,6 +1020,193 @@ def drafting_slide(d):
     table(s, X0, 1.9, CW, 4.2, rows, [0.8, 8.9, 2.433], head_style)
 
 
+def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
+    """The DXF of one drawing cut to regions (x0, y0, x1, y1), side by side, as a PNG in
+    ASSETS named by tag. marks are orange rings (x, y, r) and lines orange segments
+    ((x0, y0), (x1, y1)) drawn over the drawing. Both datasets are drawn the same way
+    (linetype scale, text) so only the drawing itself differs; the files are not changed."""
+    src = data / drawing / f"{drawing}.dxf"
+    out = ASSETS / f"fix{tag}_{data.name}_{drawing}.png"
+    if out.is_file() or not src.is_file():
+        return out
+    import ezdxf
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from ezdxf.addons.drawing import Frontend, RenderContext
+    from ezdxf.addons.drawing.config import (
+        BackgroundPolicy,
+        ColorPolicy,
+        Configuration,
+    )
+    from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
+    from matplotlib.patches import Circle
+
+    doc = ezdxf.readfile(src)
+    doc.header["$LTSCALE"] = ltscale  # 옛 1.0, 새 2.0 이라 같은 값으로 맞춘다
+    # ezdxf 는 어느 글꼴로도 Ø 의 속을 채워 그린다. 글자는 matplotlib 으로 따로 쓴다
+    texts = []
+    for e in doc.modelspace().query("TEXT"):
+        texts.append((e.dxf.insert.x, e.dxf.insert.y, e.dxf.height, e.plain_text()))
+        doc.modelspace().delete_entity(e)
+    widths = [r[2] - r[0] for r in regions]
+    height = max(r[3] - r[1] for r in regions)
+    fig, axes = plt.subplots(
+        1,
+        len(regions),
+        figsize=(sum(widths) / 15, height / 15),
+        gridspec_kw={"width_ratios": widths},
+        squeeze=False,
+    )
+    config = Configuration(
+        background_policy=BackgroundPolicy.WHITE,
+        color_policy=ColorPolicy.BLACK,
+        lineweight_scaling=2.0,
+    )
+    for ax, (x0, y0, x1, y1) in zip(axes[0], regions):
+        Frontend(RenderContext(doc), MatplotlibBackend(ax), config=config).draw_layout(
+            doc.modelspace(), finalize=True
+        )
+        for x, y, r in marks:
+            ax.add_patch(Circle((x, y), r, fill=False, edgecolor="#E8743B", lw=3))
+        for (xa, ya), (xb, yb) in lines:
+            ax.plot([xa, xb], [ya, yb], color="#E8743B", lw=4, alpha=0.8)
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y0, y1)
+        ax.set_aspect("equal")
+        ax.axis("off")
+        ax.apply_aspect()
+        points = ax.transData.transform((0, 1))[1] - ax.transData.transform((0, 0))[1]
+        points *= 72 / fig.dpi  # 도면 1 mm 가 몇 pt 인가
+        for x, y, h, label in texts:
+            if x0 <= x <= x1 and y0 <= y <= y1:
+                ax.text(x, y, label, fontsize=h / 0.72 * points, va="baseline")
+    ASSETS.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=150, facecolor="white", bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+# 도면 자체를 고친 것 (docs/v3_upgrade.md 4절, docs/data/synthetic.md 5.2절). 같은 도면의 같은 자리를
+# 옛 도면(전)과 새 도면(후)으로 나란히. 좌표는 각 도면의 DXF 와 label.json 의 views 에서 읽었다.
+# (#, 제목, 메시지, 도면, 자를 곳, 점선 배율, 전 표시, 후 표시, 전 설명, 후 설명, 아래 띠, 노트)
+DRAWING_FIXES = [
+    (
+        "1",
+        "경판 윤곽",
+        "옛 도면은 원호와 직선부가 만나는 곳에서 꺾였습니다. 실제 2:1 경판은 꺾이지 않고 이어집니다",
+        "press_formed_0027",
+        [(240, 104, 306, 180)],
+        1.0,
+        {"marks": [(300, 125, 4)]},
+        {"marks": [(300, 116, 4)]},
+        "원호 + 수직 직선부, 37° 꺾임 (정면도 오른쪽 끝)",
+        "2:1 반타원 + 짧은 직선부, TL 에서 매끄럽게",
+        "2:1 경판은 타원 끝의 접선이 수직이라 직선부와 꺾이지 않고 이어집니다. TL 은 곡면과 직선부의 경계선",
+        "옛: 반지름 125 원호 + 높이 15 수직 직선부, 원호 끝 접선 53° 와 직선부 90° 가 37° 로 꺾이고 안쪽 선이 2 mm 떨어져 닫히지 않음. "
+        "새: ELLIPSE 2:1 + 직선부 안지름의 3% (이 도면 6 mm), 10-28 판 (f111ea8). docs/data/synthetic.md 5.2절 #1.",
+    ),
+    (
+        "6",
+        "같은 숨은선이 두 번",
+        "구멍 두 개가 옆에서 겹쳐 보이는 자리에, 옛 도면은 같은 숨은선을 두 번씩 넣었습니다",
+        "flat_0001",
+        [(305, 102, 355, 127)],
+        0.3,
+        {"lines": [((323.5, 110), (323.5, 119)), ((336.5, 110), (336.5, 119))]},
+        {},
+        "주황 = 같은 자리에 같은 선이 2개씩",
+        "선마다 1개",
+        "그림으로는 똑같아 보이지만, 판독기가 읽는 선의 수가 달라집니다. 옛 도면 10장에 72개",
+        "flat_0001 우측면도. HIDDEN 레이어 LINE (323.5, 110)-(323.5, 119), (336.5, 110)-(336.5, 119) 가 옛 DXF 에 2개씩, 새 DXF 에 1개씩. "
+        "30장 전체에서 센 중복 72개는 docs/v3_upgrade.md 4절 #6. 주의: 새 도면의 숨은선은 실선으로 보인다. 생성기(scripts/build_synthetic.py new_document)가 HIDDEN 레이어에 선 종류 HIDDEN 을 지정하지만 ezdxf 의 기본 선 종류에 HIDDEN 이 없어 정의되지 않은 선 종류가 된다 (새 30장 모두). 판독기는 선 종류 이름으로 숨은선을 가리므로 계산에는 영향이 없지만, AI 에게 보이는 그림(sheet_labeled.png)에서도 실선이다. 2026-10-30 발견, 아직 고치지 않음.",
+    ),
+    (
+        "7",
+        "구멍 기호 Ø",
+        "옛 도면은 Ø 를 DXF 형식과 다른 문자 코드로 써서, 읽으면 다른 글자로 깨졌습니다",
+        "flat_0001",
+        [(96, 314, 150, 330)],
+        1.0,
+        {},
+        {},
+        "2-Ã˜13 (판독기와 AI 도 이 글자를 받음)",
+        "2-Ø13 (DXF 의 Ø 기호 %%c 로 씀)",
+        "구멍 2개, 지름 13 이라는 뜻입니다. 구멍이 있는 11장 모두 깨져 있었습니다",
+        "옛 생성기는 Ø 를 UTF-8 (C3 98) 로 썼고, R2000 DXF 는 ANSI(cp1252) 로 읽혀 'Ã˜' 가 된다. 새 도면은 '2-%%c13'. "
+        "그림의 글자는 두 쪽 모두 matplotlib 으로 썼다 (ezdxf 는 Ø 의 속을 채워 그린다). docs/v3_upgrade.md 4절 #7.",
+    ),
+    (
+        "8",
+        "콘 안쪽 면",
+        "옛 도면은 안쪽 선이 바깥 선과 평행하지 않았고, 평면도에 위쪽 안쪽 원이 없었습니다",
+        "cone_0019",
+        [(95, 105, 255, 265), (95, 325, 255, 485)],
+        1.0,
+        {},
+        {},
+        "정면도 · 평면도: 안쪽 선이 아래 4, 위 2.8 안쪽 (평행 아님)",
+        "바깥 선과 평행하게 두께만큼 안쪽, 위쪽 안쪽 원 추가",
+        "벽 두께는 어디서나 같습니다. 끝면에서 가로로 재면 t / cos α (이 도면 4.06)",
+        "cone_0019, 정면도와 평면도. 옛: 안쪽 선이 가로로 아래 4, 위 2.8 안쪽. 새: 면에 수직으로 t, 가로로 t / cos α = 4.06. docs/v3_upgrade.md 4절 #8.",
+    ),
+    (
+        "9",
+        "굽힘판 바깥 모서리",
+        "굽힘 반경 0 으로 굽혀도 바깥 면은 두께만큼 둥급니다. 옛 도면은 각지게 그렸습니다",
+        "bent_sheet_0008",
+        [(94, 104, 130, 140)],
+        1.0,
+        {"marks": [(101, 111, 5)]},
+        {"marks": [(101, 111, 5)]},
+        "바깥 모서리가 각짐",
+        "반경 R + t (= 0 + 6) 의 호",
+        "정답 전개 식(굽힘 여유)도 이 모양을 전제로 합니다. 회사 확인을 부탁드릴 항목입니다",
+        "bent_sheet_0008 (t 6, R 0) 정면도 굽힘부. 새 DXF 는 ARC 중심 (106, 116), 반지름 6, 180°~270°. docs/v3_upgrade.md 4절 #9 (고침, 확인 필요).",
+    ),
+    (
+        "10",
+        "옆에서 본 구멍의 중심선",
+        "제도 규칙대로, 옆에서 본 구멍의 숨은선 가운데에 중심선을 넣었습니다",
+        "flat_0001",
+        [(305, 102, 355, 127)],
+        0.3,
+        {"marks": [(330, 114.5, 5)]},
+        {"lines": [((330, 107), (330, 122))]},
+        "숨은선만",
+        "숨은선 + 중심선 (주황)",
+        "구멍의 위치를 중심선으로 읽습니다. 구멍이 있는 11장",
+        "flat_0001 우측면도. 새 DXF 의 CENTER 레이어 LINE (330, 107)-(330, 122). docs/v3_upgrade.md 4절 #10. 주의: 새 도면의 숨은선은 실선으로 보인다. 생성기(scripts/build_synthetic.py new_document)가 HIDDEN 레이어에 선 종류 HIDDEN 을 지정하지만 ezdxf 의 기본 선 종류에 HIDDEN 이 없어 정의되지 않은 선 종류가 된다 (새 30장 모두). 판독기는 선 종류 이름으로 숨은선을 가리므로 계산에는 영향이 없지만, AI 에게 보이는 그림(sheet_labeled.png)에서도 실선이다. 2026-10-30 발견, 아직 고치지 않음.",
+    ),
+]
+
+
+def drawing_fix_slides(d):
+    for (
+        num,
+        title,
+        message,
+        drawing,
+        regions,
+        lt,
+        old,
+        new,
+        sub_old,
+        sub_new,
+        foot,
+        notes,
+    ) in DRAWING_FIXES:
+        s = slide(d, 4, f"도면 고침 #{num}: {title} ({drawing})", message, notes)
+        before_after(
+            s,
+            (crop_drawing(OLD_DATA, drawing, regions, num, ltscale=lt, **old), sub_old),
+            (crop_drawing(NEW_DATA, drawing, regions, num, ltscale=lt, **new), sub_new),
+            h=3.6,
+        )
+        band(s, 6.05, "", foot, fill=LIGHT, color=TEAL, h=0.7, size=15)
+
+
 def practitioner_slide(d):
     s = slide(
         d,
@@ -1488,280 +1675,6 @@ def candidates_slide(d):
     )
 
 
-# ---------------------------------------------------------------------- F. v4
-def v4_section(d):
-    section(
-        d,
-        "다음 단계: v4",
-        "실제 도면을 부품표부터 읽기",
-        "v3 고도화로 목표를 바꾸며 미뤘던 실제 도면 작업 (git show c71cca0:docs/v4.md).",
-    )
-
-
-def v4_why_slide(d):
-    s = slide(
-        d,
-        6,
-        "실제 도면은 왜 아직 안 되나",
-        "판독기는 '도면 1장 = 부품 1개' 를 전제로 합니다. 실제 상세도는 한 장에 부품 4~13종",
-        "v4.md 1 · 4절. S-2120 상세 도면 3장의 커팅플랜 판재 품번이 장마다 4~13종. 모델을 붙여 실제 도면 5장을 돌렸을 때 정답 22종 중 전개까지 간 것은 1개 (docs/presentation.md 5절).",
-    )
-    shape(s, MSO_SHAPE.RECTANGLE, X0, 2.0, 4.0, 2.8, WHITE, line=GRAY)
-    for i, (x, y) in enumerate([(0.4, 0.5), (0.4, 1.6), (1.9, 1.6)]):
-        shape(s, MSO_SHAPE.RECTANGLE, X0 + x, 2.0 + y, 1.1, 0.9, TEAL_TINT, line=TEAL)
-    text(
-        s, X0, 4.9, 4.0, 0.4, ["합성: 부품 1개, 3면도"], size=15, align=PP_ALIGN.CENTER
-    )
-    real_sheet(s, X0 + 5.0, 2.0, 4.2, 2.8)
-    text(
-        s,
-        X0 + 5.0,
-        4.9,
-        4.2,
-        0.4,
-        ["실제: 여러 부품, 부품표, 상세도"],
-        size=15,
-        align=PP_ALIGN.CENTER,
-    )
-    card(
-        s,
-        X0 + 9.6,
-        2.0,
-        2.53,
-        2.8,
-        [
-            {"text": "22종 중", "size": 16},
-            {"text": "1개", "size": 40, "bold": True, "color": ORANGE},
-            {"text": "전개까지 감", "size": 14},
-        ],
-        fill=ORANGE_TINT,
-        align=PP_ALIGN.CENTER,
-        anchor=MSO_ANCHOR.MIDDLE,
-    )
-    band(
-        s,
-        5.6,
-        "원인",
-        "모델 성능이 아니라 단계 설계: 06 은 시트 하나에 형상 하나를 묻습니다. 시트 → 부품으로 나누는 단계가 없습니다",
-        h=0.95,
-        size=16,
-    )
-
-
-def v4_bom_slide(d):
-    s = slide(
-        d,
-        6,
-        "부품표부터 읽는다",
-        "실제 도면에는 '무엇이 몇 개' 가 부품표에, '어디에 그렸나' 가 품번 풍선에 있습니다",
-        "v4.md 4.4 · 5절. 상세 도면 3장의 부품표는 DXF 안에 열 위치가 일정한 TEXT 로 있어 코드로 읽을 수 있다. 커팅플랜의 부품 라벨 S-2120-002 7-2 는 부품표 한 행을 가리킨다.",
-    )
-    steps = [
-        ("부품표", "품번 · 이름 · 재질\n두께 · 수량", TEAL_TINT),
-        ("부품 목록", "설비 전체를 합침\nS-2120-002 7-2", TEAL_TINT),
-        ("판재 판정", "형강 · 볼트 · 배관 제외", TEAL_TINT),
-        ("부품마다\n판독 10단계", "형상 · 치수 · 전개", ORANGE_TINT),
-    ]
-    for i, (head, body, fill) in enumerate(steps):
-        x = X0 + i * 3.1
-        card(
-            s,
-            x,
-            2.0,
-            2.7,
-            2.2,
-            [
-                {"text": head, "bold": True, "size": 18},
-                {"text": body, "size": 14, "color": GRAY},
-            ],
-            fill=fill,
-            align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE,
-        )
-        if i < 3:
-            arrow(s, x + 2.75, 2.95, w=0.3, h=0.3)
-    code(
-        s,
-        X0,
-        4.5,
-        7.0,
-        1.3,
-        [
-            "7  -1  SUPPORT BRACING   A36     4  EA  L75x75x9",
-            "   -2  GUSSET PLATE      A283-C  8  EA  t10",
-        ],
-        size=13,
-    )
-    text(
-        s,
-        X0 + 7.3,
-        4.5,
-        4.8,
-        1.3,
-        [
-            "부품표의 SIZE 칸에는 판의 두께만 있습니다 (t10). 가로 · 세로는 뷰의 치수에서 읽어야 합니다"
-        ],
-        size=15,
-        anchor=MSO_ANCHOR.MIDDLE,
-    )
-    band(
-        s,
-        6.0,
-        "판독기는 그대로",
-        "01 읽기는 부품표 입력으로, 10 전개는 그대로. 06 · 09 는 부품 하나의 영역을 떼어 넣으면 씁니다",
-        fill=LIGHT,
-        color=TEAL,
-        h=0.75,
-        size=15,
-    )
-
-
-def v4_expect_slide(d):
-    s = slide(
-        d,
-        6,
-        "손으로 확인한 기댓값 (S-2120)",
-        "정답 커팅플랜의 판재 22종이 모두 부품표에 있고, 재질 · 두께는 21종이 같습니다",
-        "v4.md 5.2절. 정답 test_data/cases/S-2120/output_cutting_plan/parts.csv 를 (도면, 품번)으로 부품표 행과 맞췄다. 다른 1건은 DWG-003 2-3 END PLATE (부품표 A240-304 t6, 커팅플랜 A283-C t6, company_questions.md Q17).",
-    )
-    rows = [
-        ["도면", "정답 품번", "부품표에 있음", "재질 · 두께 같음"],
-        ["상세도 002", "13", "13", "13"],
-        ["상세도 003", "4", "4", "3"],
-        ["상세도 004", "5", "5", "5"],
-        ["합계", "22", "22", "21"],
-    ]
-    table(s, X0 + 1.0, 1.9, 10.1, 2.8, rows, [3.0, 2.2, 2.4, 2.5], head_style)
-    band(
-        s,
-        5.1,
-        "뜻",
-        "부품 목록 · 재질 · 두께 · 수량은 AI 없이 부품표만으로 만들 수 있습니다. AI 는 크기를 읽을 때 씁니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-    )
-
-
-def v4_plan_slide(d):
-    s = slide(
-        d,
-        6,
-        "v4 계획",
-        "부품표 단계를 판독기처럼 '단계마다 파일' 로 붙이고, 실제 도면 정답으로 잽니다",
-        "v4.md 8절. 범위 밖: 판재 크기 (뷰 치수와 품번 풍선), D-1203 (글자가 없는 PDF, OCR 필요). 합성 30장은 회귀 테스트로 남는다.",
-    )
-    steps = [
-        ("1", "부품표 읽기", "도면 1장, 코드만. 01 의 글자 위치로 열과 행을 나눔"),
-        ("2", "부품 목록", "설비 단위로 합침. 판재 판정은 근거를 남기는 함수로"),
-        ("3", "채점", "정답 parts.csv 와 품번 · 판재 판정 · 재질 · 두께 · 수량 대조"),
-        ("4", "도구로 등록", "AI 가 부를 수 있게 (orchestrator)"),
-    ]
-    for i, (n, head, body) in enumerate(steps):
-        y = 1.9 + i * 1.05
-        chip(s, X0, y, 0.75, 0.85, n, fill=ORANGE, color=WHITE, size=22, bold=True)
-        chip(
-            s, X0 + 0.9, y, 2.6, 0.85, head, fill=TEAL, color=WHITE, size=18, bold=True
-        )
-        text(s, X0 + 3.7, y, 8.4, 0.85, [body], size=17, anchor=MSO_ANCHOR.MIDDLE)
-    band(
-        s,
-        6.15,
-        "그 뒤",
-        "판재 크기 읽기 → v2 뒷단(분할 · 네스팅)과 연결 → 커팅플랜까지 로컬로",
-        fill=LIGHT,
-        color=TEAL,
-        h=0.7,
-        size=15,
-    )
-
-
-def roadmap_slide(d):
-    s = slide(
-        d,
-        6,
-        "하네스 로드맵에서 지금 위치",
-        "단계로 나누기와 단계별 채점은 됐고, 모델 비교와 보완 장치가 다음입니다",
-        "docs/harness_engineering.md 3절 로드맵.",
-    )
-    rows = [
-        ("0", "합성 생성기 다시 쓰고 검증", "됨"),
-        ("1", "판독을 단계로 나눔", "됨"),
-        ("2", "단계별 채점", "됨 (score_synthetic.py)"),
-        ("3", "단계마다 모델 설정", "프로필로 일부"),
-        ("4", "Claude 대 로컬 비교", "실험 2 와 함께"),
-        ("5", "보완 장치 (다시 묻기, 다수결, 대조)", "첫 장치: 다시 묻기"),
-        ("6", "AI 가 단계를 고름", "시제품"),
-        ("7", "v2 뒷단까지 연결", "v4 뒤"),
-    ]
-    for i, (n, head, state) in enumerate(rows):
-        y = 1.85 + i * 0.6
-        done = state.startswith("됨")
-        chip(
-            s,
-            X0,
-            y,
-            0.6,
-            0.5,
-            n,
-            fill=TEAL if done else LIGHT,
-            color=WHITE if done else GRAY,
-            size=14,
-            bold=True,
-        )
-        text(s, X0 + 0.8, y, 6.5, 0.5, [head], size=17, anchor=MSO_ANCHOR.MIDDLE)
-        text(
-            s,
-            X0 + 7.5,
-            y,
-            4.6,
-            0.5,
-            [state],
-            size=16,
-            color=TEAL if done else ORANGE,
-            bold=True,
-            anchor=MSO_ANCHOR.MIDDLE,
-        )
-
-
-def ask_slide(d):
-    s = slide(
-        d,
-        6,
-        "회사에 부탁드릴 것",
-        "정답의 기준과 실제 도면 세트",
-        "docs/v3_upgrade.md 5.3 · 5.4절, docs/domain/company_questions.md.",
-    )
-    rows = [
-        (
-            "계산 기준",
-            "계산 문서와 현업자 정답이 다른 두 곳 (경판 원판, 콘 평균지름). 어느 쪽이 현장 기준인지",
-        ),
-        (
-            "콘 기준",
-            "받은 커팅플랜 D-1203 의 콘은 안지름 기준입니다. 현업자 정답(가로로 잼)과 다릅니다",
-        ),
-        (
-            "실제 도면",
-            "입력 도면과 커팅플랜이 짝지어진 설비를 더 (지금 2건: S-2120, D-1203)",
-        ),
-    ]
-    for i, (head, body) in enumerate(rows):
-        y = 1.95 + i * 1.4
-        chip(s, X0, y, 2.6, 1.15, head, fill=ORANGE, color=WHITE, size=18, bold=True)
-        card(
-            s,
-            X0 + 2.8,
-            y,
-            9.33,
-            1.15,
-            [body],
-            fill=LIGHT,
-            size=17,
-            anchor=MSO_ANCHOR.MIDDLE,
-        )
-
-
-# ---------------------------------------------------------------------- G. 마무리
 def wrapup_slide(d, s3):
     s = slide(
         d,
@@ -1777,7 +1690,7 @@ def wrapup_slide(d, s3):
             f"새 정답으로 단계 {frac(count(s3, '단계'))}, 형상 {frac(count(s3, '형상'))}, 전개 {frac(count(s3, '전개'))}",
         ),
         ("남은 것", "뷰(원만 있는 뷰), 치수 대조. 모델보다 하네스와 코드"),
-        ("다음", "답 잘림 · 모델 비교 실험 → 실제 도면을 부품표부터 (v4)"),
+        ("다음", "답 잘림 · 모델 비교 실험을 마무리. 그다음 할 일은 오늘 함께 논의"),
     ]
     for i, (head, body) in enumerate(rows):
         y = 1.95 + i * 1.15
@@ -2500,11 +2413,11 @@ def lastweek_scope_slide(d):
         d,
         2,
         "지난주까지의 범위",
-        "같은 로컬 AI 로, 합성 도면 30장과 실제 회사 도면 5장을 읽어 봤습니다",
-        "전 = 동료 v3 (253020c) 를 옛 합성 30장(data_v3/synthetic)에 돌린 runs/reader/deepseek_ocr_qwen_reasoning_skills (2026-10-18). 실제 도면 5장은 2026-10-23 실행 (docs/presentation.md 5절).",
+        "같은 로컬 AI 로, 정답이 있는 합성 도면 30장을 읽었습니다",
+        "전 = 동료 v3 (253020c) 를 옛 합성 30장(data_v3/synthetic)에 돌린 runs/reader/deepseek_ocr_qwen_reasoning_skills (2026-10-18).",
     )
     rows = [
-        ("데이터", "옛 합성 도면 30장 (동료의 생성기가 그림) + 실제 회사 도면 5장"),
+        ("데이터", "옛 합성 도면 30장 (동료의 생성기가 그림)"),
         ("reader", "지난주 판독기: 전개도 다음에 3D 모양 복원까지"),
         ("AI", "OCR DeepSeek-OCR-2 + 판단 Qwen3.6-27B (지금과 같음)"),
         ("채점", "형상과 전개 두 가지만"),
@@ -2647,56 +2560,6 @@ def lastweek_fail_unfold_slide(d):
         "문제",
         "AI 가 치수를 잘못 읽었나, 공식이 틀렸나, 정답이 틀렸나? 단계별 기록이 없어 그때는 가릴 수 없었습니다",
         h=0.85,
-        size=16,
-    )
-
-
-def lastweek_real_slide(d):
-    s = slide(
-        d,
-        2,
-        "실제 회사 도면 5장",
-        "커팅플랜에 나온 판재 22종 중, 전개도까지 나온 것은 1개였습니다",
-        "2026-10-23 실행 runs/reader/real_drawings_vlm/merged (docs/presentation.md 5절). S-2120 정답 parts.csv 의 판재 22종. 고객 도면이라 그림은 모식도로만.",
-    )
-    shape(s, MSO_SHAPE.RECTANGLE, X0, 2.0, 3.6, 2.6, WHITE, line=GRAY)
-    for x, y in [(0.35, 0.4), (0.35, 1.5), (1.75, 1.5)]:
-        shape(s, MSO_SHAPE.RECTANGLE, X0 + x, 2.0 + y, 1.1, 0.85, TEAL_TINT, line=TEAL)
-    text(
-        s, X0, 4.7, 3.6, 0.4, ["합성: 한 장에 부품 1개"], size=15, align=PP_ALIGN.CENTER
-    )
-    real_sheet(s, X0 + 4.2, 2.0, 4.0, 2.6)
-    text(
-        s,
-        X0 + 4.2,
-        4.7,
-        4.0,
-        0.4,
-        ["실제: 한 장에 부품 여러 개 + 부품표"],
-        size=15,
-        align=PP_ALIGN.CENTER,
-    )
-    card(
-        s,
-        X0 + 8.7,
-        2.0,
-        3.43,
-        2.6,
-        [
-            {"text": "판재 22종 중", "size": 16},
-            {"text": "1개", "size": 40, "bold": True, "color": ORANGE},
-            {"text": "전개도까지", "size": 14},
-        ],
-        fill=ORANGE_TINT,
-        align=PP_ALIGN.CENTER,
-        anchor=MSO_ANCHOR.MIDDLE,
-    )
-    band(
-        s,
-        5.5,
-        "문제",
-        "reader 는 '도면 한 장 = 부품 하나' 를 전제로 만들어졌습니다. 실제 도면은 이 전제가 맞지 않습니다 (v4 에서)",
-        h=0.9,
         size=16,
     )
 
@@ -4520,7 +4383,6 @@ def build_change(d, s2, pre, s3):
     lastweek_success_slide(d)
     lastweek_fail_shape_slide(d)
     lastweek_fail_unfold_slide(d)
-    lastweek_real_slide(d)
     before_problems_slide(d)
     wrong_ruler_slide(d)
     goal_change_slide(d)
@@ -4545,6 +4407,7 @@ def build_change(d, s2, pre, s3):
         "docs/data/synthetic/press_profile.png, head_blank.png. docs/v3_upgrade.md 4.1 · 4.3 · 5.4 · 5.5절. 그림은 2026-10-28 판 생성기 기준.",
     )
     drafting_slide(d)
+    drawing_fix_slides(d)
     practitioner_slide(d)
     summary_slide(d, s2, s3)
     score_compare_slide(d, s2, pre, s3)
@@ -4557,14 +4420,6 @@ def build_change(d, s2, pre, s3):
     truncation_slide(d)
     model_swap_slide(d)
     candidates_slide(d)
-    # 4. v4
-    v4_section(d)
-    v4_why_slide(d)
-    v4_bom_slide(d)
-    v4_expect_slide(d)
-    v4_plan_slide(d)
-    roadmap_slide(d)
-    ask_slide(d)
     wrapup_slide(d, s3)
     questions_slide(d)
     # 부록
