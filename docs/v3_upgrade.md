@@ -125,7 +125,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 
 ### 3.3 공백 반복은 `reason` 안의 따옴표에서 시작한다 (2026-10-29 확인)
 
-06 `view_labels` 는 판독 13단계 중 판단 모델(Qwen)을 처음으로 크게 쓰는 단계다. 05 가 선 묶음으로 찾은 뷰 후보(빨간 번호 상자)를 그린 그림과 후보별 위치·치수 글자를 주고, 투상법, 형상(`part_class`), 형상별 점수, 뷰마다 종류(정면도·평면도 등)·확신도·**한 문장 이유(`reason`)** 를 JSON 으로 받는다 (`cutplan_agent/reader/dxf_adapter.py` 의 `label_with_vlm`). 코드는 JSON 을 파싱해서 쓰므로 답이 JSON 이 아니면 형상이 None 이 되고 09·10 을 건너뛴다. `reason` 은 사람이 판단 근거를 확인하라고 받는 칸이고, 다음 단계의 계산에는 쓰이지 않는다 (출력의 뷰 목록에 그대로 실린다). 그런데 모델은 생각을 따로 쓸 칸이 없어서 첫 뷰의 `reason` 에 "Wait, let's re-evaluate…" 같은 풀이 과정을 길게 쓴다. 정상으로 끝난 cylinder_0015 도 첫 `reason` 이 1,500자쯤이다. 문제가 생기는 것도 이 칸이다.
+06 `view_labels` 는 판독 13단계 중 판단 모델(Qwen)을 처음으로 크게 쓰는 단계다. 05 가 선 묶음으로 찾은 뷰 후보(빨간 번호 상자)를 그린 그림과 후보별 위치·치수 글자를 주고, 투상법, 형상(`part_class`), 형상별 점수, 뷰마다 종류(정면도·평면도 등)·확신도·**한 문장 이유(`reason`)** 를 JSON 으로 받는다 (`cutplan_agent/reader/dxf_adapter.py` 의 `label_with_vlm`). 코드는 JSON 을 파싱해서 쓰므로 답이 JSON 이 아니면 형상이 None 이 되고 09·10 을 건너뛴다. `reason` 은 사람이 판단 근거를 확인하라고 받는 칸이고, 다음 단계의 계산에는 쓰이지 않는다 (출력의 뷰 목록에 그대로 실린다). 그런데 모델은 생각을 따로 쓸 칸이 없어서 첫 뷰의 `reason` 에 "Wait, let's re-evaluate…" 같은 풀이 과정을 길게 쓴다. 정상으로 끝난 cylinder_0015 도 첫 `reason` 이 1,737자이고 두 번째는 186자다. 문제가 생기는 것도 이 칸이다.
 
 잘린 답의 원문은 각 도면의 `stages/06_view_labels.json` 의 `trace.reason[0].raw` 에 있다 (`vlm.py` 가 앞 4000자만 남긴다). 같은 파일의 `trace.reason[0].error` 에 `JSONDecodeError`, `seconds` 에 걸린 시간이 있다. 고치기 전 기준선 `mlic` 의 `runs/reader/gen1027/local_new` (3.1절) 의 4장을 보면 다음과 같다.
 
