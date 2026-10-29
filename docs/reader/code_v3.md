@@ -79,7 +79,7 @@ experiments.sh                     (bash: 설정 → vLLM 서버 2개 기동 →
 ### 2.6 이 스크립트에서는 쓰이지 않는 파일
 
 - `vision_reader.py`와 vision 경로의 나머지 코드: `--input-mode vision`일 때만 씁니다. 이 스크립트는 `dxf`로 고정되어 있습니다.
-- `drawing_io_legacy_layers.py`: `--dxf-mode layers`일 때만 씁니다.
+- `drawing_io_legacy_layers.py`: `--dxf-mode layers`일 때만 씁니다. 뷰가 `FRONT`·`TOP`·`RIGHT` 레이어로 이미 나뉜 DXF 를 받습니다. 2026-10-30 에 확인했을 때 레포의 DXF 중에 이런 레이어를 가진 것은 없었습니다. 합성 도면 `data_v3/synthetic`·`data_v3/generated` 60장의 레이어는 `OUTLINE`, `HIDDEN`, `CENTER`, `PHANTOM`, `DIM`, `TEXT`, `TITLE`, `FRAME` 이고, `tests/fixtures/` 의 DXF 는 숫자 레이어만 씁니다. 이 경로를 부르는 테스트도 없습니다. 동료의 v2 (태그 `archive/cutplan_v2`)에서 이미 "레거시"였으므로, 그 전 판에서는 사람이 뷰를 레이어로 나눠 줘야 했던 것으로 보입니다. 그 전 판의 코드는 레포에 없습니다.
 - `experiments_local.sh`, `experiments_claude.sh`: 같은 흐름을 다른 설정으로 돌리는 변형 스크립트입니다.
 
 ## 3. 출력 구조
