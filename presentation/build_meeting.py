@@ -10,8 +10,9 @@
   전: 옛 합성 30장 + 지난주까지의 판독기. 동료 v3 253020c (RUN1, 동료 2026-10-18 실행) 와,
       판독 로직은 그대로 두고 단계 파일로 나눈 c71cca0 (RUN2, 2026-10-30 다시 돌림) 는
       판독 결과가 같으므로 하나의 '전' 으로 본다 (2.1절)
-  후: 새 합성 30장 + 지금 판독기. RUN3 (2026-10-28 04:23, 다시 묻기 3cf2274 뒤, 현업자 기준 식
-      2807e44 · 경판 직선부 f111ea8 전). RUN3_PRE 는 다시 묻기 전 (10-27)
+  후: 새 합성 30장 + 지금 판독기. RUN3 = R4 (main 60e0d26, 2026-10-30). RUN3_1028 은 같은 코드의
+      10-28 04:23 실행 (다시 묻기 3cf2274, 현업자 기준 식 2807e44, 경판 직선부 f111ea8 모두 뒤),
+      RUN3_PRE 는 다시 묻기 전 (10-27). RUN3 과 RUN3_1028 의 차이는 모델 답의 흔들림이다
 
 그림은 빌드할 때 실행 폴더에서 읽는다 (scripts/reader/show_stages.py 가 그린 figures/,
 analysis/*.png, flat_pattern.png). 없으면 회색 상자, 점수는 '–' 가 들어간다.
@@ -62,7 +63,8 @@ ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs" / "reader"
 RUN1 = RUNS / "deepseek_ocr_qwen_reasoning_skills"
 RUN2 = RUNS / "meeting1030" / "R2_synthetic_c71cca0"
-RUN3 = RUNS / "company_synthetic_20261028_042351"
+RUN3 = RUNS / "meeting1030" / "R4_generated_main"  # 후 (docs/pbl_meeting.md 3.3절)
+RUN3_1028 = RUNS / "company_synthetic_20261028_042351"  # 같은 코드, 10-28 실행
 RUN3_PRE = RUNS / "gen1027" / "local_new"
 FIG = ROOT / "docs" / "data" / "synthetic"
 OLD_DATA = ROOT / "data_v3" / "synthetic"  # 옛 합성 30장 (전)
@@ -341,7 +343,7 @@ def summary_slide(d, s2, s3):
         "결과 한 장 요약",
         f"정답을 고친 뒤 다시 쟀습니다. 형상(부품 종류) {frac(count(s3, '형상'))}, 전개(펼친 크기) {frac(count(s3, '전개'))}",
         "전 = 지난주 발표 숫자 (동료 v3, runs/reader/deepseek_ocr_qwen_reasoning_skills) 와, 판독 로직이 같은 c71cca0 을"
-        " 2026-10-30 에 같은 옛 데이터로 다시 돌린 RUN2 (score_synthetic.py, 옛 정답 기준). 후 = RUN3 (2026-10-28 04:23)."
+        " 2026-10-30 에 같은 옛 데이터로 다시 돌린 RUN2 (score_synthetic.py, 옛 정답 기준). 후 = R4 (main 60e0d26, 2026-10-30)."
         " 전과 후는 채점에 쓴 정답이 다르다.",
     )
     cols = [
@@ -783,7 +785,7 @@ def guard_retry_slide(d, pre, s3):
         s,
         5.85,
         "아직",
-        "잘림 자체는 그대로입니다 (30장에 4번). 근본 처리는 따로 진행 중 → 실험 파트",
+        "잘림 자체는 그대로입니다. 10-30 실행에서는 2번 잘렸고, 1번은 다시 물어도 또 잘렸습니다 → 실험 파트",
         h=0.8,
         size=16,
     )
@@ -863,7 +865,7 @@ def after_section(d):
         d,
         "후: 무엇을 고쳤나",
         "정답 · 하네스 · 코드 · 채점을 고치고 다시 쟀습니다",
-        "후 = 새 합성 30장(data_v3/generated) + 지금 판독기. 숫자는 RUN3 (2026-10-28 04:23).",
+        "후 = 새 합성 30장(data_v3/generated) + 지금 판독기. 숫자는 R4 (main 60e0d26, 2026-10-30). 10-28 실행과 코드가 같다.",
     )
 
 
@@ -1249,7 +1251,7 @@ def grid_slide(d, s2, s3):
         "부록: 코드 효과와 데이터 효과 (2×2)",
         "전 → 후 는 코드와 정답이 같이 바뀌었습니다. 둘을 나누려면 같은 데이터로 코드만 바꿔 재야 합니다",
         "docs/pbl_meeting.md 3절. R2 = c71cca0 · 옛 합성 (2026-10-30, 옛 정답 기준). R4 칸은 지금 main 으로 다시 돌리기 전이라"
-        " 10-28 04:23 실행(RUN3, 현업자 기준 식 · 경판 직선부 전)의 숫자다. R1 · R3 은 돌리지 않았다.",
+        " R4 = main 60e0d26 · 새 합성 (2026-10-30, docs/pbl_meeting.md 3.3절). R1 · R3 은 돌리지 않았다.",
     )
     rows = [
         ["", "옛 합성 (옛 정답)", "새 합성 (새 정답)"],
@@ -1292,7 +1294,7 @@ def grid_slide(d, s2, s3):
     )
 
 
-def score_compare_slide(d, s2, pre, s3):
+def score_compare_slide(d, s2, s1028, s3):
     s = slide(
         d,
         4,
@@ -1302,9 +1304,11 @@ def score_compare_slide(d, s2, pre, s3):
         "전 (다시 잼) = c71cca0 을 2026-10-30 에 옛 합성 30장으로 돌린 RUN2 를 지금의 score_synthetic.py 로 옛 정답과 대조. "
         "옛 정답은 콘 · 경판 파라미터 이름이 달라 이름만 바꿔 넣었다 (docs/pbl_meeting.md 3.1절). 옛 정답의 콘 · 경판 전개 값은 틀려 있으므로"
         " 전 (다시 잼) 의 콘 · 경판 전개 0/6 은 판독기만의 잘못이 아니다. 형상을 못 낸 3장은 06 요청이 120초 제한에 걸린 것. "
-        "후 다시 묻기 전 = runs/reader/gen1027/local_new, 후 = company_synthetic_20261028_042351 의 score.json.",
+        "후 (10-28) = runs/reader/company_synthetic_20261028_042351, 후 (10-30) = runs/reader/meeting1030/R4_generated_main (main 60e0d26) 의 score.json. "
+        "두 실행은 코드가 같다 (사이의 reader 커밋은 기본 실행을 바꾸지 않는 577cc34 하나). 바뀐 도면 4장: cone_0019 (10-30 에 맞음), "
+        "cylinder_0016 (10-30 에 06 이 다시 물어도 잘림), press_formed_0029 (10-30 에 경판 종류를 TORISPHERICAL 로), flat_0004 · 0005 (뷰가 서로 엇갈림). docs/pbl_meeting.md 3.3절.",
     )
-    rows = [["항목", "기준", "전 (지난주)", "전 (다시 잼)", "후, 다시 묻기 전", "후"]]
+    rows = [["항목", "기준", "전 (지난주)", "전 (다시 잼)", "후 (10-28)", "후 (10-30)"]]
     for it in ITEMS:
         one = {"형상": "27/30", "전개": "11/30"}.get(it, "안 잼")
         rows.append(
@@ -1313,7 +1317,7 @@ def score_compare_slide(d, s2, pre, s3):
                 ITEM_DESC[it],
                 one,
                 frac(count(s2, it)),
-                frac(count(pre, it)),
+                frac(count(s1028, it)),
                 frac(count(s3, it)),
             ]
         )
@@ -1337,7 +1341,7 @@ def score_compare_slide(d, s2, pre, s3):
         CW,
         0.5,
         [
-            "전의 두 열은 옛 정답, 후의 두 열은 새 정답으로 잰 숫자입니다. 후 두 열의 차이는 '잘리면 다시 묻기' 등"
+            "전은 옛 정답, 후는 새 정답으로 잰 숫자입니다. 후 두 열은 같은 코드를 두 번 돌린 것으로, 모델 답이 실행마다 1~2장씩 흔들립니다"
         ],
         size=13,
         color=GRAY,
@@ -1350,7 +1354,7 @@ def class_score_slide(d, s3):
         4,
         "형상별 점수 (후)",
         "평판은 거의 끝까지 맞고, 원통 · 경판은 뷰를, 콘 · 굽힘판은 치수를 놓칩니다",
-        "company_synthetic_20261028_042351/score.json 을 형상별로 셌다.",
+        "runs/reader/meeting1030/R4_generated_main/score.json 을 형상별로 셌다.",
     )
     rows = [["항목"] + [CLASS_KR[c] for c in CLASSES] + ["전체"]]
     for it in ITEMS:
@@ -1482,18 +1486,19 @@ def remaining_slides(d, s3):
     failure_slide(
         d,
         "남은 실패 2: 콘 대경을 바깥지름 그대로 (#14)",
-        "AI 가 바깥지름 150 을 안지름 칸에 넣었습니다. 소경은 AI 가 비워 코드가 맞게 채웠습니다",
-        f"cone_0019. 채점 이유: {why.get('cone_0019')}",
-        "cone_0019",
+        "AI 가 바깥지름 300 을 안지름 칸에 넣었습니다. 소경은 AI 가 비워 코드가 맞게 채웠습니다",
+        f"cone_0020. 채점 이유: {why.get('cone_0020')}. 콘 6장 중 4장 (0020 · 0021 · 0022 · 0024). cone_0019 는 10-28 실행에서 같은 실수를 했고 10-30 실행에서는 맞았다.",
+        "cone_0020",
         "하네스: AI 가 읽은 지름을 외형 치수와 대조 (안지름 = 바깥지름 − 2t/cos α 이어야)",
     )
     failure_slide(
         d,
         "남은 실패 3: 경판 전개 (#15)",
-        "2:1 타원 경판의 종류를 잘못 고릅니다. 이 도면에서는 FLAT FLANGED 로 읽었습니다",
-        f"press_formed_0026: 09 의 head_type FLAT FLANGED (정답 2:1 타원). 경판 5장에서 HEMI 로 고른 경우도 있다 (v3_upgrade.md 4절 #15, 10-27 실행 기준). 채점 이유: {why.get('press_formed_0026')}. 이 실행은 경판 원판 식을 현업자 정답으로 바꾸기(2807e44) 전이다.",
+        "치수는 맞는데 2:1 타원 경판의 종류를 잘못 고릅니다. 이 도면에서는 FLAT FLANGED 로 읽었습니다",
+        f"press_formed_0026: 09 의 head_type FLAT FLANGED (정답 2:1 타원). 채점 이유: {why.get('press_formed_0026')}. "
+        "10-30 실행의 경판 6장: 2:1 로 고른 0025 · 0028 은 정답과 0.01 mm 안에서 맞고, 나머지 넷은 종류를 잘못 골랐다 (0026 FLAT FLANGED, 0027 · 0030 hemispherical, 0029 TORISPHERICAL).",
         "press_formed_0026",
-        "하네스: 높이 / 지름 = 1/4 이면 2:1 타원. 그리고 지금 코드로 다시 재기",
+        "하네스: 높이 / 지름 = 1/4 이면 2:1 타원",
     )
     failure_slide(
         d,
@@ -1507,7 +1512,7 @@ def remaining_slides(d, s3):
         d,
         4,
         "남은 것은 모델보다 하네스와 코드",
-        "형상은 30/30. 틀리는 곳은 '읽은 값을 검사하지 않는 곳' 입니다",
+        "형상은 30장 중 29~30장. 틀리는 곳은 '읽은 값을 검사하지 않는 곳' 입니다",
         "docs/v3_upgrade.md 4절의 '남음' 항목: #11, #12, #14, #15, #17, #18.",
     )
     rows = [
@@ -1520,7 +1525,7 @@ def remaining_slides(d, s3):
             "30장 (04 가 메움)",
         ],
         ["14", "콘 대경을 바깥지름으로", "하네스: 외형 치수 대조", "콘 4장"],
-        ["15", "2:1 경판의 종류를 잘못 고름", "하네스: 높이 / 지름 검사", "경판 3~5장"],
+        ["15", "2:1 경판의 종류를 잘못 고름", "하네스: 높이 / 지름 검사", "경판 4장"],
         ["17", "굽힘판 폭 · 다리, 반경", "하네스: 외형 치수 대조", "굽힘판 4장"],
         ["18", "평면도를 bottom 으로", "모델", "평판 1장"],
     ]
@@ -1542,8 +1547,8 @@ def truncation_slide(d):
         d,
         5,
         "실험 1: JSON 답 잘림",
-        "다시 묻기로 살리고 있지만, 잘림 자체는 지금 판독기에서도 일어납니다",
-        "docs/pbl_meeting.md 4.1절. 10-28 실행의 판단 호출 60번 중 4번 잘림 (06 cylinder_0017, flat_0002 / 09 press_formed_0025 · 0027). 09 의 잘림은 이번에 처음 확인했다.",
+        "다시 묻기로 살리고 있지만 잘림은 계속되고, 10-30 실행에서는 다시 물어도 잘린 도면이 나왔습니다",
+        "docs/pbl_meeting.md 4.1 · 3.3절. 10-28 실행: 판단 호출 60번 중 4번 잘림 (06 cylinder_0017, flat_0002 / 09 press_formed_0025 · 0027), 모두 다시 물어 성공. 10-30 실행(R4, 같은 코드): 2번 잘림 (06 cylinder_0017 · 0016), cylinder_0016 은 다시 물어도 또 잘려 (finish_reason length) 09 · 10 을 건너뛰었다. 혼잣말을 reason 칸에 길게 쓰다 한도에 걸렸다.",
     )
     rows = [
         ["왜 잘리나", "예"],
@@ -1800,7 +1805,7 @@ def per_drawing_slides(d, s3):
             6,
             f"부록: 도면별 결과 ({part + 1}/2)",
             "O = 맞음, X = 틀림. 틀린 이유는 발표자 노트",
-            "company_synthetic_20261028_042351/score.md.\n"
+            "runs/reader/meeting1030/R4_generated_main/score.md.\n"
             + "\n".join(f"{r['id']}: {r['why']}" for r in chunk if r["why"]),
         )
         rows = [["도면"] + ITEMS[:-1]] + [
@@ -1908,7 +1913,7 @@ def job_def_slide(d):
         "하려는 일",
         "설계 도면을 읽어, 철판을 어떤 모양으로 자를지(전개도) 자동으로 만드는 것",
         "왼쪽 data_v3/generated/cone_0023/cone_0023.png (생성기가 그린 도면), 가운데 같은 도면을 reader 가 읽어 만든 flat_pattern.png "
-        "(runs/reader/company_synthetic_20261028_042351). 커팅플랜은 모식도. 이번 범위는 가운데까지다.",
+        "(runs/reader/meeting1030/R4_generated_main). 커팅플랜은 모식도. 이번 범위는 가운데까지다.",
     )
     w3 = workdir(RUN3, EXAMPLE)
     cols = [
@@ -2023,7 +2028,7 @@ def shape_def_slide(d):
         s,
         6.05,
         "형상 분류",
-        "도면을 보고 이 다섯 중 무엇인지 고르는 일. 오늘 말하는 '형상 30/30' 은 30장 모두 맞게 골랐다는 뜻",
+        "도면을 보고 이 다섯 중 무엇인지 고르는 일. '형상 29/30' 은 30장 중 29장을 맞게 골랐다는 뜻",
         h=0.75,
         size=15,
     )
@@ -4344,7 +4349,7 @@ def build_harness(d, pre, s3):
     harness_eng_slide(d)
     json_contract_slide(d)
     decoding_slide(d)
-    guard_retry_slide(d, pre, s3)
+    guard_retry_slide(d, pre, load_score(RUN3_1028))
     rules_slide(d)
     stage_file_slide(d)
     guard_trace_slide(d)
@@ -4410,7 +4415,7 @@ def build_change(d, s2, pre, s3):
     drawing_fix_slides(d)
     practitioner_slide(d)
     summary_slide(d, s2, s3)
-    score_compare_slide(d, s2, pre, s3)
+    score_compare_slide(d, s2, load_score(RUN3_1028), s3)
     class_score_slide(d, s3)
     class_pair_slides(d, s3)
     fixed_slide(d)

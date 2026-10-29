@@ -144,7 +144,8 @@ PYTHONPATH=. uv run python presentation/render.py presentation/meeting_change.pp
 | 전 (지난주) | `runs/reader/deepseek_ocr_qwen_reasoning_skills` (동료 v3 253020c, 2026-10-18) | 형상 27/30 (`accuracy.md`), 전개 11/30 과 도면별 오차 (`flat_patterns.md`, 옛 정답 기준), `analysis/sheet_labeled.png`, `flat_pattern.png`. 단계 파일이 없어 다른 항목은 "안 잼" |
 | 전 (다시 잼) | `runs/reader/meeting1030/R2_synthetic_c71cca0` (c71cca0, 2026-10-30) | `score.json` (지금의 `score_synthetic.py` 로 옛 정답과 대조). 실행 조건과 결과는 [pbl_meeting.md](pbl_meeting.md) 3.1절 |
 | 후, 다시 묻기 전 | `runs/reader/gen1027/local_new` (2026-10-27) | `score.json`. 잘림 실패 7건은 단계 파일 trace 에서 셌다 ([pbl_meeting.md](pbl_meeting.md) 4.1절) |
-| 후 | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py), `analysis/sheet.png`. 다시 묻기(3cf2274) 뒤, 현업자 기준 식(2807e44) · 경판 직선부(f111ea8) 전의 코드다. 지금 main 으로 다시 돌린 결과(R4)가 나오면 이 경로를 바꾼다 |
+| 후 | `runs/reader/meeting1030/R4_generated_main` (main 60e0d26, 2026-10-30) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py), `analysis/sheet.png`. [pbl_meeting.md](pbl_meeting.md) 3.3절 |
+| 후 (10-28) | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | 같은 코드의 앞선 실행. 단계별 점수 표의 '후 (10-28)' 열과 하네스 덱 '다시 묻기' 장의 '다시 묻기 뒤' 열. 현업자 기준 식(2807e44) · 경판 직선부(f111ea8) 뒤의 코드다 (전에 "전" 이라고 적은 것은 틀렸다) |
 | 데이터 그림 | `docs/data/synthetic/*.png` | `scripts/synthetic_figures.py` |
 
 - 용어 파트의 도면 그림은 생성기가 그린 `data_v3/generated/<도면>/<도면>.png` 이다. 전 파트의 성공 사례 cylinder_0014 와 실패 사례 cylinder_0013 은 RUN1 의 그림과 `prediction.json` 의 `vlm_trace` (cylinder_0013 은 판단 AI 가 `part_class: cylinder` 로 시작했다가 이유를 반복하고 공백을 되풀이해 57.6초 만에 잘렸다).
