@@ -1809,7 +1809,7 @@ def appendix_section(d):
         d,
         "부록",
         "부록",
-        "시험 도면 · 도면별 점수 · tool calling 코드 해설 · 실행 명령",
+        "시험 도면 · 도면별 점수 · 하네스 구조 · 실행 명령",
         "질문이 나오면 가는 슬라이드.",
     )
 
@@ -3896,246 +3896,199 @@ def tool_demo_slide(d):
     )
 
 
-# ---------------------------------------------------------------------- 부록: 코드 해설
-def code_slide(d, title, message, notes):
+# ---------------------------------------------------------------------- 부록: 하네스 구조
+def concept_slide(d, title, message, notes):
     return slide(d, 6, title, message, notes)
 
 
-def kv_rows(s, rows, x, y, kw, w, *, step=0.72, h=0.6, fill=TEAL, size=14):
-    for i, (k, v) in enumerate(rows):
-        yy = y + i * step
-        chip(s, x, yy, kw, h, k, fill=fill, color=WHITE, size=13, bold=True)
-        text(
-            s,
-            x + kw + 0.2,
-            yy,
-            w - kw - 0.2,
-            h,
-            [v],
-            size=size,
-            anchor=MSO_ANCHOR.MIDDLE,
-        )
-
-
-def code_map_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 1: tool calling 의 부품 지도",
-        "파일 두 개가 나눠 맡습니다. orchestrator.py 는 '묻고 반복하기', tools.py 는 '도구와 실행'",
-        'cutplan_agent/reader/orchestrator.py, cutplan_agent/reader/tools.py. 실행: PYTHONPATH=. python cutplan_agent/reader/orchestrator.py "cone_0019 를 전개도까지 판독해줘" --tool-mode schema (docs/reader/orchestrator.md).',
-    )
-    card(s, X0, 1.85, 6.6, 4.85, [], fill=ORANGE_TINT)
-    text(
-        s,
-        X0 + 0.2,
-        1.9,
-        6.2,
-        0.4,
-        ["orchestrator.py  (모델과 대화)"],
-        size=16,
-        bold=True,
-        color=ORANGE,
-    )
-    parts = [
-        ("main · make_backend", "명령줄을 읽어 모델 · 도구 · 기록을 준비"),
-        ("system_prompt", "오케스트레이터에게 주는 한국어 지시"),
-        ("Call · Turn", "모델의 답을 담는 그릇"),
-        (
-            "OpenAITools / OpenAISchema / AnthropicTools",
-            "모델과 대화하는 세 방식 (backend)",
-        ),
-        ("orchestrate", "묻기 → 실행 → 결과 붙이기 반복"),
-        ("Log", "턴마다 trajectory.jsonl 에 한 줄"),
-    ]
-    for i, (k, v) in enumerate(parts):
-        y = 2.4 + i * 0.7
-        chip(s, X0 + 0.2, y, 3.3, 0.58, k, fill=ORANGE, color=WHITE, size=11, bold=True)
-        text(s, X0 + 3.65, y, 2.9, 0.58, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
-    card(s, X0 + 6.9, 1.85, 5.23, 3.2, [], fill=TEAL_TINT)
-    text(
-        s,
-        X0 + 7.1,
-        1.9,
-        4.9,
-        0.4,
-        ["tools.py  (실제 일)"],
-        size=16,
-        bold=True,
-        color=TEAL,
-    )
-    parts = [
-        ("Tool", "이름 · 설명 · 인자 양식 · 함수"),
-        ("ReaderTools", "도구 목록을 만들고 call 로 실행"),
-        ("stages/*.py", "판독 단계의 run (실제 계산)"),
-    ]
-    for i, (k, v) in enumerate(parts):
-        y = 2.4 + i * 0.8
-        chip(s, X0 + 7.1, y, 1.9, 0.62, k, fill=TEAL, color=WHITE, size=12, bold=True)
-        text(s, X0 + 9.15, y, 2.9, 0.62, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
+def role_box(s, x, y, w, h, name, role, where, *, fill=TEAL, size=15):
+    """A part of the harness: its name, what it does, and (small) where it lives in code."""
     card(
         s,
-        X0 + 6.9,
-        5.25,
-        5.23,
-        1.45,
+        x,
+        y,
+        w,
+        h,
         [
-            {"text": "나눈 이유", "bold": True, "size": 14, "color": TEAL},
+            {"text": name, "bold": True, "size": size, "color": WHITE},
+            {"text": role, "size": 12, "color": WHITE},
+        ],
+        fill=fill,
+        align=PP_ALIGN.CENTER,
+        anchor=MSO_ANCHOR.MIDDLE,
+        after=3,
+        margin=0.1,
+    )
+    text(
+        s,
+        x,
+        y + h + 0.02,
+        w,
+        0.3,
+        [f"코드: {where}"],
+        size=10,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
+
+
+def concept_parts_slide(d):
+    s = concept_slide(
+        d,
+        "부록 · 하네스 구조 1: 다섯 부품",
+        "모델은 가운데 한 부품일 뿐입니다. 나머지 넷은 모델을 둘러싼 코드입니다",
+        "orchestrator.py: orchestrate (진행), OpenAITools / OpenAISchema / AnthropicTools (연결부), "
+        "system_prompt (지시문), Log (기록). tools.py: ReaderTools, Tool (도구 상자). "
+        "실행 진입점은 main 이고, make_backend 가 연결부를 고른다.",
+    )
+    # 연결선을 먼저 그려 상자 밑으로 가게 한다
+    connect(s, 2.6, 3.65, 4.6, 3.65, color=GRAY, width=2)
+    connect(s, 7.6, 3.65, 9.4, 3.65, color=GRAY, width=2)
+    connect(s, 6.1, 3.05, 6.1, 2.85, color=GRAY, width=2)
+    connect(s, 6.1, 4.55, 6.1, 5.0, color=GRAY, width=2)
+    chip(s, X0, 3.2, 2.0, 0.9, "사용자 명령\n'cone_0019 판독해줘'", size=12)
+    role_box(
+        s,
+        4.6,
+        3.05,
+        3.0,
+        1.2,
+        "진행",
+        "묻기 → 실행 → 결과 전달을 반복",
+        "orchestrate()",
+        fill=INK,
+    )
+    role_box(
+        s,
+        4.35,
+        1.55,
+        3.5,
+        1.0,
+        "모델 (AI)",
+        "다음에 쓸 도구를 고르기만 함",
+        "backend (구조 3)",
+        fill=ORANGE,
+    )
+    role_box(
+        s,
+        9.4,
+        3.05,
+        3.33,
+        1.2,
+        "도구 상자",
+        "판독 단계를 실제로 실행",
+        "ReaderTools · Tool",
+    )
+    role_box(
+        s,
+        4.6,
+        5.0,
+        3.0,
+        0.95,
+        "기록",
+        "모든 질문 · 답 · 결과를 파일로",
+        "Log",
+        fill=GRAY,
+    )
+    role_box(
+        s,
+        X0,
+        1.55,
+        3.2,
+        1.0,
+        "지시문",
+        "역할 · 순서 · 금지 사항",
+        "system_prompt()",
+        fill=TEAL,
+    )
+    connect(s, X0 + 3.2, 2.05, 4.35, 2.05, color=GRAY, width=2)
+    card(
+        s,
+        9.4,
+        4.75,
+        3.33,
+        1.65,
+        [
+            {"text": "왜 나눴나", "bold": True, "size": 14, "color": TEAL},
             {
-                "text": "모델 쪽(어떻게 묻나)과 일 쪽(무엇을 하나)을 떼어, 모델을 바꿔도 도구는 그대로 · 도구를 늘려도 반복은 그대로",
+                "text": "모델을 바꿔도 도구는 그대로, 도구를 늘려도 진행은 그대로입니다. 부품마다 따로 고치고 따로 시험합니다",
                 "size": 12,
             },
         ],
-        fill=LIGHT,
+        fill=TEAL_TINT,
         after=3,
     )
 
 
-def code_containers_slide(d):
-    s = code_slide(
+def concept_tool_slide(d):
+    s = concept_slide(
         d,
-        "부록 · 코드 2: 그릇 세 개 (Call, Turn, Tool)",
-        "세 방식의 답을 모두 같은 모양으로 바꿔 담습니다. 그래서 반복 코드는 하나만 있으면 됩니다",
-        "orchestrator.py 의 @dataclass Call, Turn 과 tools.py 의 @dataclass Tool. dataclass 는 칸 이름만 정한 단순한 그릇이다.",
+        "부록 · 하네스 구조 2: 도구 상자",
+        "모델에게는 도구의 이름과 설명만 보입니다. 실제 실행은 보이지 않는 코드가 합니다",
+        "tools.py 의 Tool(name, description, parameters, call): 앞 셋은 모델에게 보내는 목록, call 은 Python 함수. "
+        "ReaderTools._build 가 판독 단계 목록(STAGES)에서 run_<단계> 도구를 자동으로 만들고, 설명은 단계 스크립트의 docstring 에서 가져온다. "
+        "단계가 쓰는 OCR · 판단 모델은 명령줄에서 정해지고, 오케스트레이터는 단계와 옵션만 고른다.",
     )
-    rows = [
-        ["그릇", "칸", "뜻"],
-        [
-            "Call",
-            "id, name, arguments",
-            "모델이 부른 도구 하나. arguments 는 읽은 JSON, 깨졌으면 원문 글자 그대로",
-        ],
-        [
-            "Turn",
-            "text, calls, stop, usage",
-            "모델의 한 번 답. 생각 · 보고 글, 부른 도구들, 멈춘 이유, 토큰 수",
-        ],
-        [
-            "Tool",
-            "name, description, parameters, call",
-            "도구 하나. 앞 셋은 모델에게 보이고, call 은 실제 Python 함수",
-        ],
-    ]
-    table(s, X0, 1.9, CW, 2.4, rows, [1.3, 3.6, 7.233], head_style)
-    code(
-        s,
-        X0,
-        4.55,
-        5.8,
-        2.1,
-        [
-            "@dataclass",
-            "class Call:",
-            "    id: str",
-            "    name: str",
-            "    arguments: Any  # JSON 또는 깨진 원문",
-        ],
-        size=13,
-    )
+    card(s, X0, 1.85, 5.6, 4.0, [], fill=ORANGE_TINT)
     text(
         s,
-        X0 + 6.1,
-        4.55,
-        6.03,
-        2.1,
-        [
-            "vLLM 의 tool_calls, schema 모드의 JSON, Claude 의 tool_use 는 생김새가 다릅니다. 각 backend 가 이것을 Turn 으로 바꿔 주기 때문에 orchestrate() 는 공급자를 몰라도 됩니다. 깨진 답도 버리지 않고 Call 에 담아 모델에게 에러로 돌려줍니다"
-        ],
-        size=14,
-        anchor=MSO_ANCHOR.MIDDLE,
+        X0 + 0.2,
+        1.95,
+        5.2,
+        0.4,
+        ["모델에게 보이는 것"],
+        size=16,
+        bold=True,
+        color=ORANGE,
     )
-
-
-def code_backend_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 3: backend 의 약속 세 가지",
-        "모든 backend 는 start · next · add_results 세 메서드만 가지면 됩니다",
-        "OpenAITools (orchestrator.py), OpenAISchema 는 OpenAITools 를 상속해 body · next · add_results 를 바꾼다. AnthropicTools 는 Anthropic SDK 의 beta.messages.create.",
-    )
-    rows = [
-        (
-            "start(system, command, tools)",
-            "대화 시작: 시스템 지시와 사용자 명령, 도구 목록을 담음",
-        ),
-        (
-            "next() → Turn",
-            "지금까지의 대화를 보내고, 답을 Turn 으로 바꿔 돌려줌. 답은 대화에 쌓임",
-        ),
-        ("add_results(results)", "도구 결과를 그 방식의 형식으로 대화에 붙임"),
+    menu = [
+        ("run_view_labels", "뷰마다 정면 · 측면 이름을 붙인다"),
+        ("run_develop", "전개도 길이를 계산한다"),
+        ("run_stages", "여러 단계를 차례로 실행한다"),
+        ("show_stage", "한 단계의 결과를 본다"),
     ]
-    kv_rows(s, rows, X0, 1.9, 3.6, CW, step=0.75)
-    rows = [
-        ["", "OpenAITools (tools)", "OpenAISchema (schema)", "AnthropicTools"],
-        [
-            "도구 알리기",
-            "요청 tools 칸, tool_choice auto",
-            "시스템 지시에 글로 나열",
-            "요청 tools 칸",
-        ],
-        [
-            "답 받기",
-            "message.tool_calls",
-            "response_format 으로 강제한 JSON 을 읽음",
-            "tool_use 블록",
-        ],
-        [
-            "결과 붙이기",
-            'role "tool" + tool_call_id',
-            'role "user" + "[이름 결과] {...}"',
-            "tool_result (+ is_error)",
-        ],
-        [
-            "그 밖",
-            "Qwen 생각 모드 켜고 끄기",
-            "깨진 JSON → invalid_reply 로",
-            "effort, 대체 모델",
-        ],
-    ]
-    table(s, X0, 4.25, CW, 2.45, rows, [1.6, 3.4, 3.8, 3.333], head_style)
-
-
-def code_schema_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 4: OpenAISchema 자세히",
-        "tool parser 가 없는 vLLM 에서도 되게, 매 답을 {thought, tool, arguments} JSON 하나로 강제합니다",
-        "OpenAISchema.start (도구 목록 + SCHEMA_RULES 를 시스템 지시에), schema() (anyOf), body() (tools 를 지우고 response_format), next() (json.loads, finish, invalid_reply). 시연 cone_0019 는 이 방식이다.",
-    )
-    code(
+    for i, (k, v) in enumerate(menu):
+        y = 2.5 + i * 0.75
+        chip(s, X0 + 0.2, y, 2.3, 0.6, k, fill=ORANGE, color=WHITE, size=12, bold=True)
+        text(s, X0 + 2.65, y, 2.9, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
+    text(
         s,
-        X0,
-        1.85,
-        6.4,
-        4.0,
-        [
-            "def schema(self):",
-            '    return {"anyOf": [',
-            '      {"properties": {',
-            '         "thought":   {"type": "string"},',
-            '         "tool":      {"const": name},',
-            '         "arguments": parameters},',
-            '       "required": ["thought", "tool", "arguments"]}',
-            "      for name, parameters in 도구들 + finish])",
-            "",
-            "def next(self):",
-            "    reply = json.loads(content)",
-            '    if reply["tool"] == "finish": → 보고로 끝',
-            "    except JSONDecodeError: → invalid_reply 에러",
-        ],
-        size=12,
+        X0 + 0.2,
+        5.5,
+        5.2,
+        0.3,
+        ["…그리고 도구마다 받는 값(인자)의 양식"],
+        size=11,
+        color=GRAY,
     )
-    rows = [
-        ("1 시스템 지시", "도구마다 이름(인자): 설명 한 줄씩 + '응답마다 tool 하나'"),
-        ("2 양식", "도구마다 '이 이름이면 이 인자' 를 anyOf 로 나열"),
-        ("3 서버", "그 양식 밖의 글자는 못 씀 (제약 디코딩)"),
-        ("4 읽기", "finish 면 끝, 아니면 Call 하나. 잘려 깨지면 에러로 돌려줌"),
+    arrow(s, X0 + 5.75, 3.65, w=0.5, h=0.4)
+    card(s, X0 + 6.4, 1.85, 5.73, 4.0, [], fill=LIGHT)
+    text(
+        s,
+        X0 + 6.6,
+        1.95,
+        5.3,
+        0.4,
+        ["보이지 않는 것 (코드가 정함)"],
+        size=16,
+        bold=True,
+        color=TEAL,
+    )
+    hidden = [
+        ("실행", "고른 도구 이름에 맞는 판독 단계를 실제로 돌림"),
+        ("사용할 AI", "단계 안의 OCR · 판단 모델은 미리 고정"),
+        ("쓸 수 있는 곳", "출력 폴더 아래에만 파일을 씀"),
+        ("돌려줄 것", "단계 파일 전체가 아니라 짧은 요약만"),
     ]
-    kv_rows(s, rows, X0 + 6.7, 1.9, 1.7, 5.43, step=1.0, h=0.82, fill=ORANGE, size=13)
+    for i, (k, v) in enumerate(hidden):
+        y = 2.5 + i * 0.75
+        chip(s, X0 + 6.6, y, 1.8, 0.6, k, fill=TEAL, color=WHITE, size=12, bold=True)
+        text(s, X0 + 8.55, y, 3.5, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
     band(
         s,
-        6.0,
-        "thought",
-        "고르기 전에 이유를 한두 문장 쓰게 합니다. 기록에 남아 왜 그 도구를 골랐는지 사람이 봅니다",
+        6.05,
+        "하네스",
+        "모델이 할 수 있는 일의 범위는 '도구 목록' 이 정합니다. 목록에 없는 일은 할 수 없습니다",
         fill=TEAL_TINT,
         color=TEAL,
         h=0.7,
@@ -4143,169 +4096,230 @@ def code_schema_slide(d):
     )
 
 
-def code_prompt_slide(d):
-    s = code_slide(
+def concept_adapter_slide(d):
+    s = concept_slide(
         d,
-        "부록 · 코드 5: system_prompt (오케스트레이터 지시)",
-        "판독 파이프라인을 운영하는 규칙을 한국어로 줍니다. 단계 목록은 코드가 채웁니다",
-        "orchestrator.py system_prompt(stages). 3D 를 끄면 단계 목록과 문장이 자동으로 줄어든다 (tools.stages).",
+        "부록 · 하네스 구조 3: 모델 연결부",
+        "모델마다 답하는 형식이 다릅니다. 연결부가 하나의 공통 형식으로 바꿔 주므로 모델을 바꿔 끼울 수 있습니다",
+        "orchestrator.py 의 backend 세 가지(OpenAITools, OpenAISchema, AnthropicTools)는 모두 start · next · add_results 를 가진다. "
+        "공통 형식은 Turn(text, calls, stop, usage)과 Call(id, name, arguments). "
+        "schema 방식은 tool parser 가 없는 vLLM 을 위해 답 양식을 anyOf {thought, tool, arguments} 로 강제한다. 시연 cone_0019 는 이 방식이다.",
     )
-    rows = [
-        (
-            "역할",
-            "DXF 도면 판독 파이프라인을 운영한다. tool 로 일하고 한국어로 짧게 보고",
-        ),
-        ("순서", "read → title_regex → … → develop. 도면마다 작업 폴더(work)"),
-        (
-            "의존",
-            "앞 단계 파일만 읽는다. 없으면 not_ready. 다시 돌리면 뒤 단계 파일은 지워짐",
-        ),
-        ("효율", "처음부터 끝까지면 run_stages 한 번, 판단이 필요하면 하나씩"),
-        (
-            "금지",
-            "길이 · 치수를 직접 계산하지 말 것. 결과 값은 tool 결과에서만 인용. 정답 파일 읽지 말 것",
-        ),
-        ("보고", "돌린 단계와 상태, 핵심 결과, 모델 오류나 검토 항목"),
+    models = [
+        ("로컬 Qwen", "도구 호출 기능 사용", "tools"),
+        ("로컬 Qwen", "답 양식을 강제", "schema"),
+        ("Claude", "도구 호출 기능 사용", "anthropic"),
     ]
-    kv_rows(s, rows, X0, 1.9, 1.4, CW, step=0.75, fill=ORANGE, size=14)
-    band(
-        s,
-        6.3,
-        "하네스",
-        "'계산하지 말 것', '결과에 있는 값만 인용' 이 숫자를 지어내지 못하게 하는 규칙입니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.55,
-        size=14,
-    )
-
-
-def code_loop_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 6: orchestrate() 와 Log",
-        "반복 안에 안전장치가 들어 있습니다. 모델이 실수해도 프로그램은 멈추지 않고 기록은 남습니다",
-        "orchestrator.py orchestrate(command, backend, tools, log, max_turns=40), Log.write, short. 기록 폴더 runs/reader/agent/orchestrator/<시각>/.",
-    )
-    rows = [
-        ("최대 40턴", "모델이 끝내지 못하면 멈추고 '답 없이 멈춤' 을 보고"),
-        (
-            "깨진 답",
-            'invalid_reply 면 실행하지 않고 {"error": "JSON 이 아님 (너무 김?)"} 을 돌려줌',
-        ),
-        ("도구 에러", "tools.call 은 예외를 던지지 않음. 에러도 결과로 모델에게"),
-        ("턴 기록", "Log.write: 턴 번호, 경과 초, 생각, 부른 도구, 멈춘 이유, 토큰 수"),
-        ("도구 기록", "도구마다 이름, 걸린 초, 결과 전체"),
-        ("끝나면", "finally: 대화 전체를 messages.json 에 (실패해도)"),
-    ]
-    kv_rows(s, rows, X0, 1.9, 1.9, CW, step=0.72, size=14)
-    code(
-        s,
-        X0,
-        6.25,
-        CW,
-        0.5,
-        [
-            '{"turn": 2, "seconds": 16.9, "text": "…run_stages로 한 번에 실행합니다.", "calls": [{"name": "run_stages", …}], "usage": {…}}'
-        ],
-        size=10,
-    )
-
-
-def code_readertools_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 7: ReaderTools (tools.py)",
-        "도구를 만들고 실행하는 쪽. 모델이 할 수 있는 일의 범위를 여기서 정합니다",
-        "tools.py ReaderTools.__init__, _build, _stage_caller, call, workspace, stage_result. CLIENT_ROLE 이 단계마다 OCR / 판단 클라이언트를 정한다.",
-    )
-    rows = [
-        (
-            "_build",
-            "보기 도구 3개 + 단계마다 run_<단계> (STAGES 에서 자동, 설명은 단계 스크립트 docstring) + run_stages",
-        ),
-        (
-            "_stage_caller",
-            "run_view_labels 가 불리면 stages/view_labels.py 의 run 을 실행. main.py --batch 와 같은 파일이 생김",
-        ),
-        (
-            "모델은 고정",
-            "단계가 쓸 OCR · 판단 모델은 명령줄에서 정함. 오케스트레이터는 단계와 옵션만 고름",
-        ),
-        (
-            "작은 결과",
-            "단계 파일 전체 대신 상태 · 요약 · 모델 호출만 돌려줌 (01_read.json 은 요소 전부라 너무 큼)",
-        ),
-        ("폴더 제한", "work 는 출력 폴더 아래만. 모델이 다른 곳에 쓰지 못함"),
-        ("call", '이름 찾기 → 인자 검사 → 실행. 실패는 {"error": …} 또는 not_ready'),
-    ]
-    kv_rows(s, rows, X0, 1.9, 2.0, CW, step=0.75, size=13)
-    band(
-        s,
-        6.3,
-        "하네스",
-        "모델에게 주는 권한(도구, 옵션, 폴더)을 코드가 좁게 정합니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.55,
-        size=14,
-    )
-
-
-def code_main_slide(d):
-    s = code_slide(
-        d,
-        "부록 · 코드 8: main · make_backend",
-        "명령 한 줄이 들어오면 모델 · 도구 · 기록을 준비하고 orchestrate() 를 부릅니다",
-        "orchestrator.py main, make_backend. 오케스트레이터 모델은 --model / CUTPLAN_ORCH_* 가 없으면 판단 모델 설정(CUTPLAN_REASON_*)을 그대로 쓴다. 그래서 . runs/vllm/reason.env 하나로 단계와 오케스트레이터가 같은 서버를 쓴다.",
-    )
-    code(
-        s,
-        X0,
-        1.85,
-        CW,
-        0.75,
-        [
-            'PYTHONPATH=. python cutplan_agent/reader/orchestrator.py "cone_0019 를 전개도까지 판독해줘" --tool-mode schema'
-        ],
-        size=12,
-    )
-    steps = [
-        (
-            "make_backend",
-            "anthropic → AnthropicTools\nopenai + schema → OpenAISchema\nopenai → OpenAITools",
-        ),
-        ("make_clients", "단계가 쓸 OCR · 판단 모델"),
-        ("ReaderTools", "도구 목록 (3D 끄면 3D 도구 없음)"),
-        ("Log · command.json", "설정과 도구 목록을 먼저 기록"),
-        ("orchestrate", "반복 → answer.json"),
-    ]
-    for i, (k, v) in enumerate(steps):
-        x = X0 + i * 2.45
+    for i, (k, v, mode) in enumerate(models):
+        y = 1.9 + i * 1.2
         card(
             s,
-            x,
-            2.9,
-            2.2,
-            2.6,
-            [{"text": k, "bold": True, "size": 14, "color": WHITE}]
-            + [{"text": t, "size": 11, "color": WHITE} for t in v.split("\n")],
-            fill=ORANGE if k == "orchestrate" else TEAL,
+            X0,
+            y,
+            3.0,
+            1.0,
+            [
+                {"text": k, "bold": True, "size": 15, "color": WHITE},
+                {"text": v, "size": 12, "color": WHITE},
+                {"text": f"--tool-mode {mode}", "size": 9, "color": WHITE},
+            ],
+            fill=ORANGE,
             align=PP_ALIGN.CENTER,
             anchor=MSO_ANCHOR.MIDDLE,
-            after=3,
+            after=2,
             margin=0.1,
         )
-        if i < 4:
-            arrow(s, x + 2.22, 4.05, w=0.22, h=0.28)
+        connect(s, X0 + 3.0, y + 0.5, 4.9, 3.6, color=GRAY, width=1.5)
+    role_box(
+        s,
+        4.9,
+        2.9,
+        2.6,
+        1.4,
+        "연결부",
+        "질문 보내기 · 답 받기 · 결과 붙이기",
+        "backend",
+        fill=TEAL,
+    )
+    arrow(s, 7.6, 3.4, w=0.5, h=0.4)
+    card(
+        s,
+        8.2,
+        2.55,
+        4.53,
+        2.1,
+        [
+            {"text": "공통 형식", "bold": True, "size": 15, "color": TEAL},
+            {"text": "• 모델이 쓴 생각 · 보고 글", "size": 13},
+            {"text": "• 부른 도구 이름과 인자", "size": 13},
+            {"text": "• 멈춘 이유 (끝냄 / 도구 호출)", "size": 13},
+            {"text": "• 쓴 글자 수 (토큰)", "size": 13},
+        ],
+        fill=TEAL_TINT,
+        after=4,
+    )
+    text(
+        s,
+        8.2,
+        4.7,
+        4.53,
+        0.3,
+        ["코드: Turn · Call"],
+        size=10,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
     band(
         s,
-        5.85,
-        "비교",
-        "같은 반복 · 같은 도구 위에서 backend 만 바꿔 로컬 Qwen 과 Claude 를 비교할 수 있게 만든 구조입니다",
+        5.95,
+        "그래서",
+        "진행 · 도구 · 기록은 하나만 있으면 됩니다. 같은 일을 로컬 모델과 Claude 에 시켜 비교할 수 있습니다",
         fill=TEAL_TINT,
         color=TEAL,
         h=0.75,
+        size=14,
+    )
+
+
+def concept_rules_slide(d):
+    s = concept_slide(
+        d,
+        "부록 · 하네스 구조 4: 규칙을 거는 두 가지 방법",
+        "글로 부탁한 규칙은 모델이 어길 수 있습니다. 중요한 규칙은 코드 구조로 막습니다",
+        "글로 부탁: orchestrator.py system_prompt (역할, 순서, 직접 계산 금지, 결과 값만 인용, 정답 파일 금지). "
+        "구조로 강제: 도구 목록(ReaderTools._build), 인자 검사(ReaderTools.call), 폴더 제한(ReaderTools.workspace), "
+        "답 양식(OpenAISchema 의 response_format), 최대 40턴(orchestrate max_turns), 단계 모델 고정(make_clients).",
+    )
+    card(s, X0, 1.85, 5.9, 3.95, [], fill=ORANGE_TINT)
+    text(
+        s,
+        X0 + 0.2,
+        1.95,
+        5.5,
+        0.4,
+        ["글로 부탁 (지시문)"],
+        size=16,
+        bold=True,
+        color=ORANGE,
+    )
+    asks = [
+        "판독 파이프라인을 운영하는 역할이다",
+        "단계는 정해진 순서대로 돌린다",
+        "길이 · 치수를 직접 계산하지 않는다",
+        "숫자는 도구 결과에 있는 값만 옮긴다",
+        "정답 파일은 읽지 않는다",
+    ]
+    text(
+        s,
+        X0 + 0.3,
+        2.5,
+        5.4,
+        3.2,
+        [{"text": f"“{a}”", "size": 14} for a in asks],
+        after=8,
+    )
+    text(
+        s,
+        X0 + 0.3,
+        5.2,
+        5.4,
+        0.5,
+        ["모델이 대개 지키지만, 지킨다는 보장은 없습니다"],
+        size=12,
+        color=GRAY,
+    )
+    card(s, X0 + 6.23, 1.85, 5.9, 3.95, [], fill=TEAL_TINT)
+    text(
+        s,
+        X0 + 6.43,
+        1.95,
+        5.5,
+        0.4,
+        ["구조로 강제 (코드)"],
+        size=16,
+        bold=True,
+        color=TEAL,
+    )
+    forced = [
+        ("도구 목록", "목록에 없는 일은 못 함"),
+        ("인자 검사", "양식에 안 맞는 값은 실행 전에 거절"),
+        ("폴더 제한", "출력 폴더 밖에는 못 씀"),
+        ("답 양식", "정해진 JSON 밖의 글자는 못 씀"),
+        ("턴 제한", "40번 안에 못 끝내면 멈춤"),
+    ]
+    for i, (k, v) in enumerate(forced):
+        y = 2.5 + i * 0.62
+        chip(s, X0 + 6.43, y, 1.6, 0.5, k, fill=TEAL, color=WHITE, size=12, bold=True)
+        text(s, X0 + 8.18, y, 3.85, 0.5, [v], size=13, anchor=MSO_ANCHOR.MIDDLE)
+    band(
+        s,
+        6.0,
+        "하네스",
+        "모델이 똑똑해지길 기다리지 않고, 틀릴 수 있는 자리를 코드가 줄여 둡니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.7,
+        size=14,
+    )
+
+
+def concept_safety_slide(d):
+    s = concept_slide(
+        d,
+        "부록 · 하네스 구조 5: 실패해도 멈추지 않고, 모두 남긴다",
+        "모델의 실수와 도구의 실패를 '에러' 결과로 모델에게 돌려줍니다. 모델은 그걸 보고 다시 고릅니다",
+        "orchestrate(): 깨진 답(invalid_reply)은 실행하지 않고 에러를 돌려준다. ReaderTools.call 은 예외를 던지지 않고 {'error': …} 를 돌려준다. "
+        "Log 가 command.json(설정 · 도구 목록), trajectory.jsonl(턴마다 한 줄), messages.json(대화 전체, 실패해도 finally 에서), answer.json(최종 보고)을 "
+        "runs/reader/agent/orchestrator/<시각>/ 에 쓴다. scripts/reader/show_trajectory.py 로 읽는다.",
+    )
+    # 반복 고리: 모델 → 진행 → 도구 → 진행 → 모델
+    connect(s, 2.1, 3.25, 2.1, 4.35, color=GRAY, width=2)
+    connect(s, 3.35, 4.8, 5.2, 4.8, color=GRAY, width=2)
+    role_box(
+        s, X0 + 0.25, 1.9, 2.5, 1.05, "모델", "도구를 고름", "backend", fill=ORANGE
+    )
+    role_box(
+        s,
+        X0 + 0.25,
+        4.35,
+        2.5,
+        0.95,
+        "진행",
+        "골라진 도구 실행",
+        "orchestrate()",
+        fill=INK,
+    )
+    role_box(s, 5.2, 4.35, 2.0, 0.95, "도구", "판독 단계", "ReaderTools", fill=TEAL)
+    fails = [
+        ("답이 깨짐", "실행하지 않고 '양식이 아님' 을 돌려줌"),
+        ("도구 실패", "멈추지 않고 '실패: 이유' 를 돌려줌"),
+        ("앞 단계 없음", "'아직 못 함' 을 돌려줌"),
+    ]
+    text(s, 3.6, 1.85, 3.8, 0.4, ["실패하면"], size=15, bold=True, color=ORANGE)
+    for i, (k, v) in enumerate(fails):
+        y = 2.3 + i * 0.62
+        chip(s, 3.6, y, 1.5, 0.5, k, fill=ORANGE_TINT, color=ORANGE, size=11, bold=True)
+        text(s, 5.2, y, 2.4, 0.5, [v], size=11, anchor=MSO_ANCHOR.MIDDLE)
+    card(s, 8.0, 1.85, 4.73, 3.95, [], fill=LIGHT)
+    text(s, 8.2, 1.95, 4.4, 0.4, ["남기는 기록"], size=16, bold=True, color=TEAL)
+    logs = [
+        ("명령", "무엇을 시켰고 어떤 도구를 줬나"),
+        ("턴마다", "모델의 생각, 고른 도구, 걸린 시간"),
+        ("대화 전체", "실패로 끝나도 저장"),
+        ("최종 보고", "모델이 사람에게 한 답"),
+    ]
+    for i, (k, v) in enumerate(logs):
+        y = 2.5 + i * 0.78
+        chip(s, 8.2, y, 1.55, 0.6, k, fill=TEAL, color=WHITE, size=12, bold=True)
+        text(s, 9.9, y, 2.75, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
+    band(
+        s,
+        6.0,
+        "하네스",
+        "기록이 있어야 어느 단계에서 왜 틀렸는지 사람이 찾고 고칠 수 있습니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.7,
         size=14,
     )
 
@@ -4410,14 +4424,11 @@ def main() -> None:
     appendix_section(d)
     testset_slide(d)
     per_drawing_slides(d, s3)
-    code_map_slide(d)
-    code_containers_slide(d)
-    code_backend_slide(d)
-    code_schema_slide(d)
-    code_prompt_slide(d)
-    code_loop_slide(d)
-    code_readertools_slide(d)
-    code_main_slide(d)
+    concept_parts_slide(d)
+    concept_tool_slide(d)
+    concept_adapter_slide(d)
+    concept_rules_slide(d)
+    concept_safety_slide(d)
     commands_slide(d)
     print(d.save(), d.count)
 

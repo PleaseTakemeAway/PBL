@@ -289,3 +289,15 @@ uv run python scripts/reader/score_synthetic.py runs/reader/meeting1030/R3_gener
 사용자 피드백: orchestrator.py 의 클래스들이 하네스 엔지니어링의 기초인데 설명이 없다. 본편에서 코드를 읽을 수는 없으니 부록에 넣는다.
 
 부록 '코드 1~8' (96~103장): 1 부품 지도 (두 파일이 나눠 맡는 일), 2 Call · Turn · Tool (세 공급자의 답을 같은 그릇에 담아 반복 코드가 하나), 3 backend 의 약속 start · next · add_results 와 세 방식 비교표, 4 OpenAISchema (anyOf 양식, finish, invalid_reply, thought), 5 system_prompt (역할 · 순서 · 의존 · 효율 · 금지 · 보고), 6 orchestrate() 와 Log (40턴 제한, 깨진 답 · 도구 에러를 결과로 돌려주기, 기록), 7 ReaderTools (_build, _stage_caller, 모델 고정, 작은 결과, 폴더 제한, call), 8 main · make_backend (명령에서 반복까지). 덱은 104장이다.
+
+8.4 의 첫 판은 클래스 · 메서드 이름과 칸을 장마다 나열해 코드 리뷰처럼 읽혔다. 사용자가 더 추상적으로 설명해야 한다고 해서 '부록 · 하네스 구조 1~5' (96~100장)로 바꿨다. 장마다 개념 하나와 그림 하나를 두고, 코드 이름은 상자 밑의 작은 회색 '코드:' 글자와 발표자 노트에만 남겼다.
+
+| 장 | 개념 | 코드 (노트에만) |
+|---|---|---|
+| 1 다섯 부품 | 모델은 한 부품이고, 지시문 · 진행 · 도구 상자 · 기록이 그것을 둘러싼다. 나눈 이유 | system_prompt, orchestrate, backend, ReaderTools · Tool, Log |
+| 2 도구 상자 | 모델에게 보이는 것(도구 이름 · 설명 · 인자 양식)과 보이지 않는 것(실행, 단계 모델, 폴더, 요약) | Tool, ReaderTools._build · _stage_caller · workspace |
+| 3 모델 연결부 | 모델마다 다른 답 형식을 공통 형식으로 바꿔서 모델을 바꿔 끼운다 | OpenAITools · OpenAISchema · AnthropicTools, Turn · Call |
+| 4 규칙을 거는 두 방법 | 글로 부탁(지시문)과 구조로 강제(도구 목록, 인자 검사, 폴더, 답 양식, 턴 제한) | system_prompt, ReaderTools.call, response_format, max_turns |
+| 5 실패와 기록 | 실패는 에러 결과로 모델에게 돌려주고, 명령 · 턴 · 대화 · 보고를 파일로 남긴다 | invalid_reply, ReaderTools.call, Log |
+
+덱은 101장이다.
