@@ -171,13 +171,17 @@ class StageTests(unittest.TestCase):
                 VLMClient(VLMConfig(model=""), "ocr"),
                 VLMClient(VLMConfig(model=""), "reason"),
             )
-            run_batch(
+            result = run_batch(
                 [dxf], off, Path(tmp) / "out", input_mode="dxf", analyze_only=True
             )
             ws = Workspace(Path(tmp) / "out" / "sheet")
             self.assertEqual(ws.load("title_ocr")["reason"], "no OCR model configured")
-            self.assertEqual(ws.load("document")["reason"], "--analyze-only")
-            self.assertEqual(ws.load("export")["status"], "skipped")
+            self.assertEqual(ws.load("sheet")["status"], "done")
+            # --analyze-only ends at the part class: no flat pattern either
+            for stage in ("document", "unfold_params", "develop", "export"):
+                self.assertEqual(ws.load(stage)["reason"], "--analyze-only", stage)
+            self.assertNotIn("flat_patterns", result["paths"])
+            self.assertFalse((Path(tmp) / "out" / "flat_patterns.json").exists())
 
     def test_rerun_drops_later_stages_and_missing_inputs_are_reported(self):
         with TemporaryDirectory() as tmp:

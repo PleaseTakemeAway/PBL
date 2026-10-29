@@ -105,13 +105,6 @@ def run_drawing(
         "export": lambda: m["export"].run(ws),
     }
     disabled = {}
-    if analyze_only:
-        disabled.update(
-            {
-                s: "--analyze-only"
-                for s in ("document", "reconstruct", "confirm", "export")
-            }
-        )
     if not unfold:
         disabled.update({s: "--no-unfold" for s in ("unfold_params", "develop")})
     if not confirm:
@@ -119,6 +112,10 @@ def run_drawing(
     if not three_d:
         for s in THREE_D:
             disabled.setdefault(s, THREE_D_OFF)
+    if analyze_only:
+        # the run ends at the part class (07 sheet)
+        after_sheet = STAGES[STAGES.index("sheet") + 1 :]
+        disabled.update({s: "--analyze-only" for s in after_sheet})
     plan = STAGES[STAGES.index(first) : STAGES.index(last) + 1]
     records: dict[str, dict] = {}
     for i, stage in enumerate(plan):
@@ -158,7 +155,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument(f"--{role}-base-url")
         parser.add_argument(f"--{role}-provider", choices=["openai", "anthropic"])
     parser.add_argument("--no-vlm", action="store_true")
-    parser.add_argument("--analyze-only", action="store_true")
+    parser.add_argument(
+        "--analyze-only",
+        action="store_true",
+        help="stop at the part class (07 sheet); skip 08-13",
+    )
     parser.add_argument("--no-unfold", action="store_true")
     parser.add_argument("--no-confirm", action="store_true")
     parser.add_argument("--with-3d", action="store_true", help="also run the 3D stages")
