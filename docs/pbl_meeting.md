@@ -170,6 +170,36 @@ uv run python -I /tmp/score_old_labels.py "$PWD" runs/reader/meeting1030/R2_synt
 
 '전 (다시 잼)' 열의 숫자는 옛 정답 기준이라 후와 바로 견줄 수 없다. 특히 콘 · 경판 전개와 콘 치수는 정답 쪽 오류가 섞여 있다. 덱의 단계별 점수 노트에 같은 내용을 적었다.
 
+### 3.2 R4 를 다른 서버에서 돌린다 (인계, 2026-10-30)
+
+사용자가 R4 (지금 main · 새 합성 `data_v3/generated`) 를 다른 서버에서 돌린다. 이 문서는 `pbl-meeting` 브랜치에만 있다. main 을 받은 서버에서는 `git fetch origin && git show origin/pbl-meeting:docs/pbl_meeting.md` 로 읽는다. 덱의 '후' 숫자는 지금 RUN3 (`runs/reader/company_synthetic_20261028_042351`, 10-28 04:23) 이다. 그 뒤에 들어간 현업자 기준 식(2807e44 · 7005fa6)과 경판 직선부(f111ea8)가 빠져 있어서, R4 가 나오면 '후' 를 R4 로 바꾼다. R1 · R3 은 하지 않기로 했다 (2×2 는 부록에 R2 와 R4 만).
+
+**그 서버에서 할 일.**
+
+1. 레포를 main 으로 받는다. 2026-10-30 의 main 은 60e0d26 이다. 15b5ef4 뒤의 커밋(577cc34 `--analyze-only` 를 07 에서 멈춤 등)은 기본 실행의 출력을 바꾸지 않는다 (커밋 메시지). 돌린 커밋 해시를 적어 둔다.
+2. `data_v3/generated` 가 이 서버와 같은지 확인한다: `PYTHONPATH=. uv run python scripts/check_data.py` ([data/transfer.md](data/transfer.md)). 없으면 `PYTHONPATH=. uv run python scripts/build_synthetic.py` 로 만들고 같은 검사를 한다. 정답이 바뀌면 점수를 비교할 수 없다.
+3. 서버를 띄우고 돌리고 채점하고 그림을 그린다. 레포 루트에서:
+
+```zsh
+./experiments/serve.sh --vllm-bin <vllm>          # GPU 배치가 다르면 --ocr-gpu, --reason-gpu (동료 서버: --ocr-gpu 4 --reason-gpu 5)
+# 다른 셸에서
+experiments/batch_parallel.sh data_v3/generated runs/reader/meeting1030/R4_generated_main 3
+uv run python scripts/reader/score_synthetic.py runs/reader/meeting1030/R4_generated_main
+for w in runs/reader/meeting1030/R4_generated_main/shard*/*/; do uv run python scripts/reader/show_stages.py "$w" >/dev/null; done
+```
+
+4. 서버, GPU, 커밋, 시작 · 끝 시각, `score.md` 의 표를 이 절 아래에 적는다. 3.1절(R2)과 같은 형식으로, 2026-10-28 RUN3 (단계 30, 표제란 30, 뷰 16, 형상 30, 치수 20, 전개 18, 전부 7) 과 무엇이 달라졌는지와 그 이유를 쓴다. 특히 경판 · 콘 전개(현업자 기준 식)와 경판 치수(직선부)를 본다.
+
+**이 서버(`mlic`)로 가져올 것.** 실행 폴더 전체 `runs/reader/meeting1030/R4_generated_main/` (shard 폴더, `score.json`, `score.md`). 덱이 읽는 것은 `score.json`, 도면마다 `stages/*.json`, `analysis/sheet.png` · `title_block.png`, `figures/05_views.png` · `10_develop.png` 다. git 에 넣지 않는다 (runs/ 는 git 제외).
+
+**덱 바꾸기.** `presentation/build_meeting.py` 의 `RUN3` 을 `RUNS / "meeting1030" / "R4_generated_main"` 으로 바꾸고 다시 만든다. 손으로 적은 값이 있어 확인할 곳:
+
+- 하네스 덱 '채점' (`score_def_slide`): 정답 칸의 `SYN-00023 · 1/2 · SPHC · 4`, 안지름 141.8 · 71.8, `R 321.02 · 167.0, 81.8°` 는 손으로 적었다. 새 실행에서 cone_0023 이 모두 맞는지 (`score.md`) 본다. 아니면 예시 도면(`EXAMPLE`)을 바꾼다.
+- `SHOWCASE` (형상마다 전 → 후 도면): 후에서 모두 맞은 도면을 골랐다. 새 실행의 `score.md` 도면별 표로 다시 고른다.
+- 남은 실패 (`remaining_slides`): #11 · #14 · #15 · #17 의 예시 도면과 문장이 새 실행에서도 맞는지 본다. 경판 #15 는 현업자 기준 식으로 바뀌었을 수 있다.
+- 다시 묻기 슬라이드 (`guard_retry_slide`) 노트의 잘림 건수 (10-28 은 4건 잘림, 모두 다시 물어 성공) 는 RUN3 의 단계 파일 trace 에서 셌다. 새 실행에서 다시 센다 (4.1절 표와 같은 방법).
+- `RUN3` 이름과 머리말 docstring, [presentation.md](presentation.md) 8절의 '후' 행, 이 문서 8절.
+
 ## 4. 추가 실험
 
 ### 4.1 JSON 답 잘림

@@ -2369,23 +2369,28 @@ def score_def_slide(d):
         0,
         "채점: 무엇을 맞았다고 하나",
         "단계마다 정답과 비교합니다. 예시 cone_0023 은 모두 맞았습니다",
-        "scripts/reader/score_synthetic.py, 기준은 docs/v3_upgrade.md 2절. reader 는 안지름을 쓰므로 정답 바깥지름에서 2t/cos α 를 빼 비교한다. 값은 RUN3 의 04 · 06 · 10 단계 파일.",
+        "scripts/reader/score_synthetic.py, 기준은 docs/v3_upgrade.md 2절. 값은 RUN3 의 04 · 06 · 09 · 10 단계 파일. "
+        "표제란: 도면의 재질 칸은 'SPHC, 4t' 이고 reader 는 이를 그대로 두고 두께를 따로 숫자로 뽑는다. 채점은 재질을 쉼표 앞만, 두께는 숫자로 비교한다. "
+        "치수: 도면과 정답은 바깥지름, 전개 공식은 안지름을 쓴다. 콘은 벽이 기울어 끝면에서 가로로 잰 두께가 t / cos α 이다 "
+        "(α = atan((150 − 80) / 2 / 150) = 13.13°, 4 / cos α = 4.107). 150 − 2 × 4.107 = 141.785, reader 도 141.785. 허용 오차는 0.5 mm 또는 0.5% 중 큰 쪽. "
+        "이 안지름 두 값은 AI 가 비워 코드가 외형 치수로 채웠다 (09 sources: overall_dimensions). 전개: 정답 label.json 의 flat_pattern 과 같은 값이다.",
     )
+    material = str(tb.get("material") or "").split(",")[0].strip()
     rows = [
         ["항목", "무엇을 보나", "정답", "reader"],
         ["단계", "10단계가 오류 없이 끝남", "", "모두 done"],
         [
             "표제란",
-            "도면 번호 · 축척 · 재질 · 두께",
+            "번호 · 축척 · 재질 · 두께",
             "SYN-00023 · 1/2 · SPHC · 4",
-            f"{tb.get('drawing_no')} · {tb.get('scale_text')} · {tb.get('material')}",
+            f"{tb.get('drawing_no')} · {tb.get('scale_text')} · {material} · {tb.get('thickness_mm', 0):g}",
         ],
         ["뷰", "뷰 이름", "front · top · right", " · ".join(views)],
         ["형상", "5가지 중 무엇", "cone", rec.get("part_class", "")],
         [
             "치수",
-            "전개에 넣는 값",
-            "바깥지름 150 · 80, 높이 150",
+            "전개에 넣는 값 (안지름)",
+            "바깥지름 150 · 80 → 안지름 141.8 · 71.8, 높이 150",
             f"안지름 {params.get('large_inner_dia', 0):.1f} · {params.get('small_inner_dia', 0):.1f}, 높이 {params.get('cone_height', 0):.0f}",
         ],
         [
@@ -2396,7 +2401,19 @@ def score_def_slide(d):
         ],
         ["전부", "위 여섯이 모두 맞음", "", "맞음"],
     ]
-    table(s, X0, 1.85, CW, 4.6, rows, [1.3, 3.6, 3.6, 3.633], head_style)
+    table(s, X0, 1.85, CW, 4.3, rows, [1.2, 2.75, 4.95, 3.233], head_style)
+    text(
+        s,
+        X0,
+        6.3,
+        CW,
+        0.5,
+        [
+            "도면은 바깥지름, 전개 공식은 안지름을 씁니다. 정답 바깥지름에서 벽 두께(콘은 가로로 t / cos α = 4.1)를 두 번 빼서 비교합니다"
+        ],
+        size=13,
+        color=GRAY,
+    )
 
 
 # ---------------------------------------------------------------------- 3. 지난주
