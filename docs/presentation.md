@@ -12,7 +12,7 @@
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/build_synthetic_changes_company.py` | 회사 검토용 합성 데이터 변경 설명 (12장) → `synthetic_changes_company.pptx`. [data/synthetic_changes_company.md](data/synthetic_changes_company.md)와 같은 범위. 콘·경판 변경 전후 모식도, 굽힘판·제도 정비, 직선부 측정과 미해결 문제, 검증 범위·회사 확인 사항. 과거 모델 점수를 최신 변경의 성능으로 인용하지 않는다 |
-| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30, 90장) → `meeting.pptx`. 처음 오는 청중을 위해 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계 → 지난주까지의 결과 · 성공 · 실패 · 문제 → 하네스 장치 → 합성 도면 고도화 전 → 후 → 추가 실험(진행 중) → v4 순서. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
+| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30, 96장) → `meeting.pptx`. 처음 오는 청중을 위해 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계 → 지난주까지의 결과 · 성공 · 실패 · 문제 → 하네스 장치 → 합성 도면 고도화 전 → 후 → 추가 실험(진행 중) → v4 순서. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -141,6 +141,7 @@ PYTHONPATH=. uv run python presentation/render.py presentation/synthetic_changes
 
 - 용어 파트의 도면 그림은 생성기가 그린 `data_v3/generated/<도면>/<도면>.png` 이다. 지난주 파트의 성공 사례 cylinder_0014 와 실패 사례 cylinder_0013 은 RUN1 의 그림과 `prediction.json` 의 `vlm_trace` (cylinder_0013 은 판단 AI 가 `part_class: cylinder` 로 시작했다가 이유를 반복하고 공백을 되풀이해 57.6초 만에 잘렸다).
 - 용어 파트의 'AI 를 부르는 법' 5장은 `reader/vlm.py` (VLMClient.ask, _call_openai), `reader/vlm_output.py` (output_instructions), `reader/knowledge.py` (skill_system_prompt, STAGE_TOPICS), `dxf_adapter.label_with_vlm` 의 지시문을 줄여 옮겼다. 영어 원문은 줄였고 뜻은 바꾸지 않았다.
+- 하네스 파트의 tool calling 6장은 `reader/tools.py` (Tool, _build, _stage_caller, call), `reader/orchestrator.py` (orchestrate 반복, OpenAITools · OpenAISchema · AnthropicTools, schema 의 anyOf) 를 옮겼다. 시연 표는 빌드할 때 `runs/reader/agent/orchestrator/20261023-021136/trajectory.jsonl` 을 읽고, 도구 설명 예시는 같은 폴더의 `command.json` 에서 run_view_labels 를 줄였다.
 - 판독 과정 파트는 단계마다 입력 → 처리 → 출력 세 칸이다. 칸의 값은 cone_0023 의 단계 파일(01 entity_counts, 02 title_block, 03 text, 04 fields · title_block, 06 decision.raw, 09 record, 10 blank)에서 빌드할 때 읽는다.
 - 판독 과정 파트의 예시 도면은 cone_0023 (③ 에서 모든 항목을 맞힌 콘)이다. 02 정규식이 도면 번호 SYN-00023 을 읽었고, 04 의 모델 답은 잘린 OCR 그림을 보고 SYN-000 이라 했지만 정규식 값이 남았다 (`02_title_regex.json`, `04_title_fields.json`).
 - 전 → 후 의 형상별 도면(`SHOWCASE`)은 ③ 에서 모두 맞힌 도면을 우선 골랐다. 원통과 경판은 그런 도면이 없어 뷰만 틀린 도면이다.

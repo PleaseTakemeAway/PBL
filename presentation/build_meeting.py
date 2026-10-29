@@ -684,74 +684,6 @@ def stage_file_slide(d):
         text(s, X0 + 9.25, y, 2.9, 0.6, [v], size=14, anchor=MSO_ANCHOR.MIDDLE)
 
 
-def guard_schema_slide(d):
-    s = slide(
-        d,
-        3,
-        "하네스 장치 1: 답 양식",
-        "서버가 답 양식(JSON)에 맞는 글자만 쓰게 하고, 받은 답을 코드가 한 번 더 검사합니다",
-        "structured outputs (vLLM, xgrammar). 검사는 reader/vlm_output.py. 칸 하나의 오류로도 응답 전체를 거부한다.",
-    )
-    steps = [
-        ("질문 + 양식", "형상: 6종 중 하나\n점수: 숫자", LIGHT),
-        ("서버", "양식 밖 글자는\n못 씀", ORANGE_TINT),
-        ("검사 (코드)", "값의 범위 · 종류", TEAL_TINT),
-    ]
-    for i, (head, body, fill) in enumerate(steps):
-        x = X0 + i * 3.35
-        card(
-            s,
-            x,
-            2.0,
-            2.9,
-            2.0,
-            [{"text": head, "bold": True, "size": 18}, {"text": body, "size": 15}],
-            fill=fill,
-            align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE,
-        )
-        arrow(s, x + 2.97, 2.85, w=0.33, h=0.3)
-    chip(
-        s,
-        X0 + 10.05,
-        2.0,
-        2.08,
-        0.9,
-        "통과 → 다음 단계",
-        fill=TEAL,
-        color=WHITE,
-        size=14,
-        bold=True,
-    )
-    chip(
-        s,
-        X0 + 10.05,
-        3.1,
-        2.08,
-        0.9,
-        "거부 → 실패 기록",
-        fill=GRAY,
-        color=WHITE,
-        size=14,
-        bold=True,
-    )
-    band(
-        s,
-        4.6,
-        "효과",
-        "AI 가 산문을 쓰거나 없는 형상을 지어내지 못합니다. 실패해도 어디서 왜인지 남습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-    )
-    band(
-        s,
-        5.65,
-        "한계",
-        "양식은 지키는데 답이 길어 중간에 잘리면 JSON 이 깨집니다 → 장치 2",
-        h=0.85,
-    )
-
-
 def guard_retry_slide(d, pre, s3):
     s = slide(
         d,
@@ -887,81 +819,6 @@ def guard_trace_slide(d):
         y = 4.3 + i * 0.6
         chip(s, X0, y, 2.6, 0.48, k, fill=TEAL_TINT, color=TEAL, size=14, bold=True)
         text(s, X0 + 2.8, y, 9.3, 0.48, [v], size=15, anchor=MSO_ANCHOR.MIDDLE)
-
-
-def orchestrator_slide(d):
-    s = slide(
-        d,
-        3,
-        "같은 단계를 AI 가 골라 부르면",
-        "단계를 도구로 내놓으면, 로컬 AI 가 자연어 명령을 받아 필요한 단계를 골라 부릅니다 (시제품)",
-        "지난 발표와 겹친다. docs/reader/orchestrator.md. 도구 17개 = 판독 13단계 + 4 (목록, 상태, 보기, 묶어 돌리기). 2026-10-23 cone_0019 시연: AI 판단 3번, 133초 (runs/reader/agent/orchestrator/20261023-021136). 3D 를 끈 뒤로 3D 단계 도구는 빠졌다.",
-    )
-    chip(
-        s,
-        X0,
-        2.3,
-        2.6,
-        1.2,
-        '"cone_0019 를\n전개도까지"',
-        fill=LIGHT,
-        color=INK,
-        size=15,
-    )
-    arrow(s, X0 + 2.7, 2.75, w=0.4, h=0.3)
-    chip(
-        s,
-        X0 + 3.2,
-        2.1,
-        2.2,
-        1.6,
-        "로컬 AI\n(Qwen)",
-        fill=ORANGE,
-        color=WHITE,
-        size=18,
-        bold=True,
-    )
-    tools = [
-        "list_drawings",
-        "stage_status",
-        "run_read",
-        "run_view_labels",
-        "run_unfold_params",
-        "show_stage",
-        "…",
-    ]
-    for i, t in enumerate(tools):
-        chip(
-            s,
-            X0 + 6.0 + (i % 2) * 3.1,
-            1.95 + (i // 2) * 0.55,
-            2.95,
-            0.45,
-            t,
-            fill=TEAL_TINT,
-            color=TEAL,
-            size=12,
-        )
-    arrow(s, X0 + 5.5, 2.75, w=0.4, h=0.3)
-    band(
-        s,
-        4.4,
-        "지금",
-        "기본 실행은 순서가 정해진 10단계 (기준선). AI 가 고르는 방식은 같은 단계 위에서 비교할 다음 단계입니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=1.0,
-    )
-    band(
-        s,
-        5.6,
-        "시연",
-        "cone_0019, AI 판단 3번, 133초 (2026-10-23)",
-        fill=LIGHT,
-        color=GRAY,
-        h=0.75,
-        size=16,
-    )
 
 
 # ---------------------------------------------------------------------- D. 전 → 후
@@ -2775,9 +2632,9 @@ def devices_section(d):
     section(
         d,
         "4",
-        "하네스 장치",
-        "AI 를 믿지 않고 받쳐 주는 방법",
-        "판독 과정에서 본 단계들을 묶는 규칙과 장치.",
+        "하네스",
+        "PBL 의 핵심 주제: AI 를 믿지 않고 받쳐 주는 장치",
+        "JSON 약속, 양식 강제, 다시 묻기, 기록, 그리고 AI 가 도구를 골라 부르는 tool calling.",
     )
 
 
@@ -3384,9 +3241,7 @@ def ai_contract_slide(d):
         6.3,
         CW,
         0.4,
-        [
-            "AI 가 '아마 콘 같습니다' 같은 문장으로 답하면 코드가 쓸 수 없습니다. 칸이 정해져 있어야 다음 단계가 읽습니다"
-        ],
+        ["왜 JSON 인지, 서버가 어떻게 양식을 강제하는지는 4. 하네스 파트에서 자세히"],
         size=13,
         color=GRAY,
     )
@@ -3442,6 +3297,605 @@ def ai_client_slide(d):
     )
 
 
+# ---------------------------------------------------------------------- 4. 하네스: JSON 과 tool calling
+DEMO = RUNS / "agent" / "orchestrator" / "20261023-021136"
+
+
+def demo_turns():
+    """The cone_0019 orchestrator run: model turns and tool results, in order."""
+    path = DEMO / "trajectory.jsonl"
+    if not path.is_file():
+        return []
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def harness_eng_slide(d):
+    s = slide(
+        d,
+        3,
+        "하네스 엔지니어링: PBL 의 핵심 주제",
+        "모델을 바꾸거나 학습시키는 대신, 모델을 둘러싼 장치를 설계해서 결과를 믿을 수 있게 만듭니다",
+        "docs/harness_engineering.md. 최종 목표는 orchestration 과 각 작업을 모두 로컬 LLM 이 맡는 하네스다.",
+    )
+    rows = [
+        ("단계로 나누기", "AI 에게는 좁은 판단 하나씩만. 계산은 코드", "판독 10단계"),
+        ("JSON 약속", "AI 의 답을 정해진 칸으로 받고, 양식 밖은 못 쓰게", "다음 장"),
+        ("검사 · 다시 묻기", "칸 · 범위 검사, 잘리면 짧게 다시", "장치 2"),
+        ("기록", "무엇을 보여 주고 뭐라 답했는지 파일로", "장치 3"),
+        ("도구 호출 반복", "AI 가 단계를 골라 부르고, 코드가 실행", "tool calling"),
+    ]
+    for i, (head, body, where) in enumerate(rows):
+        y = 1.9 + i * 0.85
+        chip(s, X0, y, 2.6, 0.68, head, fill=TEAL, color=WHITE, size=16, bold=True)
+        text(s, X0 + 2.85, y, 7.0, 0.68, [body], size=16, anchor=MSO_ANCHOR.MIDDLE)
+        text(
+            s,
+            X0 + 9.9,
+            y,
+            2.2,
+            0.68,
+            [where],
+            size=14,
+            color=GRAY,
+            anchor=MSO_ANCHOR.MIDDLE,
+        )
+    band(
+        s,
+        6.2,
+        "가설",
+        "작은 로컬 AI 라도 하네스가 받쳐 주면 쓸 만하다. 이 덱의 모든 장치가 이 가설을 위한 것",
+        h=0.65,
+        size=15,
+    )
+
+
+def json_contract_slide(d):
+    s = slide(
+        d,
+        3,
+        "JSON: AI 와 코드 사이의 약속",
+        "AI 는 글을 씁니다. 코드는 정해진 칸만 읽습니다. 둘을 잇는 것이 JSON 입니다",
+        "JSON 은 '이름: 값' 칸으로 된 글자 형식이다. reader 의 모든 AI 답, 단계 사이 파일(stages/*.json), 도구 호출이 JSON 이다.",
+    )
+    card(
+        s,
+        X0,
+        1.9,
+        5.6,
+        1.6,
+        [
+            {"text": "자유 문장으로 답하면", "bold": True, "size": 15, "color": GRAY},
+            {"text": '"아마 콘 같습니다. 큰 지름은 150 정도로 보이고 …"', "size": 15},
+        ],
+        fill=LIGHT,
+        after=6,
+    )
+    text(
+        s,
+        X0,
+        3.55,
+        5.6,
+        0.5,
+        ["→ 코드는 어디가 형상이고 어디가 숫자인지 모릅니다"],
+        size=14,
+        color=GRAY,
+    )
+    code(
+        s,
+        X0 + 6.5,
+        1.9,
+        5.63,
+        1.6,
+        [
+            '{"part_class": "cone",',
+            ' "part_class_scores": {"cone": 10, …},',
+            ' "views": [{"id": 1, "type": "front"}]}',
+        ],
+        size=13,
+    )
+    text(
+        s,
+        X0 + 6.5,
+        3.55,
+        5.63,
+        0.5,
+        ['→ 코드가 reply["part_class"] 로 바로 꺼냅니다'],
+        size=14,
+        color=TEAL,
+        bold=True,
+    )
+    rows = [
+        ("AI 의 답", "06 형상, 09 치수, 04 표제란: 칸이 정해진 JSON"),
+        ("단계 사이", "01_read.json → 02 → … 다음 단계는 앞 JSON 만 읽음"),
+        ("도구 호출", 'AI 가 {"tool": …, "arguments": …} 로 할 일을 고름'),
+    ]
+    for i, (k, v) in enumerate(rows):
+        y = 4.25 + i * 0.7
+        chip(s, X0, y, 2.2, 0.56, k, fill=ORANGE, color=WHITE, size=14, bold=True)
+        text(s, X0 + 2.4, y, 9.7, 0.56, [v], size=15, anchor=MSO_ANCHOR.MIDDLE)
+    text(
+        s,
+        X0,
+        6.4,
+        CW,
+        0.4,
+        [
+            "칸이 정해져 있으니 검사할 수 있고(장치 2), 기록할 수 있고(장치 3), 서버가 양식을 강제할 수 있습니다(다음 장)"
+        ],
+        size=13,
+        color=GRAY,
+    )
+
+
+def decoding_slide(d):
+    s = slide(
+        d,
+        3,
+        "하네스 장치 1: 양식 강제 (제약 디코딩)",
+        "AI 는 다음 글자를 하나씩 골라 씁니다. 서버가 그때마다 양식에 맞지 않는 후보를 지웁니다",
+        "vLLM structured outputs (xgrammar), 요청의 response_format json_schema strict. 양식은 vlm_output.response_schema. 받은 답은 코드가 한 번 더 검사한다 (_validate). 칸 하나라도 틀리면 응답 전체를 버린다.",
+    )
+    code(s, X0, 1.9, 5.2, 0.7, ['{"part_class": "▮'], size=16)
+    text(
+        s,
+        X0,
+        2.65,
+        5.2,
+        0.4,
+        ["지금까지 쓴 글자. 다음에 올 글자는?"],
+        size=13,
+        color=GRAY,
+    )
+    cands = [
+        ("cone", True),
+        ("flat", True),
+        ("cylinder", True),
+        ("원뿔", False),
+        ("probably", False),
+        ("press_formed", True),
+    ]
+    for i, (c, ok) in enumerate(cands):
+        x = X0 + (i % 3) * 1.75
+        y = 3.2 + (i // 3) * 0.75
+        chip(
+            s,
+            x,
+            y,
+            1.6,
+            0.6,
+            c,
+            fill=TEAL if ok else LIGHT,
+            color=WHITE if ok else GRAY,
+            size=14,
+            bold=ok,
+        )
+    text(
+        s,
+        X0,
+        4.75,
+        5.2,
+        0.6,
+        ["청록 = 허용 (형상 6가지 이름만), 회색 = 서버가 지움"],
+        size=13,
+        color=GRAY,
+    )
+    steps = [
+        ("질문 + 양식", "형상: 6가지 중 하나\n점수: 숫자"),
+        ("서버", "매 글자 양식 밖 후보 삭제"),
+        ("코드 검사", "칸 · 종류 · 범위"),
+    ]
+    for i, (k, v) in enumerate(steps):
+        y = 1.9 + i * 1.2
+        card(
+            s,
+            X0 + 6.0,
+            y,
+            3.4,
+            1.0,
+            [{"text": k, "bold": True, "size": 15}, {"text": v, "size": 12}],
+            fill=ORANGE_TINT if i == 1 else TEAL_TINT,
+            align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE,
+            after=2,
+        )
+    chip(
+        s,
+        X0 + 9.75,
+        1.9,
+        2.38,
+        1.0,
+        "통과 → 다음 단계",
+        fill=TEAL,
+        color=WHITE,
+        size=13,
+        bold=True,
+    )
+    chip(
+        s,
+        X0 + 9.75,
+        3.1,
+        2.38,
+        1.0,
+        "거부 → 실패 기록",
+        fill=GRAY,
+        color=WHITE,
+        size=13,
+        bold=True,
+    )
+    band(
+        s,
+        5.55,
+        "효과",
+        "없는 형상 이름, 산문, 표를 쓸 수 없습니다. 실패해도 어디서 왜인지 남습니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.6,
+        size=15,
+    )
+    band(
+        s,
+        6.25,
+        "한계",
+        "양식은 지키는데 답이 길어 중간에 잘리면 JSON 이 깨집니다 → 장치 2",
+        h=0.6,
+        size=15,
+    )
+
+
+def tool_idea_slide(d):
+    s = slide(
+        d,
+        3,
+        "tool calling: AI 는 함수를 실행하지 않습니다",
+        "Qwen 은 '어느 도구를, 어떤 값으로' 부를지 JSON 으로 적기만 합니다. 실행은 Python 코드가 합니다",
+        "reader/orchestrator.py (반복), reader/tools.py (도구와 실행). 개념은 docs/reader/orchestrator.md 2.1절. 그림의 JSON 은 cone_0019 시연의 실제 두 번째 답.",
+    )
+    chip(
+        s,
+        X0,
+        2.0,
+        2.3,
+        1.1,
+        '사용자\n"cone_0019 를\n전개도까지"',
+        fill=LIGHT,
+        color=INK,
+        size=13,
+    )
+    arrow(s, X0 + 2.4, 2.4, w=0.35, h=0.3)
+    chip(
+        s,
+        X0 + 2.85,
+        1.9,
+        2.0,
+        1.3,
+        "Qwen\n(고르기만)",
+        fill=ORANGE,
+        color=WHITE,
+        size=16,
+        bold=True,
+    )
+    arrow(s, X0 + 4.95, 2.4, w=0.35, h=0.3)
+    code(
+        s,
+        X0 + 5.4,
+        1.85,
+        6.73,
+        1.45,
+        [
+            '{"thought": "아직 실행된 단계가 없으므로 …",',
+            ' "tool": "run_stages",',
+            ' "arguments": {"work": "runs/reader/agent/cone_0019",',
+            '               "first": "read", "last": "develop"}}',
+        ],
+        size=12,
+    )
+    arrow(s, X0 + 8.6, 3.4, w=0.3, h=0.4, kind=MSO_SHAPE.DOWN_ARROW)
+    chip(
+        s,
+        X0 + 5.4,
+        3.9,
+        6.73,
+        1.0,
+        'Python: ReaderTools.call("run_stages", {...})\n→ 실제로 stages/read.py … develop.py 실행 (92초)',
+        fill=TEAL,
+        color=WHITE,
+        size=14,
+        bold=True,
+    )
+    arrow(s, X0 + 4.95, 4.2, w=0.35, h=0.3, kind=MSO_SHAPE.LEFT_ARROW)
+    card(
+        s,
+        X0 + 2.85,
+        3.85,
+        2.0,
+        1.1,
+        [
+            {"text": "결과 JSON 을", "size": 13},
+            {"text": "대화에 붙여", "size": 13},
+            {"text": "다시 묻기", "size": 13, "bold": True},
+        ],
+        fill=ORANGE_TINT,
+        align=PP_ALIGN.CENTER,
+        anchor=MSO_ANCHOR.MIDDLE,
+        after=0,
+    )
+    arrow(s, X0 + 3.7, 3.3, w=0.3, h=0.45, kind=MSO_SHAPE.UP_ARROW)
+    band(
+        s,
+        5.4,
+        "핵심",
+        "모델은 이름과 값을 고르고, 실행 · 검사 · 기록은 코드가 합니다. 이걸 끝날 때까지 반복합니다",
+        h=0.75,
+        size=16,
+    )
+    text(
+        s,
+        X0,
+        6.3,
+        CW,
+        0.4,
+        [
+            "ChatGPT 의 '도구 사용' 도 같은 원리입니다. 모델은 글만 쓰고, 글을 읽어 실행하는 프로그램이 따로 있습니다"
+        ],
+        size=13,
+        color=GRAY,
+    )
+
+
+def tool_list_slide(d):
+    s = slide(
+        d,
+        3,
+        "도구 목록 (tools.py)",
+        "도구 하나 = 이름 + 설명 + 인자 양식 + 실제로 부를 Python 함수. 모델에게는 앞의 셋만 보입니다",
+        "tools.py _build(): run_<단계> 는 STAGES 를 돌며 자동으로 만들고 설명은 단계 스크립트의 docstring 에서 가져온다. _stage_caller() 가 stages/<단계>.py 의 run 을 부르는 클로저라, 도구로 부르든 main.py --batch 로 돌리든 같은 파일이 생긴다. "
+        "call(): 이름으로 찾고 인자를 검사한 뒤 실행. 에러는 예외 대신 {'error': ...} 로 돌려준다. 도구 17개는 2026-10-23 기준 (3D 를 끈 뒤 3D 단계 도구는 빠졌다).",
+    )
+    code(
+        s,
+        X0,
+        1.85,
+        6.4,
+        3.9,
+        [
+            '{"name": "run_view_labels",',
+            ' "description": "Stage 06 view_labels: name every',
+            "   view cluster. Model: reasoning (with the",
+            "   part_class skills). Reads stages/01_read.json,",
+            '   stages/04_title_fields.json, stages/05_views.json.",',
+            ' "parameters": {',
+            '   "properties": {',
+            '     "work": {"type": "string"},',
+            '     "projection_default":',
+            '        {"enum": ["first", "third"]}},',
+            '   "required": ["work"]}}',
+        ],
+        size=11,
+    )
+    text(
+        s,
+        X0,
+        5.8,
+        6.4,
+        0.4,
+        ["모델에게 보이는 도구 설명 (실제 기록 command.json)"],
+        size=12,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
+    groups = [
+        ("보기", "list_drawings · stage_status · show_stage"),
+        ("단계 실행", "run_read … run_develop (단계마다 하나)"),
+        ("묶어 실행", "run_stages (처음 ~ 끝 단계)"),
+    ]
+    for i, (k, v) in enumerate(groups):
+        y = 1.9 + i * 0.85
+        chip(s, X0 + 6.7, y, 1.6, 0.68, k, fill=TEAL, color=WHITE, size=14, bold=True)
+        text(s, X0 + 8.45, y, 3.68, 0.68, [v], size=13, anchor=MSO_ANCHOR.MIDDLE)
+    card(
+        s,
+        X0 + 6.7,
+        4.55,
+        5.43,
+        1.6,
+        [
+            {
+                "text": "실행 담당 call(이름, 인자)",
+                "bold": True,
+                "size": 14,
+                "color": TEAL,
+            },
+            {"text": '없는 도구 · 틀린 인자 → {"error": …} 로 돌려줌', "size": 13},
+            {"text": "모델이 에러를 읽고 다른 방법을 고름", "size": 13},
+        ],
+        fill=TEAL_TINT,
+        after=3,
+    )
+
+
+def tool_loop_slide(d):
+    s = slide(
+        d,
+        3,
+        "대화 반복 (orchestrator.py)",
+        "묻고 → 실행하고 → 결과를 붙여 다시 묻기. 모델이 도구 없이 답하면 그게 최종 보고입니다",
+        "orchestrator.py orchestrate(). 매 턴과 도구 결과가 trajectory.jsonl, 전체 대화가 messages.json 에 남는다 (scripts/reader/show_trajectory.py 로 본다). 최대 40턴.",
+    )
+    code(
+        s,
+        X0,
+        1.9,
+        6.6,
+        3.0,
+        [
+            "for turn in range(1, 41):",
+            "  reply = backend.next()       # 1. 모델에게 묻기",
+            "  if not reply.calls:          # 도구 없이 답하면",
+            "    return reply.text          #    최종 보고",
+            "  for call in reply.calls:",
+            "    result = tools.call(call.name, call.arguments)",
+            "                               # 2. Python 실행",
+            "  backend.add_results(results) # 3. 결과 붙이기",
+        ],
+        size=12,
+    )
+    cx, cy = X0 + 9.4, 3.4
+    nodes = [
+        (cx, cy - 1.45, "1. 모델에게 묻기", ORANGE),
+        (cx + 1.6, cy, "2. 도구 실행", TEAL),
+        (cx, cy + 1.45, "3. 결과 붙이기", TEAL),
+        (cx - 1.6, cy, "끝? → 보고", GRAY),
+    ]
+    for x, y, label, c in nodes:
+        chip(
+            s,
+            x - 0.95,
+            y - 0.35,
+            1.9,
+            0.7,
+            label,
+            fill=c,
+            color=WHITE,
+            size=13,
+            bold=True,
+        )
+    for (x1, y1), (x2, y2) in [
+        ((cx + 0.6, cy - 1.1), (cx + 1.4, cy - 0.35)),
+        ((cx + 1.4, cy + 0.35), (cx + 0.6, cy + 1.1)),
+        ((cx, cy + 1.05), (cx, cy - 1.05)),
+        ((cx - 0.6, cy - 1.1), (cx - 1.4, cy - 0.35)),
+    ]:
+        connect(s, x1, y1, x2, y2, color=PALE, width=2.5)
+    band(
+        s,
+        5.4,
+        "하네스",
+        "반복 횟수 제한, 에러를 모델에게 돌려주기, 모든 턴 기록. 모델이 길을 잃어도 프로그램은 멈추지 않습니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.85,
+        size=15,
+    )
+
+
+def tool_modes_slide(d):
+    s = slide(
+        d,
+        3,
+        "도구를 알려주는 세 가지 방법",
+        "같은 반복 위에서, 모델에게 도구를 알려주고 답을 꺼내는 방법만 다릅니다",
+        "orchestrator.py: OpenAITools, OpenAISchema, AnthropicTools. 시연(cone_0019)은 schema 모드. 2026-10-23 추론 서버는 --tool-call-parser 없이 떠 있어 tools 방식 요청이 400 이었다 (docs/presentation.md 6절).",
+    )
+    rows = [
+        ["방식", "도구를 알려주는 법", "모델의 선택을 꺼내는 법"],
+        [
+            "tools (OpenAI 표준)",
+            "요청의 tools 칸. vLLM 이 Qwen 이 학습한 형식으로 넣어 줌",
+            "vLLM 의 tool parser 가 꺼낸 tool_calls",
+        ],
+        [
+            "schema (시연에 씀)",
+            "도구 설명을 시스템 지시에 글로",
+            "답을 {thought, tool, arguments} JSON 으로 강제, 코드가 읽음",
+        ],
+        ["Claude", "Claude API 의 tools", "답의 tool_use 블록"],
+    ]
+    table(s, X0, 1.9, CW, 2.6, rows, [2.6, 4.8, 4.733], head_style)
+    code(
+        s,
+        X0,
+        4.75,
+        7.3,
+        1.85,
+        [
+            '"anyOf": [',
+            '  {"tool": {"const": "run_read"},    "arguments": {work, drawing}},',
+            '  {"tool": {"const": "show_stage"},  "arguments": {work, stage}},',
+            '  … 도구마다 한 줄,  {"tool": {"const": "finish"}, …}]',
+        ],
+        size=11,
+    )
+    text(
+        s,
+        X0 + 7.6,
+        4.75,
+        4.53,
+        1.85,
+        [
+            "schema 모드는 '이 도구면 이 인자' 를 모두 나열합니다. 그래서 없는 도구 이름이나 맞지 않는 인자는 처음부터 쓸 수 없습니다 (장치 1 의 제약 디코딩)"
+        ],
+        size=14,
+        anchor=MSO_ANCHOR.MIDDLE,
+    )
+
+
+def tool_demo_slide(d):
+    turns = [t for t in demo_turns() if "text" in t]
+    results = [t for t in demo_turns() if "tool" in t]
+    s = slide(
+        d,
+        3,
+        "시연: cone_0019 실제 대화",
+        '"cone_0019 도면을 전개도까지 판독하고 결과를 알려줘" → AI 판단 3번, 133초',
+        f"{DEMO.relative_to(ROOT)} 의 trajectory.jsonl (2026-10-23, schema 모드, Qwen3.6-27B, 옛 합성 도면). 보고의 작은 지름 92.0 은 모델이 읽은 값이고 정답은 100 이다. 프롬프트 토큰은 턴마다 2,318 → 2,470 → 4,328 로 늘었다 (결과가 대화에 쌓임).",
+    )
+    rows = [["턴", "시각", "Qwen 이 고른 것", "Python 이 실행한 결과"]]
+    for t in turns:
+        calls = t.get("calls") or []
+        pick = (
+            ", ".join(
+                f"{c['name']}({', '.join(f'{k}={v}' for k, v in c['arguments'].items() if k != 'work' and k != 'drawing')})"
+                for c in calls
+            )
+            or "finish (보고)"
+        )
+        res = next((r for r in results if r["turn"] == t["turn"]), None)
+        if res:
+            out = res["result"]
+            summary = f"{res['seconds']}초, " + (
+                f"status {out.get('status')}, 단계 {len(out.get('stages', []))}개"
+                if "stages" in out
+                else f"work = {out.get('drawings', [{}])[0].get('work')}"
+            )
+        else:
+            summary = "형상 원추대, 전개 R 405.65 · 252.87, 68.33°"
+        rows.append([str(t["turn"]), f"{t['seconds']}초", pick, summary])
+    table(s, X0, 1.85, CW, 2.2, rows, [0.7, 1.1, 5.0, 5.333], head_style)
+    for i, t in enumerate(turns[:2]):
+        text(
+            s,
+            X0,
+            4.3 + i * 0.6,
+            CW,
+            0.55,
+            [
+                [
+                    {
+                        "text": f"턴 {t['turn']} thought  ",
+                        "bold": True,
+                        "color": ORANGE,
+                        "size": 13,
+                    },
+                    {"text": t["text"], "size": 13},
+                ]
+            ],
+        )
+    band(
+        s,
+        5.75,
+        "보인 것",
+        "모델은 도구 이름과 인자만 골랐고, 판독 10단계는 코드가 돌렸습니다. 숫자를 지어내지 않고 단계 결과를 옮겨 보고했습니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.85,
+        size=15,
+    )
+
+
 # ---------------------------------------------------------------------- main
 def main() -> None:
     s3, pre = load_score(RUN3), load_score(RUN3_PRE)
@@ -3480,12 +3934,18 @@ def main() -> None:
     scope_slide(d)
     # 4. 하네스 장치
     devices_section(d)
+    harness_eng_slide(d)
+    json_contract_slide(d)
+    decoding_slide(d)
+    guard_retry_slide(d, pre, s3)
     rules_slide(d)
     stage_file_slide(d)
-    guard_schema_slide(d)
-    guard_retry_slide(d, pre, s3)
     guard_trace_slide(d)
-    orchestrator_slide(d)
+    tool_idea_slide(d)
+    tool_list_slide(d)
+    tool_loop_slide(d)
+    tool_modes_slide(d)
+    tool_demo_slide(d)
     # 5. 전 → 후
     change_section(d)
     summary_slide(d, s3)
