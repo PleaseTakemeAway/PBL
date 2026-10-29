@@ -510,16 +510,16 @@ def scope_slide(d):
 # ---------------------------------------------------------------------- B. 배경
 # ---------------------------------------------------------------------- C. 하네스
 STAGES = [
-    ("01", "읽기", "DXF 의 선 · 원 · 글자", False),
-    ("02", "표제란 정규식", "글자 규칙으로 먼저 읽기", False),
-    ("03", "표제란 OCR", "그림을 글자로", True),
-    ("04", "표제란 정리", "빈칸만 채우기", True),
-    ("05", "뷰 찾기", "선 덩어리 묶기", False),
-    ("06", "뷰 이름 · 형상", "정면? 콘?", True),
-    ("07", "합치기", "결과 한 파일로", False),
-    ("08", "구조화", "정면·평면·측면 계약", False),
-    ("09", "치수", "전개에 쓸 값", True),
-    ("10", "전개", "공식 계산 · 전개도", False),
+    ("01", "읽기", "DXF → 선 · 글자 목록", False),
+    ("02", "표제란 정규식", "글자 → 표제란 칸", False),
+    ("03", "표제란 OCR", "표제란 그림 → 글자", True),
+    ("04", "표제란 정리", "글자 → 빈칸 채움", True),
+    ("05", "뷰 찾기", "선 → 뷰 후보", False),
+    ("06", "뷰 이름 · 형상", "그림 → 이름 · 형상", True),
+    ("07", "합치기", "결과들 → 한 파일", False),
+    ("08", "구조화", "뷰 → 정면 · 평면 · 측면", False),
+    ("09", "치수", "그림 → 전개 치수", True),
+    ("10", "전개", "치수 → 전개도", False),
 ]
 
 
@@ -682,329 +682,6 @@ def stage_file_slide(d):
         y = 1.95 + i * 0.78
         chip(s, X0 + 6.9, y, 2.2, 0.6, k, fill=LIGHT, color=TEAL, size=13, bold=True)
         text(s, X0 + 9.25, y, 2.9, 0.6, [v], size=14, anchor=MSO_ANCHOR.MIDDLE)
-
-
-def read_slide(d):
-    counts = stage_json(RUN3, EXAMPLE, "01_read").get("entity_counts", {})
-    total = sum(counts.values())
-    s = slide(
-        d,
-        1,
-        "01 읽기 (코드)",
-        "DXF 는 글자 파일입니다. 선 · 원 · 글자를 위치와 함께 목록으로 만듭니다",
-        f"{EXAMPLE} 의 01_read.json entity_counts: {counts}. 모델을 쓰지 않는다.",
-    )
-    code(
-        s,
-        X0,
-        1.9,
-        5.2,
-        4.2,
-        [
-            "  0",
-            "LINE",
-            "  8",
-            "OUTLINE",
-            " 10",
-            "100.0",
-            " 20",
-            "110.0",
-            " 11",
-            "250.0",
-            " 21",
-            "110.0",
-            "  0",
-            "CIRCLE",
-            "…",
-        ],
-        size=13,
-    )
-    text(s, X0, 6.2, 5.2, 0.4, ["DXF 원문 (선 하나)"], size=12, color=GRAY)
-    arrow(s, X0 + 5.4, 3.8, w=0.5, h=0.4)
-    names = {
-        "line": "선",
-        "circle": "원",
-        "arc": "호",
-        "dimension": "치수",
-        "dimension_geom": "치수선 조각",
-        "text": "글자",
-    }
-    rows = (
-        [["종류", "개수"]]
-        + [[names.get(k, k), str(v)] for k, v in counts.items()]
-        + [["합계", str(total)]]
-    )
-    table(s, X0 + 6.2, 1.9, 5.9, 0.45 * len(rows), rows, [3.4, 2.5], head_style)
-    text(
-        s,
-        X0 + 6.2,
-        2.0 + 0.45 * len(rows) + 0.2,
-        5.9,
-        0.8,
-        [f"{EXAMPLE} (콘). 실제 회사 도면은 2,000~5,900개"],
-        size=14,
-        color=GRAY,
-    )
-
-
-def title_block_slide(d):
-    regex = stage_json(RUN3, EXAMPLE, "02_title_regex")
-    fields = stage_json(RUN3, EXAMPLE, "04_title_fields")
-    tb = regex.get("title_block", {})
-    model_no = (fields.get("fields") or {}).get("drawing_no")
-    final_no = (fields.get("title_block") or {}).get("drawing_no")
-    s = slide(
-        d,
-        1,
-        "02 → 03 → 04 표제란",
-        "정규식이 먼저 읽고, AI 는 정규식이 못 읽은 칸만 채웁니다",
-        f"{EXAMPLE}: 02 정규식 도면 번호 {tb.get('drawing_no')}, 못 읽은 칸 {regex.get('missing')}. "
-        f"03 OCR 그림은 표제란이 오른쪽에서 잘려 도면 번호가 SYN-000 까지만 보인다. 04 모델 답의 도면 번호 {model_no}, "
-        f"최종 {final_no} (정규식 값을 지킴). dxf_adapter.apply_title_fields.",
-    )
-    steps = [
-        (
-            "02 정규식 (코드)",
-            f"도면 번호 {tb.get('drawing_no')}\n재질 {tb.get('material')}\n축척 {tb.get('scale_text')}\n못 읽음: 부품명, 투상법",
-            TEAL_TINT,
-        ),
-        (
-            "03 OCR (AI)",
-            "표제란 그림 → 글자\n(그림이 잘려\n'SYN-000' 까지만)",
-            ORANGE_TINT,
-        ),
-        (
-            "04 정리 (AI)",
-            f"부품명 CONE ← 채움\n도면 번호 {model_no} ← 버림\n(정규식 값이 이미 있음)",
-            ORANGE_TINT,
-        ),
-    ]
-    for i, (head, body, fill) in enumerate(steps):
-        x = X0 + i * 4.15
-        card(
-            s,
-            x,
-            1.9,
-            3.7,
-            2.2,
-            [{"text": head, "bold": True, "size": 17}, {"text": body, "size": 15}],
-            fill=fill,
-            after=6,
-        )
-        if i < 2:
-            arrow(s, x + 3.75, 2.85, w=0.35, h=0.3)
-    fit(s, workdir(RUN3, EXAMPLE) / "figures" / "03_title_ocr.png", X0, 4.3, 7.0, 2.4)
-    card(
-        s,
-        X0 + 7.2,
-        4.45,
-        4.93,
-        2.1,
-        [
-            [
-                {"text": "규칙  ", "bold": True, "color": TEAL},
-                {"text": "코드가 확실히 읽은 값은 AI 가 덮어쓰지 못합니다"},
-            ]
-        ],
-        fill=TEAL_TINT,
-        size=17,
-        anchor=MSO_ANCHOR.MIDDLE,
-        margin=0.3,
-    )
-
-
-def views_slide(d):
-    s = slide(
-        d,
-        1,
-        "05 뷰 찾기 (코드)",
-        "서로 떨어진 선 덩어리를 묶어 뷰 후보로 삼습니다. 표제란과 도면 틀은 뺍니다",
-        f"{EXAMPLE} 의 figures/05_views.png (scripts/reader/show_stages.py). 주황 = 뷰 후보, 회색 = 제외 영역, 파란 점선 = 도면 틀.",
-    )
-    fit(s, workdir(RUN3, EXAMPLE) / "figures" / "05_views.png", X0, 1.75, 7.6, 5.0)
-    bullets(
-        s,
-        X0 + 7.9,
-        2.0,
-        4.2,
-        4.5,
-        [
-            "선이 가까우면 한 덩어리",
-            "표제란 · 표 · 틀은 제외",
-            "덩어리 3개 → 뷰 후보 3개",
-            "정투상 도면인지, 네스팅 도면인지도 여기서 정합니다",
-            "이름(정면 · 평면)은 아직 없음",
-        ],
-        size=17,
-    )
-
-
-def labels_slide(d):
-    s = slide(
-        d,
-        1,
-        "06 뷰 이름 · 형상 (AI)",
-        "번호 붙은 그림, 참고 문서, 답 양식을 주고 고르게 합니다",
-        f"{EXAMPLE} 의 figures/06_view_labels.png. 참고 문서는 skills/01_core_knowledge 의 unfold_rules, unfold_extract (reader/knowledge.py STAGE_TOPICS). 위치로 붙인 라벨과 AI 라벨이 다르면 review 에 남긴다.",
-    )
-    ins = [
-        ("번호 붙은 그림", "sheet_labeled.png"),
-        ("참고 문서 2개", "전개 규칙 · 판독 요령"),
-        ("답 양식", "형상 6종 중 하나 + 점수"),
-    ]
-    for i, (head, body) in enumerate(ins):
-        card(
-            s,
-            X0,
-            1.85 + i * 1.0,
-            3.0,
-            0.85,
-            [
-                {"text": head, "bold": True, "size": 15},
-                {"text": body, "size": 12, "color": GRAY},
-            ],
-            fill=LIGHT,
-            after=0,
-            margin=0.12,
-        )
-    arrow(s, X0 + 3.1, 3.05, w=0.35, h=0.3)
-    chip(
-        s,
-        X0 + 3.55,
-        2.6,
-        1.4,
-        1.2,
-        "판단\nAI",
-        fill=ORANGE,
-        color=WHITE,
-        size=18,
-        bold=True,
-    )
-    arrow(s, X0 + 5.05, 3.05, w=0.35, h=0.3)
-    fit(
-        s,
-        workdir(RUN3, EXAMPLE) / "figures" / "06_view_labels.png",
-        X0 + 5.5,
-        1.75,
-        6.6,
-        3.9,
-    )
-    band(
-        s,
-        5.85,
-        "검사",
-        "위치로 붙인 이름(정면은 아래 왼쪽 …)과 AI 의 답이 다르면 기록에 남겨 사람이 봅니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.8,
-        size=16,
-    )
-
-
-def merge_slide(d):
-    s = slide(
-        d,
-        1,
-        "07 합치기 · 08 구조화 (코드)",
-        "앞 단계 결과를 한 파일로 모으고, 정면 · 평면 · 측면 약속(계약)으로 바꿉니다",
-        "07 은 analysis/sheet_analysis.json 과 sheet.png, 08 은 DrawingDocument. 08 은 3D 쪽 모델 클래스를 같이 써서 3D 코드를 지우지 않은 이유다 (v3_upgrade.md 1.1).",
-    )
-    card(
-        s,
-        X0,
-        1.9,
-        5.8,
-        3.8,
-        [
-            {"text": "07 합치기", "bold": True, "size": 20},
-            {"text": "01~06 의 결과 → sheet_analysis.json", "bullet": True},
-            {"text": "최종 이름을 그린 sheet.png", "bullet": True},
-            {"text": "사람이 한눈에 보는 요약", "bullet": True},
-        ],
-        fill=TEAL_TINT,
-        size=17,
-        after=10,
-    )
-    card(
-        s,
-        X0 + 6.33,
-        1.9,
-        5.8,
-        3.8,
-        [
-            {"text": "08 구조화", "bold": True, "size": 20},
-            {"text": "뷰마다 선과 치수를 붙임", "bullet": True},
-            {
-                "text": "왼쪽면 → 오른쪽면처럼 뒤집어 정면 · 평면 · 우측면으로",
-                "bullet": True,
-            },
-            {"text": "축척 검사", "bullet": True},
-        ],
-        fill=TEAL_TINT,
-        size=17,
-        after=10,
-    )
-    band(
-        s,
-        5.95,
-        "여기까지",
-        "AI 는 03 · 04 · 06 에서만 썼습니다",
-        fill=LIGHT,
-        color=TEAL,
-        h=0.75,
-        size=16,
-    )
-
-
-def params_slide(d):
-    s = slide(
-        d,
-        1,
-        "09 치수 (AI + 코드)",
-        "AI 가 형상별 치수를 읽고, 비운 칸은 코드가 도면 전체 치수로 채웁니다. 누가 채웠는지 남깁니다",
-        f"{EXAMPLE} 의 stages/09_unfold_params.json 의 record.params 와 record.sources (vlm_reason = AI, overall_dimensions = 코드). 참고 문서 3개 (STAGE_TOPICS 09).",
-    )
-    params_table(s, RUN3, EXAMPLE, X0, 1.9, 6.2)
-    text(s, X0, 4.4, 6.2, 0.4, [f"{EXAMPLE} (콘)"], size=13, color=GRAY)
-    rows = [
-        ("AI", "도면에서 두께 · 지름 · 높이를 골라 읽음", ORANGE),
-        ("코드", "AI 가 비운 값은 외형 치수로:\n안지름 = 바깥지름 − 2t/cos α", TEAL),
-        ("기록", "값마다 출처 → 틀리면 누가 틀렸는지 압니다", GRAY),
-    ]
-    for i, (k, v, c) in enumerate(rows):
-        y = 1.9 + i * 1.15
-        chip(s, X0 + 6.6, y, 1.2, 0.9, k, fill=c, color=WHITE, size=16, bold=True)
-        text(s, X0 + 8.0, y, 4.1, 0.9, [v], size=16, anchor=MSO_ANCHOR.MIDDLE)
-
-
-def develop_slide(d):
-    s = slide(
-        d,
-        1,
-        "10 전개 (코드)",
-        "전개 공식은 코드가 계산합니다. AI 는 계산하지 않습니다",
-        f"{EXAMPLE} 의 figures/10_develop.png 왼쪽 절반. 검정 = 계산 결과, 초록 점선 = 정답 (여기서는 겹친다). 콘 공식은 현업자 정답 기준 (v3_upgrade.md 5.4).",
-    )
-    fit(s, develop_plot(RUN3, EXAMPLE), X0, 1.8, 6.4, 4.1)
-    rows = [
-        ("09 에서 받은 것", "두께, 큰 · 작은 안지름, 높이"),
-        ("계산", "평균지름 → 경사 길이 → 부채꼴 반경 · 각도"),
-        ("내는 것", "flat_pattern.dxf · png · json"),
-    ]
-    for i, (k, v) in enumerate(rows):
-        y = 2.0 + i * 1.2
-        chip(s, X0 + 6.8, y, 2.2, 0.9, k, fill=TEAL, color=WHITE, size=15, bold=True)
-        text(s, X0 + 9.2, y, 2.9, 0.9, [v], size=15, anchor=MSO_ANCHOR.MIDDLE)
-    band(
-        s,
-        6.1,
-        "왜",
-        "지름 10 mm 오차는 둘레 31 mm 오차이고 그 판은 버립니다. 계산은 틀리지 않는 코드에게",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.7,
-        size=16,
-    )
 
 
 def guard_schema_slide(d):
@@ -3104,6 +2781,667 @@ def devices_section(d):
     )
 
 
+# ---------------------------------------------------------------------- 2. 판독 과정 (입력 → 처리 → 출력)
+COL_IN, COL_PROC, COL_OUT = (X0, 4.55), (X0 + 4.85, 2.55), (X0 + 7.7, 4.43)
+
+
+def ipo_block(s, col, item, y=2.25, h=3.6):
+    """One input/output column: a picture, a code box, a table or plain lines, with a caption."""
+    x, w = col
+    kind = item[0]
+    if kind == "pic":
+        fit(s, item[1], x, y, w, h - 0.4)
+    elif kind == "code":
+        code(s, x, y, w, h - 0.4, item[1], size=item[3] if len(item) > 3 else 11)
+    elif kind == "table":
+        rows = item[1]
+        table(
+            s,
+            x,
+            y,
+            w,
+            min(h - 0.4, 0.4 * len(rows)),
+            rows,
+            [w * 0.5, w * 0.5],
+            head_style,
+        )
+    elif kind == "params":
+        params_table(s, RUN3, EXAMPLE, x, y, w)
+    elif kind == "lines":
+        card(
+            s,
+            x,
+            y,
+            w,
+            h - 0.4,
+            [{"text": t, "bullet": True} for t in item[1]],
+            fill=LIGHT,
+            size=14,
+            after=6,
+        )
+    text(
+        s,
+        x,
+        y + h - 0.35,
+        w,
+        0.35,
+        [item[2]],
+        size=12,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
+
+
+def ipo(d, title, message, notes, inp, who, ai, steps, out, point):
+    s = slide(d, 1, title, message, notes)
+    for (x, w), label in ((COL_IN, "입력"), (COL_PROC, "처리"), (COL_OUT, "출력")):
+        chip(s, x, 1.75, w, 0.4, label, fill=INK, color=WHITE, size=14, bold=True)
+    ipo_block(s, COL_IN, inp)
+    x, w = COL_PROC
+    card(
+        s,
+        x,
+        2.25,
+        w,
+        3.2,
+        [{"text": who, "bold": True, "size": 15, "color": WHITE}]
+        + [{"text": t, "size": 13, "color": WHITE} for t in steps],
+        fill=ORANGE if ai else TEAL,
+        align=PP_ALIGN.CENTER,
+        anchor=MSO_ANCHOR.MIDDLE,
+        after=6,
+        margin=0.12,
+    )
+    arrow(s, x - 0.27, 3.7, w=0.22, h=0.3)
+    arrow(s, x + w + 0.05, 3.7, w=0.22, h=0.3)
+    ipo_block(s, COL_OUT, out)
+    band(
+        s,
+        6.0,
+        "핵심",
+        point,
+        fill=TEAL_TINT if not ai else ORANGE_TINT,
+        color=TEAL if not ai else ORANGE,
+        h=0.75,
+        size=15,
+    )
+    return s
+
+
+def walkthrough_slides(d):
+    w3 = workdir(RUN3, EXAMPLE)
+    read = stage_json(RUN3, EXAMPLE, "01_read")
+    counts = read.get("entity_counts", {})
+    texts = [e.get("text") for e in read.get("entities", []) if e.get("kind") == "text"]
+    names = {
+        "line": "선",
+        "circle": "원",
+        "arc": "호",
+        "dimension": "치수",
+        "dimension_geom": "치수선 조각",
+        "text": "글자",
+    }
+    ipo(
+        d,
+        "01 읽기",
+        "도면 파일을 열어 선 · 원 · 글자를 하나도 빼지 않고 위치와 함께 목록으로 만듭니다",
+        f"{EXAMPLE} 의 stages/01_read.json entity_counts {counts}. 모델을 쓰지 않는다 (dxf_reader.read_dxf, ezdxf).",
+        ("pic", drawing_png(EXAMPLE), "cone_0023.dxf (도면 파일)"),
+        "코드",
+        False,
+        ["DXF 파일 열기", "선 · 원 · 글자를 모두 꺼냄", "각각의 좌표를 기록"],
+        (
+            "table",
+            [["종류", "개수"]]
+            + [[names.get(k, k), str(v)] for k, v in counts.items()]
+            + [["합계", str(sum(counts.values()))]],
+            "01_read.json: 요소 목록",
+        ),
+        "여기까지는 AI 없이, 파일에 적힌 그대로를 꺼냅니다. 실제 회사 도면은 2,000 ~ 5,900 개",
+    )
+    regex = stage_json(RUN3, EXAMPLE, "02_title_regex")
+    tb = regex.get("title_block", {})
+    ipo(
+        d,
+        "02 표제란: 글자 규칙",
+        "표제란 자리를 찾고, 정해진 글자 규칙(정규식)으로 칸을 채웁니다",
+        f"{EXAMPLE} 의 02_title_regex.json. 못 읽은 칸 {regex.get('missing')}. 정규식은 합성 도면의 표제란 모양에 맞춰져 있어 THIRD ANGLE · PART NAME 은 못 읽는다 (v3_upgrade.md 4절 #12).",
+        ("code", [repr(t) for t in texts], "01 이 꺼낸 글자 13개", 12),
+        "코드 (정규식)",
+        False,
+        ["'SCALE' 옆 → 축척", "'DW'G NO' 옆 → 도면 번호", "'4t' → 두께 4 mm"],
+        (
+            "table",
+            [
+                ["칸", "값"],
+                ["도면 번호", str(tb.get("drawing_no"))],
+                ["재질", str(tb.get("material"))],
+                ["두께", f"{tb.get('thickness_mm')} mm"],
+                ["축척", str(tb.get("scale_text"))],
+                ["부품명", "못 읽음"],
+                ["투상법", "못 읽음"],
+            ],
+            "02_title_regex.json",
+        ),
+        "글자로 확실히 적힌 값은 AI 없이 코드가 읽습니다. 못 읽은 칸만 다음 단계로 넘깁니다",
+    )
+    ocr = stage_json(RUN3, EXAMPLE, "03_title_ocr")
+    ipo(
+        d,
+        "03 표제란: OCR (AI)",
+        "표제란 부분만 그림으로 잘라 OCR 모델에게 보여 주고, 보이는 글자를 받아 쓰게 합니다",
+        f"{EXAMPLE} 의 analysis/title_block.png 와 03_title_ocr.json 의 text. OCR 모델에게 주는 지시는 'Free OCR.' 한 줄이다 (reader/vlm.py ocr_text).",
+        (
+            "pic",
+            w3 / "analysis" / "title_block.png",
+            "title_block.png: 잘라 낸 표제란 그림",
+        ),
+        "OCR 모델\nDeepSeek-OCR-2",
+        True,
+        ['지시: "Free OCR."', "그림 속 글자를", "보이는 그대로 받아 씀"],
+        ("code", (ocr.get("text") or "").splitlines(), "03_title_ocr.json 의 text", 13),
+        "OCR 은 본 것만 씁니다. 그림이 오른쪽에서 잘려 도면 번호가 'SYN-000' 까지만 나왔습니다",
+    )
+    fields = stage_json(RUN3, EXAMPLE, "04_title_fields")
+    ai_tb = fields.get("fields") or {}
+    fin = fields.get("title_block") or {}
+    ipo(
+        d,
+        "04 표제란: 정리 (AI)",
+        "판단 AI 가 OCR 글자를 표제란 칸으로 정리합니다. 02 가 이미 읽은 칸은 덮어쓰지 않습니다",
+        f"{EXAMPLE} 의 04_title_fields.json: fields (AI 답) 와 title_block (최종). 합치는 규칙은 dxf_adapter.apply_title_fields.",
+        (
+            "code",
+            ["OCR 글자 (03):"]
+            + [
+                "  " + line
+                for line in (ocr.get("text") or "").splitlines()
+                if line.strip()
+            ]
+            + ["", "02 가 못 읽은 칸:", "  부품명, 투상법"],
+            "03 의 글자 + 02 의 빈칸",
+            12,
+        ),
+        "판단 모델\nQwen3.6-27B",
+        True,
+        [
+            '"OCR 글자를 표제란 칸으로 정리하라"',
+            '"모르면 null, 지어내지 말 것"',
+            "답은 정해진 JSON 양식",
+        ],
+        (
+            "table",
+            [
+                ["칸", "AI 답 → 최종"],
+                ["부품명", f"{ai_tb.get('part_name')} → {fin.get('part_name')} (채움)"],
+                [
+                    "도면 번호",
+                    f"{ai_tb.get('drawing_no')} → {fin.get('drawing_no')} (02 유지)",
+                ],
+                ["두께", f"{ai_tb.get('thickness_mm')} → {fin.get('thickness_mm')}"],
+                ["축척", f"{ai_tb.get('scale')} → {fin.get('scale_text')}"],
+            ],
+            "04_title_fields.json",
+        ),
+        "AI 가 잘린 번호 SYN-000 을 답했지만, 코드가 이미 확실히 읽은 SYN-00023 을 지켰습니다",
+    )
+    ipo(
+        d,
+        "05 뷰 찾기",
+        "서로 떨어진 선 덩어리를 묶어 뷰 후보로 삼습니다. 표제란과 도면 틀은 뺍니다",
+        f"{EXAMPLE} 의 figures/05_views.png (scripts/reader/show_stages.py). dxf_adapter.find_views.",
+        ("pic", drawing_png(EXAMPLE), "01 의 선 위치 + 02 의 표제란 위치"),
+        "코드",
+        False,
+        ["가까운 선끼리 한 덩어리", "표제란 · 틀 빼기", "덩어리마다 크기 · 치수 기록"],
+        (
+            "pic",
+            w3 / "figures" / "05_views.png",
+            "05_views.json: 뷰 후보 3개 (이름은 아직 없음)",
+        ),
+        "후보에는 번호만 붙습니다. 어느 것이 정면인지, 무슨 형상인지는 다음 단계의 AI 가 정합니다",
+    )
+    raw6 = (stage_json(RUN3, EXAMPLE, "06_view_labels").get("decision") or {}).get(
+        "raw"
+    ) or {}
+    scores = raw6.get("part_class_scores") or {}
+    views6 = raw6.get("views") or []
+    ipo(
+        d,
+        "06 뷰 이름 · 형상 (AI)",
+        "번호 상자를 그린 도면 그림을 보여 주고, 뷰마다 이름을, 형상 6가지에 점수를 매기게 합니다",
+        f"{EXAMPLE} 의 analysis/sheet_labeled.png 와 06_view_labels.json decision.raw. 참고 문서 unfold_rules, unfold_extract. 이 호출은 45초 걸렸다.",
+        (
+            "pic",
+            w3 / "analysis" / "sheet_labeled.png",
+            "빨간 번호 상자 그림 + 후보별 크기 · 치수 + 참고 문서 2개",
+        ),
+        "판단 모델\nQwen3.6-27B",
+        True,
+        ['"뷰마다 이름과 이유"', '"형상 6가지에 점수"', "답은 정해진 JSON 양식"],
+        (
+            "code",
+            ["AI 답 (줄임)"]
+            + [f"  {k:13s} {v:+.0f}" for k, v in scores.items()]
+            + [""]
+            + [
+                f"  뷰 {v.get('id')}: {v.get('type')} ({v.get('confidence')})"
+                for v in views6
+            ],
+            "06_view_labels.json",
+            12,
+        ),
+        "점수가 가장 높은 cone 이 형상이 됩니다. 뷰 이름은 위치로 붙인 이름과 대조해 다르면 기록합니다",
+    )
+    ipo(
+        d,
+        "07 합치기 · 08 구조화",
+        "앞 단계 결과를 한 파일로 모으고, 뷰마다 선과 치수를 붙여 정면 · 평면 · 측면으로 정리합니다",
+        "07 은 analysis/sheet_analysis.json 과 sheet.png, 08 은 DrawingDocument (3D 쪽 모델 클래스를 같이 써서 3D 코드를 지우지 않은 이유, v3_upgrade.md 1.1).",
+        (
+            "lines",
+            ["01 요소 목록", "02 · 04 표제란", "05 뷰 후보", "06 뷰 이름 · 형상"],
+            "앞 단계의 파일들",
+        ),
+        "코드",
+        False,
+        ["결과를 한 파일로", "뷰마다 선 · 치수 붙이기", "축척 검사"],
+        ("pic", w3 / "analysis" / "sheet.png", "sheet.png: 최종 이름을 그린 도면"),
+        "사람이 한눈에 확인하는 요약 그림이 여기서 나옵니다",
+    )
+    rec9 = stage_json(RUN3, EXAMPLE, "09_unfold_params").get("record") or {}
+    ipo(
+        d,
+        "09 치수 (AI + 코드)",
+        "AI 가 형상별로 전개에 필요한 치수를 읽고, AI 가 비운 칸은 코드가 도면의 외형 치수로 채웁니다",
+        f"{EXAMPLE} 의 09_unfold_params.json. AI notes: '{(rec9.get('notes') or '')[:160]}…'. 코드 보충: {rec9.get('fallback_notes')}. 참고 문서 3개 (unfold_extract, unfold_rules, drawing_conventions_kr). 26초.",
+        (
+            "pic",
+            w3 / "analysis" / "sheet_labeled.png",
+            "같은 그림 + 뷰별 치수 글자 + 표제란 + 참고 문서 3개",
+        ),
+        "판단 모델 + 코드",
+        True,
+        [
+            "AI: 콘이면 두께 · 큰 · 작은 안지름 · 높이",
+            'AI: 지름은 "도면에 없음" → 비움',
+            "코드: 바깥지름 150 · 80 − 2t/cos α",
+        ],
+        ("params", None, "09_unfold_params.json: 칸마다 누가 채웠나"),
+        "AI 가 모르는 값을 지어내지 않고 비웠고, 코드가 도면 치수로 정확히 채웠습니다",
+    )
+    blank = (stage_json(RUN3, EXAMPLE, "10_develop").get("record") or {}).get(
+        "blank"
+    ) or {}
+    p = rec9.get("params") or {}
+    ipo(
+        d,
+        "10 전개",
+        "전개 공식은 코드가 계산합니다. AI 는 계산하지 않습니다",
+        f"{EXAMPLE} 의 10_develop.json blank 와 flat_pattern.png. 정답 label.json: R 321.02 · 167.0, 81.8°. 콘 공식은 현업자 정답 기준 (v3_upgrade.md 5.4).",
+        (
+            "lines",
+            [
+                f"두께 {p.get('thickness', 0):g}",
+                f"큰 안지름 {p.get('large_inner_dia', 0):.1f}",
+                f"작은 안지름 {p.get('small_inner_dia', 0):.1f}",
+                f"높이 {p.get('cone_height', 0):g}",
+            ],
+            "09 의 치수",
+        ),
+        "코드 (공식)",
+        False,
+        [
+            "평균지름 = 안지름 + t/cos α",
+            "경사 길이 → 부채꼴 반경",
+            "각도 θ = 360° · sin α",
+        ],
+        (
+            "pic",
+            w3 / "flat_pattern.png",
+            f"전개도: R {blank.get('outer_radius', 0):.1f} · {blank.get('inner_radius', 0):.1f}, {blank.get('angle_deg', 0):.1f}° (정답과 같음)",
+        ),
+        "지름 10 mm 오차는 둘레 31 mm 오차이고 그 판은 버립니다. 계산은 틀리지 않는 코드에게",
+    )
+
+
+# ---------------------------------------------------------------------- 1. 용어: AI 를 부르는 법
+def ai_message_slide(d):
+    s = slide(
+        d,
+        0,
+        "AI 를 부르는 법 1: 메시지 한 통",
+        "로컬 AI 는 사내 서버에서 도는 프로그램입니다. reader 가 질문 메시지를 보내면 글자로 답이 옵니다",
+        "reader/vlm.py VLMClient._call_openai: OpenAI 호환 /chat/completions 로 POST. 서버는 vLLM (experiments/serve.sh). "
+        "temperature 0, max_tokens 1500 (VLMConfig 기본값), 시간 제한 120초 (배치에서는 900초).",
+    )
+    parts = [
+        (
+            "시스템 지시",
+            '역할 + 규칙 문서\n"꼼꼼한 제도 검토자. 지어내지 말 것"',
+            TEAL_TINT,
+        ),
+        ("질문", "이번 일 + 도면 정보\n+ 답 양식", TEAL_TINT),
+        ("그림", "도면 그림 (PNG)\n글자로 바꿔 함께 보냄", TEAL_TINT),
+    ]
+    for i, (head, body, fill) in enumerate(parts):
+        card(
+            s,
+            X0,
+            1.85 + i * 1.15,
+            3.6,
+            1.0,
+            [
+                {"text": head, "bold": True, "size": 15, "color": TEAL},
+                {"text": body, "size": 12},
+            ],
+            fill=fill,
+            after=2,
+            margin=0.12,
+        )
+    text(
+        s,
+        X0,
+        5.35,
+        3.6,
+        0.4,
+        ["질문 메시지 (reader 가 만듦)"],
+        size=12,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
+    arrow(s, X0 + 3.75, 3.4, w=0.4, h=0.35)
+    chip(
+        s,
+        X0 + 4.3,
+        2.4,
+        2.9,
+        2.4,
+        "사내 GPU 서버\n(vLLM)\n\nQwen3.6-27B",
+        fill=ORANGE,
+        color=WHITE,
+        size=16,
+        bold=True,
+    )
+    arrow(s, X0 + 7.35, 3.4, w=0.4, h=0.35)
+    code(
+        s,
+        X0 + 7.9,
+        1.85,
+        4.23,
+        3.5,
+        [
+            "{",
+            '  "part_class": "cone",',
+            '  "part_class_scores":',
+            '     {"cone": 10, "flat": -10, …},',
+            '  "views": [',
+            '    {"id": 1, "type": "front",',
+            '     "confidence": 0.95, …}',
+            "  ]",
+            "}",
+        ],
+        size=12,
+    )
+    text(
+        s,
+        X0 + 7.9,
+        5.35,
+        4.23,
+        0.4,
+        ["답 (정해진 양식의 글자)"],
+        size=12,
+        color=GRAY,
+        align=PP_ALIGN.CENTER,
+    )
+    rows = [
+        ("temperature 0", "매번 가장 그럴듯한 답 하나 (무작위성 끔)"),
+        ("답 길이 1,500 토큰", "넘으면 잘림 (장치 2)"),
+        ("OCR 모델", '지시는 "Free OCR." 한 줄, 답은 받아쓴 글자'),
+    ]
+    for i, (k, v) in enumerate(rows):
+        y = 5.85 + i * 0.36
+        text(s, X0, y, 2.6, 0.34, [k], size=13, bold=True, color=ORANGE)
+        text(s, X0 + 2.7, y, 9.4, 0.34, [v], size=13)
+
+
+def ai_prompt_slide(d):
+    s = slide(
+        d,
+        0,
+        "AI 를 부르는 법 2: 지시문 (06 형상)",
+        "할 일을 번호 붙여 좁게 적고, 도면에서 코드가 찾은 사실을 함께 줍니다",
+        "dxf_adapter.label_with_vlm 의 prompt 와 system (영어 원문을 줄였다). Regions 는 05 가 찾은 뷰 후보의 위치 · 크기 · 치수 글자.",
+    )
+    code(
+        s,
+        X0,
+        1.85,
+        6.6,
+        4.9,
+        [
+            "[system]",
+            "You are a careful mechanical drafting checker.",
+            "Never invent regions that are not listed.",
+            "",
+            "[user]",
+            "You are reading a 2D mechanical engineering",
+            "drawing sheet. Red numbered boxes mark",
+            "candidate view regions found by clustering.",
+            'Title block: {"drawing_no": "SYN-00023", …}',
+            'Regions: [{"id": 1, "bbox_norm": […],',
+            '           "dimension_texts": ["150", …]}, …]',
+            "1. projection: first or third",
+            "2. part_class: one of flat, cylinder, cone,",
+            "   press_formed, bent_sheet, other",
+            "   + a score for EVERY class",
+            "4. For EVERY region give type, confidence,",
+            "   and a one-sentence reason …",
+        ],
+        size=11,
+    )
+    rows = [
+        ("역할", "꼼꼼한 제도 검토자. 목록에 없는 영역을 지어내지 말 것"),
+        ("상황", "빨간 번호 상자 = 코드가 찾은 뷰 후보"),
+        ("사실", "표제란 값, 후보마다 위치 · 크기 · 치수 글자"),
+        ("할 일 1", "투상법 (1각법 / 3각법)"),
+        ("할 일 2", "형상 6가지 중 하나 + 모든 형상에 점수"),
+        ("할 일 4", "뷰마다 이름, 확신도, 이유 한 문장"),
+    ]
+    for i, (k, v) in enumerate(rows):
+        y = 1.9 + i * 0.8
+        chip(
+            s,
+            X0 + 6.85,
+            y,
+            1.4,
+            0.62,
+            k,
+            fill=ORANGE if i > 2 else TEAL,
+            color=WHITE,
+            size=13,
+            bold=True,
+        )
+        text(s, X0 + 8.4, y, 3.73, 0.62, [v], size=14, anchor=MSO_ANCHOR.MIDDLE)
+
+
+def ai_skills_slide(d):
+    s = slide(
+        d,
+        0,
+        "AI 를 부르는 법 3: 규칙 문서 (skill)",
+        "회사의 전개 규칙을 적은 문서를 시스템 지시 앞에 붙입니다. 단계마다 붙이는 문서가 정해져 있습니다",
+        "reader/knowledge.py skill_system_prompt 와 STAGE_TOPICS. 문서는 레포의 skills/ (회사 담당자 계산 문서를 옮긴 규칙). 붙인 문서의 sha256 이 단계 파일에 남는다.",
+    )
+    code(
+        s,
+        X0,
+        1.85,
+        7.0,
+        3.6,
+        [
+            "skills/01_core_knowledge/unfold_rules.md  (줄임)",
+            "",
+            "| 부품  | 전개  | 전개 형상          |",
+            "| SHELL | 필요  | 원통 → 직사각형 L = π(ID+t) |",
+            "| CONE  | 필요  | 원뿔대 → 환형 부채꼴  |",
+            "| HEAD  | 조건부 | 블랭크 원판 지름    |",
+            "",
+            "## 파라미터 읽기 규칙",
+            "- cone_frustum: 큰쪽/작은쪽 안지름과 수직 높이.",
+            "  모선 길이만 있으면 높이로 환산 …",
+        ],
+        size=12,
+    )
+    rows = [
+        ["단계", "붙이는 문서"],
+        ["06 형상", "unfold_rules, unfold_extract"],
+        ["09 치수", "+ drawing_conventions_kr"],
+        ["03 · 04", "없음"],
+    ]
+    table(s, X0 + 7.3, 1.85, 4.83, 1.8, rows, [1.5, 3.33], head_style)
+    text(
+        s,
+        X0 + 7.3,
+        3.8,
+        4.83,
+        1.6,
+        [
+            "문서 3개, 각 4.6 ~ 5.3 KB. 한국어 표와 규칙 그대로 붙입니다. 출력 양식이 문서와 다르면 '답 양식을 따르고 규칙만 쓰라' 고 덧붙입니다"
+        ],
+        size=14,
+    )
+    band(
+        s,
+        5.75,
+        "왜",
+        "모델을 다시 학습시키지 않고, 회사 규칙을 읽혀서 판단하게 합니다. 규칙을 고치면 문서만 고치면 됩니다",
+        fill=TEAL_TINT,
+        color=TEAL,
+        h=0.85,
+        size=15,
+    )
+
+
+def ai_contract_slide(d):
+    s = slide(
+        d,
+        0,
+        "AI 를 부르는 법 4: 답 양식",
+        "질문 끝에 '이 양식의 JSON 하나만 답하라' 를 붙이고, 서버가 양식 밖의 글자를 못 쓰게 막습니다",
+        "vlm_output.output_instructions (OUTPUT CONTRACT) 와 response_schema. 서버에는 response_format json_schema, strict (vLLM structured outputs, xgrammar). 받은 답은 vlm_output 의 _validate 로 다시 검사한다.",
+    )
+    code(
+        s,
+        X0,
+        1.85,
+        6.4,
+        2.9,
+        [
+            "OUTPUT CONTRACT:",
+            "Return ONE JSON object matching the schema,",
+            "without Markdown or prose.",
+            "Use null for unknown scalar facts;",
+            "never invent values or scores.",
+            "Confidence must be between 0 and 1.",
+            '{"type": "object", "properties": {…}}',
+        ],
+        size=12,
+    )
+    rows = [
+        ("JSON 하나만", "설명문 · 표 없이 정해진 칸만"),
+        ("모르면 null", "값이나 점수를 지어내지 말 것"),
+        ("범위", "확신도 0 ~ 1, 축척은 1/4 같은 글자"),
+    ]
+    for i, (k, v) in enumerate(rows):
+        y = 1.95 + i * 0.95
+        chip(s, X0 + 6.7, y, 1.9, 0.7, k, fill=ORANGE, color=WHITE, size=14, bold=True)
+        text(s, X0 + 8.75, y, 3.38, 0.7, [v], size=14, anchor=MSO_ANCHOR.MIDDLE)
+    steps = [
+        ("서버", "양식에 맞는 글자만\n고를 수 있게 막음"),
+        ("코드 검사", "칸 · 종류 · 범위 확인\n틀리면 버림"),
+        ("통과", "다음 단계로"),
+    ]
+    for i, (k, v) in enumerate(steps):
+        x = X0 + i * 4.15
+        card(
+            s,
+            x,
+            5.0,
+            3.7,
+            1.15,
+            [{"text": k, "bold": True, "size": 15}, {"text": v, "size": 13}],
+            fill=TEAL_TINT,
+            align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE,
+            after=2,
+        )
+        if i < 2:
+            arrow(s, x + 3.75, 5.45, w=0.35, h=0.28)
+    text(
+        s,
+        X0,
+        6.3,
+        CW,
+        0.4,
+        [
+            "AI 가 '아마 콘 같습니다' 같은 문장으로 답하면 코드가 쓸 수 없습니다. 칸이 정해져 있어야 다음 단계가 읽습니다"
+        ],
+        size=13,
+        color=GRAY,
+    )
+
+
+def ai_client_slide(d):
+    s = slide(
+        d,
+        0,
+        "AI 를 부르는 법 5: 한 번의 호출 (VLMClient)",
+        "reader 의 VLMClient 가 매번 같은 순서로 묻고, 검사하고, 기록합니다",
+        "reader/vlm.py VLMClient.ask. 설정은 환경변수 CUTPLAN_REASON_* / CUTPLAN_OCR_* 또는 experiments/models/*.sh 프로필. 같은 코드로 로컬(vLLM)과 Claude(Anthropic API)를 모두 부를 수 있다.",
+    )
+    steps = [
+        ("1", "설정", "서버 주소, 모델 이름"),
+        ("2", "규칙 문서", "단계별 skill 붙이기"),
+        ("3", "답 양식", "OUTPUT CONTRACT 붙이기"),
+        ("4", "그림", "PNG 를 글자로 바꿔 첨부"),
+        ("5", "보내기", "서버에 질문, 답 받기"),
+        ("6", "잘렸나?", "잘렸으면 짧게 한 번 더"),
+        ("7", "검사", "JSON 양식 확인"),
+        ("8", "기록", "그림 · 문서 · 원문 · 시간"),
+    ]
+    for i, (n, head, body) in enumerate(steps):
+        row, col = divmod(i, 4)
+        x = X0 + col * 3.05
+        y = 1.95 + row * 2.0
+        ai = n in ("5", "6")
+        card(
+            s,
+            x,
+            y,
+            2.75,
+            1.6,
+            [
+                {"text": f"{n}. {head}", "bold": True, "size": 16, "color": WHITE},
+                {"text": body, "size": 13, "color": WHITE},
+            ],
+            fill=ORANGE if ai else TEAL,
+            align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE,
+            after=4,
+        )
+        if col < 3:
+            arrow(s, x + 2.78, y + 0.65, w=0.24, h=0.28, fill=PALE)
+    band(
+        s,
+        6.0,
+        "요점",
+        "AI 가 하는 일은 5 하나뿐입니다. 나머지 일곱 칸이 하네스입니다",
+        h=0.75,
+        size=16,
+    )
+
+
 # ---------------------------------------------------------------------- main
 def main() -> None:
     s3, pre = load_score(RUN3), load_score(RUN3_PRE)
@@ -3118,18 +3456,17 @@ def main() -> None:
     unfold_def_slide(d)
     answer_def_slide(d)
     reader_def_slide(d)
+    ai_message_slide(d)
+    ai_prompt_slide(d)
+    ai_skills_slide(d)
+    ai_contract_slide(d)
+    ai_client_slide(d)
     harness_def_slide(d)
     score_def_slide(d)
     # 2. 판독 과정 (예시 도면 한 장)
     harness_section(d)
     flow_slide(d)
-    read_slide(d)
-    title_block_slide(d)
-    views_slide(d)
-    labels_slide(d)
-    merge_slide(d)
-    params_slide(d)
-    develop_slide(d)
+    walkthrough_slides(d)
     # 3. 지난주
     lastweek_section(d)
     lastweek_scope_slide(d)
