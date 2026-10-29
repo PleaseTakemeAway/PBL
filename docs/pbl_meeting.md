@@ -53,7 +53,7 @@
 2. 고친 것이 실도면(v4)을 향했다. DWG 변환, 부품표, 편심 콘, v2 L3 이다. 그런데 잰 데이터는 정답이 틀린 합성 30장이고, 그나마 30장 전체로는 돌리지 않았다 (a660d59: bent_sheet_0007 한 장 뒤 멈춤).
 3. 단계 파일은 생겼지만 단계별 정답이 없어서, 무엇이 좋아졌는지 숫자로 말할 수 없다.
 
-②에 가장 가까운 숫자: 2026-10-23 `mlic` 에서 ① 이 형상을 못 낸 cylinder_0013·0018, flat_0005 의 06 만 세 번씩 돌려 셋 다 맞혔다 ([reader/stages.md](reader/stages.md) 6절). 원인이 기계인지, vLLM 판인지, 고친 `unfold_rules.md` 인지는 가리지 않았다. 30장 점수는 3절 R2 로 잰다.
+②를 30장으로 잰 결과는 3.1절 (R2) 이다. 그 전에 남아 있던 숫자: 2026-10-23 `mlic` 에서 ① 이 형상을 못 낸 cylinder_0013·0018, flat_0005 의 06 만 세 번씩 돌려 셋 다 맞혔다 ([reader/stages.md](reader/stages.md) 6절). 원인이 기계인지, vLLM 판인지, 고친 `unfold_rules.md` 인지는 가리지 않았다.
 
 ## 3. 돌릴 것
 
@@ -93,6 +93,82 @@ uv run python scripts/reader/score_synthetic.py runs/reader/meeting1030/R3_gener
 ```
 
 이 worktree 는 git 밖 데이터(`data_v3/`, `runs/`)가 없으므로 원래 clone 의 폴더를 링크해 쓴다. 옛 코드가 지금의 `batch_parallel.sh` 와 맞는지(여러 DXF 를 한 번에 받는지)는 돌리기 전에 도면 1장으로 확인한다. 위 명령은 아직 돌려 보지 않았다. 돌린 뒤 실제 명령과 걸린 시간으로 고친다.
+
+### 3.1 R2 를 돌렸다 (2026-10-30)
+
+**조건.**
+
+| | |
+|---|---|
+| 코드 | c71cca0 (2026-10-23 main). `git worktree add --detach ../pbl-c71cca0 c71cca0`, 그 안에서 `uv sync` |
+| 서버 | c71cca0 의 `experiments/serve.sh` 로 띄웠다 (DeepSeek-OCR-2 GPU 0, Qwen3.6-27B GPU 1~3 pipeline). 지금 main 의 서버와 다른 점은 `--structured-outputs-config.disable_any_whitespace=true` 가 없는 것 하나다 (`--dry-run` 으로 비교). 이 옵션은 3cf2274 (#13) 에서 들어왔다 |
+| 데이터 | 옛 `data_v3/synthetic` 30장, 옛 정답 |
+| 실행 | `main.py --batch` 1묶음 순차. c71cca0 은 모델 요청 제한 시간이 120초로 고정이라 여러 묶음을 동시에 돌리지 않았다. 3D 단계(11~13)도 돈다 |
+| 걸린 시간 | 1시간 0분 13초 (01:16 ~ 02:16) |
+| 출력 | `runs/reader/meeting1030/R2_synthetic_c71cca0` (`score.md`, `score.json`, `accuracy.md`, `flat_patterns.md`) |
+
+```zsh
+cd ../pbl-c71cca0
+./experiments/serve.sh --vllm-bin ~/venvs/vllm-0.31/bin/vllm      # 이 셸은 띄워 둔다
+# 다른 셸, 같은 폴더에서
+. runs/vllm/ocr.env; . runs/vllm/reason.env
+PYTHONPATH=. uv run python cutplan_agent/reader/main.py --batch --input-mode dxf \
+  --output-dir /home/gwanwoo/developer/pbl/runs/reader/meeting1030/R2_synthetic_c71cca0 \
+  /home/gwanwoo/developer/pbl/data_v3/synthetic
+```
+
+채점: 지금의 `scripts/reader/score_synthetic.py` 는 새 정답의 파라미터 이름(`large_outer_diameter`, `outer_diameter`)을 읽는다. 옛 정답은 콘이 `large_diameter`·`small_diameter`, 경판이 `diameter` 라서 `KeyError` 로 멈춘다. 레포 코드는 고치지 않고 이름만 바꿔 넣는 래퍼로 채점했다. 규칙(허용 오차, 안지름 환산)은 그대로다. 레포 루트에서:
+
+```zsh
+cat > /tmp/score_old_labels.py <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts" / "reader"))
+import score_synthetic as sc
+
+orig = sc.expected_params
+
+
+def expected_params(label):
+    p = dict(label.get("params", {}))
+    if label.get("class") == "cone" and "large_diameter" in p:
+        p["large_outer_diameter"] = p.pop("large_diameter")
+        p["small_outer_diameter"] = p.pop("small_diameter")
+    if label.get("class") == "press_formed" and "diameter" in p:
+        p["outer_diameter"] = p.pop("diameter")
+    return orig({**label, "params": p})
+
+
+sc.expected_params = expected_params
+sys.argv = ["score_synthetic.py", sys.argv[2]]
+sc.main()
+PY
+uv run python -I /tmp/score_old_labels.py "$PWD" runs/reader/meeting1030/R2_synthetic_c71cca0
+```
+
+**결과 (옛 정답 기준).**
+
+| 항목 | 전체 | 평판 | 굽힘판 | 원통 | 콘 | 경판 |
+|---|---:|---:|---:|---:|---:|---:|
+| 단계 | 27/30 | 5/6 | 6/6 | 4/6 | 6/6 | 6/6 |
+| 표제란 | 30/30 | 6/6 | 6/6 | 6/6 | 6/6 | 6/6 |
+| 뷰 | 14/30 | 3/6 | 5/6 | 0/6 | 6/6 | 0/6 |
+| 형상 | 27/30 | 5/6 | 6/6 | 4/6 | 6/6 | 6/6 |
+| 치수 | 18/30 | 4/6 | 3/6 | 4/6 | 1/6 | 6/6 |
+| 전개 | 11/30 | 4/6 | 3/6 | 4/6 | 0/6 | 0/6 |
+| 전부 | 4/30 | 2/6 | 2/6 | 0/6 | 0/6 | 0/6 |
+
+**왜 이렇게 나왔나.**
+
+1. **형상 27/30, 전개 11/30 은 동료 실행(①)과 수가 같다.** 판독 계산이 같다는 2.1절과 맞는다. 다만 틀린 도면은 다르다. ① 은 cylinder_0013·0018, flat_0005, R2 는 cylinder_0016·0017, flat_0001 이다. 전개는 형상이 빠진 원통 · 평판 말고도 굽힘판 3장(0008·0010·0011)이 엇갈린다. 같은 코드라도 기계 · 서버가 바뀌면 모델 답이 달라진다 ([reader/stages.md](reader/stages.md) 6절).
+2. **형상을 못 낸 3장은 06 판단 요청이 120초 제한에 걸린 것이다** (`06_view_labels.json` trace: `ReadTimeout … read timeout=120.0`, 원문 없음). 끝난 06 요청은 최장 66.5초 (cylinder_0013, 원문 3,009자), 가운데값 39.3초다. 이 서버의 Qwen 은 요청 하나에 초당 약 12.9 토큰을 쓴다 (`reason_vllm.log` 의 `Avg generation throughput`). 그래서 `max_tokens` 1,500 까지 가는 답은 생성에만 약 116초가 들고, 그림 입력 처리까지 더하면 120초를 넘는다. 원문이 남지 않아 직접 보지는 못했지만, 동료 서버에서 "길이 제한에서 잘림" 으로 나타나던 #13 과 같은 원인으로 본다. 빠른 GPU 에서는 잘려서 깨지고, 이 서버에서는 잘리기 전에 시간이 다 된다.
+3. **콘 전개 0/6 은 정답이 틀려서다.** cone_0023 은 치수가 맞았는데 (안지름 142 · 72, 높이 150) 전개 오차가 114% 다. 판독기는 R1 321.3, θ 81.8° (θ = 360° · sin α) 를 냈고 옛 정답은 R1 330.06, θ 38.17° 다. 새 정답은 321.02, 81.8° 다 (슬라이드 '채점').
+4. **경판 전개 0/6 은 기준이 갈려서다.** 치수는 6/6 맞았다. 전개 오차는 8~11% 다. press_formed_0028 (외경 300, t 6, SF 15) 에서 판독기는 경험계수로 1.275 × 288 + 2 × 15 = 397.2, 옛 정답은 432.5 다. 06 · 09 가 읽는 `unfold_rules.md` 는 회사 계산 문서의 1.2·Dm + 2·SF (Dm = 288 + 6 이므로 382.8, 여기에 트림 여유 30 mm 를 더하고 10 mm 로 올림) 를 적고 있다. 세 기준이 모두 다르다.
+5. **뷰 14/30.** 원통 0/6, 경판 0/6 은 원만 있는 뷰를 뷰로 잡지 못한 것이다 (v3_upgrade.md #11, 후에도 남아 있다). 평판 3장은 top 대신 other · bottom 으로 이름을 붙였다.
+6. **치수 18/30.** 콘 5장은 AI 가 큰 쪽 바깥지름(150, 300)을 안지름 칸에 그대로 넣었다. 작은 쪽은 AI 가 비워 코드가 외형 치수에서 맞게 채웠다 (`09_unfold_params.json` 의 `sources`). 후의 #14 와 같은 실패다. 굽힘판 3장은 폭과 다리를 바꿔 읽거나 굽힘 반경을 잘못 읽었다 (#17).
+
+'전 (다시 잼)' 열의 숫자는 옛 정답 기준이라 후와 바로 견줄 수 없다. 특히 콘 · 경판 전개와 콘 치수는 정답 쪽 오류가 섞여 있다. 덱의 단계별 점수 노트에 같은 내용을 적었다.
 
 ## 4. 추가 실험
 
