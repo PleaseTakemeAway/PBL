@@ -123,6 +123,32 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 - 새 데이터의 나머지 점수 (`new_1` / `new_2`): 단계 30/30, 표제란 30/30, 뷰 15/30, 치수 21 / 22, 전개 15 / 16, 전부 8 / 9. 뷰·치수·전개의 남은 오류는 4절 #11, #14~#18 이다.
 - 3묶음 동시로 30장에 약 12분 걸렸다 (옛·새 데이터를 같이 돌려 6묶음이 한 서버를 나눠 썼다).
 
+### 3.3 공백 반복은 `reason` 안의 따옴표에서 시작한다 (2026-10-29 확인)
+
+잘린 답의 원문은 각 도면의 `stages/06_view_labels.json` 의 `trace.reason[0].raw` 에 있다 (`vlm.py` 가 앞 4000자만 남긴다). 같은 파일의 `trace.reason[0].error` 에 `JSONDecodeError`, `seconds` 에 걸린 시간이 있다. 고치기 전 기준선 `mlic` 의 `runs/reader/gen1027/local_new` (3.1절) 의 4장을 보면 다음과 같다.
+
+| 도면 | 끊긴 모양 | 공백이 시작되기 직전 원문 | 시작 위치 |
+|---|---|---|---:|
+| `shard1/flat_0002` | `\n` 반복 (전체 답 27,443자) | `…Let's look at the "` | 2256자 |
+| `shard0/cylinder_0013` | `\r\n\n    ` 반복 | `…The title block says "` | 2411자 |
+| `shard0/cylinder_0016` | `\r\n\n    ` 반복 | `…Let me re-read the prompt. "` | 1878자 |
+| `shard1/cylinder_0017` | 공백 없이 `reason` 을 4000자 넘게 씀 | (해당 없음) | |
+
+네 장 모두 `seconds` 가 137~141초다. `max_tokens` 까지 쓰느라 시간을 다 썼다.
+
+공백형 세 장은 모두 모델이 `reason` 문장 안에서 무언가를 인용하려고 `"` 를 쓴 직후에 공백이 시작된다. 이유는 다음과 같다.
+
+1. 판단 서버는 xgrammar 로 출력을 JSON 스키마 문법에 묶는다. 문자열 안에서 이스케이프하지 않은 `"` 는 문자열을 닫는다.
+2. 모델은 인용을 시작한 셈이지만, 문법상 그 뒤에는 `,`, `}`, 공백만 올 수 있다. 모델이 이어 쓰고 싶은 글자는 모두 막힌다.
+3. 막힌 상태에서 허용되는 토큰 중 모델이 가장 그럴듯하게 고르는 것이 공백·줄바꿈이다. 이것을 `max_tokens` 까지 반복한다. 그래서 오류가 `Expecting ',' delimiter` 다.
+
+이로부터 알 수 있는 것:
+
+- **`max_tokens` 를 늘려도 공백형은 고쳐지지 않는다.** 시간만 더 쓴다. 늘리면 효과가 있는 것은 cylinder_0017 같은 장문형뿐이다. `max_tokens` 는 서버 한도가 아니라 요청마다 보내는 값이고, `cutplan_agent/reader/vlm.py` 의 `VLMConfig.max_tokens` 기본값 1500 이다 (환경 변수로는 못 바꾼다).
+- **`disable_any_whitespace` 가 이 경우를 막는 이유:** 공백까지 막히면 `"` 뒤에 올 수 있는 것은 `,` 나 `}` 뿐이라 모델이 필드를 닫고 다음으로 넘어간다. `reason` 이 인용 앞에서 끊기지만 JSON 은 성립한다. 장문형은 이 설정으로 막을 수 없어서 짧게 다시 묻기가 따로 필요하다.
+- **하네스의 교훈:** 문법 강제는 형식을 보장하지만, 모델이 문법 밖으로 나가려 할 때 형식 안에서 쓸모없는 출력을 끝까지 내는 방식으로 실패할 수 있다. 자유 서술 필드(`reason`, `note`)가 그런 탈출이 시작되는 곳이다. 다른 단계나 다른 모델에서도 원문(`raw`)의 공백이 시작되는 지점을 먼저 본다. 프롬프트에서 `reason` 에 큰따옴표를 쓰지 말라고 하거나 `reason` 을 짧게 두는 것도 같은 문제를 줄이는 방법이지만, 아직 해 보지 않았다.
+- 고친 뒤의 실행(`fix13/*`)은 동료 서버에만 있다. 그쪽에서 다시 물은 두 장(press_formed_0026, cylinder_0017)은 장문형이었다 (3.2절).
+
 ## 4. 이상한 점
 
 합성 도면에서 찾은 이상한 점을 하나씩 적는다. 처리는 코드(생성기·reader), 정답, 지식 문서 중 무엇을 고쳤는지 적는다.
@@ -141,7 +167,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 | 10 | 2026-10-27 | 옆에서 본 구멍에 중심선이 없다 | 구멍이 있는 11장 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 11 | 2026-10-27 | reader 가 원만 있는 뷰를 뷰 후보에서 놓친다 (뷰 3개 중 2개만 잡힘) | cylinder 우측면도, press 평면도. 옛·새 데이터 모두 | reader 05 `views` | 남음 |
 | 12 | 2026-10-27 | reader 표제란 정규식이 `THIRD ANGLE` 과 `PART NAME` 을 읽지 못한다 | 30장 모두. 옛·새 데이터 모두 | reader 02 `title_regex` | 남음 |
-| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (공백을 수천 줄 반복하거나 `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 판단 서버에 `disable_any_whitespace` (공백 반복 차단), `max_tokens` 에서 잘리면 짧게 한 번 다시 묻기 (`reader/vlm.py`, 2026-10-28, 3.2절) | 고침 |
+| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (`reason` 안에서 `"` 를 써 문자열이 닫힌 뒤 공백을 수천 줄 반복하거나, `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림. 3.3절). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 판단 서버에 `disable_any_whitespace` (공백 반복 차단), `max_tokens` 에서 잘리면 짧게 한 번 다시 묻기 (`reader/vlm.py`, 2026-10-28, 3.2절) | 고침 |
 | 14 | 2026-10-27 | 09 에서 모델이 콘 대경을 외경 그대로 `large_inner_dia` 에 넣는다 (소경은 모델이 비워 fallback 이 외경 − 2t 로 맞게 채움) | cone_0019~0022 | 하네스: 외형 치수와 대조 | 남음 |
 | 15 | 2026-10-27 | 09 에서 모델이 2:1 타원형 경판을 `HEMI` 로 판단해 계수 1.414 를 쓴다. press_formed_0025 는 외경을 안지름으로 읽었다 | press_formed_0025~0028·0030 | 하네스: 높이/지름 = 1/4 이면 2:1 | 남음 |
 | 16 | 2026-10-27 | `fallback_params` 가 직선부 없는 새 경판 도면에서 타원 끝을 직선부(`side_height`) 2.4~3.6 mm 로 잰다 | press_formed 6장 | reader `unfold.py` 의 `_front_profile`·`fallback_params` | 고침 (2026-10-28): 옆선을 셀 때 타원·스플라인·원호를 나눈 조각을 뺀다. 직선부 있는 합성 6장에서 4·9·6·9·4·6 을 그대로 읽는다 (`test_reader_measures_the_straight_flange`) |
