@@ -153,7 +153,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 
 ### 3.4 `reason` 칸을 문법으로 짧게 묶는다: 확인과 계획 (2026-10-30)
 
-3.3절을 두고 사용자와 개선 방안을 정리했다. 아직 코드는 바꾸지 않았다. 작업 브랜치는 `reason-whitespace` 다.
+3.3절을 두고 사용자와 개선 방안을 정리했다. 작업 브랜치는 `reason-whitespace` 다. 코드는 3.4.5, 측정 결과는 3.4.6.
 
 #### 3.4.1 `reason` 은 판단 뒤에 쓰인다
 
@@ -249,7 +249,7 @@ PY
 | 1 | `reason` (뷰, `candidate_confirmation`), `problems` 항목, 맨 위 `notes` 에 `maxLength` 200 을 건다. 제목 칸(`drawing_no` 등)에는 걸지 않는다. `pattern` 은 쓰지 않는다. Anthropic 구조화 출력은 `maxLength` 를 지원하지 않으므로 Claude 로 보낼 때는 스키마에서 빼고 프롬프트의 OUTPUT CONTRACT 에만 남긴다. 클라이언트 검증은 길이를 보지 않는다 (넘친 답을 버리지 않는다) | 코드 완료 (`vlm_output.py` 의 `response_schema`, `vlm.py` 의 `without_max_length`) |
 | 2 | `output_instructions` (모든 작업 공통) 에 "인용은 작은따옴표로" 를 넣었다: `To quote text inside notes, a reason or a problem, use single quotes ('SHELL').` 보장은 아니고 빈도를 줄이는 보조 수단이다 | 코드 완료 |
 | 3 | 비교용 옵션 두 개. 다른 설정처럼 `CUTPLAN_REASON_*` 환경 변수다. `CUTPLAN_REASON_PROSE_LIMIT` 은 글자 수 (기본 200, `0` 이면 제한 없음 = 이전 동작). `CUTPLAN_REASON_VIEW_REASON=off` 면 06 이 뷰마다 `reason` 을 받지 않는다 (스키마와 06 프롬프트에서 뺀다. 기본 `on`). 쓴 값은 모델 호출 기록의 `schema_shape` 에 남는다 | 코드 완료 |
-| 4 | `data_v3/generated` 30장에서 잰다. 기본값 한 판을 먼저 돌려 `fix13/new_*` (3.2절) 와 비교한다 (아래). 볼 것: 다시 묻기 횟수, 최종 잘림 수, 200자에 닿은 `reason` 수, 06 최장 시간, 점수 | 미착수. 더 빠른 GPU 서버에서 돌린다 |
+| 4 | `data_v3/generated` 30장에서 잰다. 기본값 한 판을 먼저 돌려 `fix13/new_*` (3.2절) 와 비교한다 (아래). 볼 것: 다시 묻기 횟수, 최종 잘림 수, 200자에 닿은 `reason` 수, 06 최장 시간, 점수 | 2026-10-30 동료 서버에서 쟀다 (3.4.6). 제한이 일했고 점수는 그대로다 |
 
 4 의 실행 방법. 세 판을 다 돌릴 필요는 없다. 먼저 기본값 한 판만 돌린다.
 
@@ -297,6 +297,90 @@ PY
 
 - `max_tokens` 1500 과 짧게 다시 묻기는 그대로 둔다. 1 이 들어가면 다시 묻기는 거의 불리지 않아야 한다. 불리면 그것도 기록(`retry`)에 남는다.
 - 바꾼 뒤 확인한 것: 단위 테스트 129건 중 실패 11건으로 바꾸기 전 126건의 실패 목록과 같다 (새 테스트 3건은 통과). xgrammar 가 있는 vLLM 환경에서 `tests/test_vlm_output.py` 31건이 모두 통과한다 (200자 `reason` 은 받고 201자는 거부). `--batch --no-vlm` (data_v3/synthetic) 출력은 경로·시각을 빼면 `stages/` 까지 같다. smoke test 출력 전체가 바꾸기 전과 같다 (총 6132.2 kg).
+
+#### 3.4.6 측정 결과 (2026-10-30, 동료 서버)
+
+3.4.5 의 4 를 동료 서버(RTX PRO 6000 96GB × 8)에서 돌렸다. 서버 쌍 4개(OCR 1장 + 판단 1장, `fix13` 과 같은 배치·설정)를 띄우고 쌍마다 실험 하나를 3묶음으로 돌렸다. 새 데이터 네 판을 동시에 돌리고, 이어서 옛 데이터 네 판을 돌렸다. 한 서버에 한 실험만 붙이므로 06 시간을 `fix13` 과 비교할 수 있다. `data_v3/generated` 는 동료 서버에 있던 10-27 23:45 판이고, `fix13` 도 이 판으로 돌았다. 2807e44 (경판 원판·콘 평균 지름을 현업자 답에 맞춤) 와 5.5절 (경판 직선부, 10-28) 전의 판이다. `check_data.py` 로 보면 49개가 `다름` 이다. 현재 생성기로 다시 만들어 `label.json` 을 비교하면 다른 것은 두 형상이다. 나머지 형상은 DXF 바이트만 다르다.
+
+- 경판 6장: `params` 에 `straight_flange` 가 없다. 원판은 옛 식 `Db = 1.2 × Dm` 이다 (press_formed_0025 의 정답 172.8. 현재 판은 직선부 4 를 넣어 184.3).
+- 콘 6장: 평균 지름이 옛 식 `OD − t` 다 (cone_0019 는 146·96. 현재 판은 145.945·95.945).
+
+**그래서 이 절의 점수는 동료 서버의 실행끼리만 비교한다.** 현재 생성기 데이터에서 돌린 다른 서버의 점수와 직접 비교하지 않는다. 특히 경판 점수는 이 데이터 때문에 정해진다. 경판 치수 6/6 은 정답에 직선부가 없어서 나온 값이다 (예측도 직선부를 비워 두었다. 모델이 채우지 않았고 코드도 채우지 못했다). 경판 전개 0/6 은 코드가 새 식으로 계산한 원판(press_formed_0025 는 176.3)이 옛 정답과 2~18% 어긋나서 나온 값이다.
+
+| 실행 | 데이터 | `PROSE_LIMIT` | 뷰 `reason` | 형상 | 다시 물음 | 최종 잘림 | 200자에 닿은 `reason` | `reason` 최장 (자) | 06 최장 s | 06 합계 s |
+|---|---|--:|---|--:|--:|--:|--:|--:|--:|--:|
+| `fix13/new_1` (기준) | 새 | 없음, 인용 안내 없음 | on | 30/30 | 1 | 0 | 7 | 1954 | 86.7 | 836 |
+| `fix13/new_2` (기준) | 새 | 없음, 인용 안내 없음 | on | 30/30 | 1 | 0 | 5 | 1228 | 87.0 | 821 |
+| `limit_1` | 새 | 200 | on | 30/30 | 0 | 0 | 3 | 200 | 22.7 | 554 |
+| `limit_2` | 새 | 200 | on | 30/30 | 0 | 0 | 3 | 200 | 22.6 | 554 |
+| `noreason_1` | 새 | 200 | off | 30/30 | 0 | 0 | 0 | 0 | 17.7 | 456 |
+| `nolimit_1` | 새 | 0 | on | 30/30 | 0 | 0 | 6 | 3193 | 59.3 | 710 |
+| `fix13/old_1` (기준) | 옛 | 없음, 인용 안내 없음 | on | 30/30 | 0 | 0 | 6 | 1663 | 54.8 | 720 |
+| `fix13/old_2` (기준) | 옛 | 없음, 인용 안내 없음 | on | 30/30 | 0 | 0 | 4 | 1345 | 61.1 | 727 |
+| `old_limit_1` | 옛 | 200 | on | 30/30 | 0 | 0 | 2 | 200 | 21.9 | 549 |
+| `old_limit_2` | 옛 | 200 | on | 30/30 | 0 | 0 | 2 | 200 | 21.0 | 548 |
+| `old_noreason_1` | 옛 | 200 | off | 30/30 | 0 | 0 | 0 | 0 | 17.0 | 453 |
+| `old_nolimit_1` | 옛 | 0 | on | 30/30 | 1 (cylinder_0016) | 0 | 2 | 1302 | 104.4 | 727 |
+
+새 데이터의 나머지 점수 (`score_synthetic.py`, `fix13` 도 이 브랜치의 채점기로 다시 쟀다):
+
+| 실행 | 뷰 | 치수 | 전개 | 전부 |
+|---|--:|--:|--:|--:|
+| `fix13/new_1`, `new_2` | 15, 15 | 21, 22 | 15, 16 | 8, 9 |
+| `limit_1`, `limit_2` | 15, 16 | 21, 21 | 16, 16 | 8, 8 |
+| `noreason_1` | 16 | 21 | 16 | 8 |
+| `nolimit_1` | 16 | 21 | 16 | 8 |
+
+단계·표제란·형상은 모든 실행이 30/30 이다. 뷰가 15 와 16 으로 갈리는 것은 bent_sheet_0008 한 장이고, 나머지 14장은 모든 실행에서 같다. 옛 데이터는 정답 형식이 달라 `score_synthetic.py` 로 채점하지 못한다 (`KeyError: 'large_outer_diameter'`). 형상은 shard 별 `accuracy.md` 에서 모았다.
+
+경판 전개는 모든 실행에서 0/6 이다. 위에서 적은 대로 데이터 판 때문이고, 이 측정이 보려는 06 의 변화와는 상관없다.
+
+- **제한이 일했다.** 200 판에서는 다시 묻기가 한 번도 불리지 않았다 (네 판, 120장). 같은 설정에서 제한만 끈 `nolimit` 두 판은 `reason` 이 최장 3193자이고 다시 묻기가 1번 불렸다. 200자에 닿은 `reason` 은 판마다 2~3개이고 모두 "Wait, …" 로 풀이를 이어 가다 끊긴 것이다 (flat_0001, cylinder_0016·0017). 문법이 끊어도 JSON 은 성립했다.
+- **06 이 빨라졌다.** 최장 87 s → 23 s, 06 합계 836 s → 554 s (새 데이터). 배치 전체는 `limit` 406 s, `nolimit` 681 s 다.
+- **점수는 떨어지지 않았다.** 형상 30/30 이고, 뷰·치수·전개·전부는 `fix13` 과 1장 안에서 같다.
+- **뷰 `reason` 을 빼도 (`noreason`) 점수가 같다.** 3.4.1 에서 걱정한 "첫 뷰의 긴 `reason` 이 다음 뷰 판단의 메모장" 효과는 이 30장에서는 보이지 않는다. 06 은 200 판보다 약 20% 더 빠르다. 다만 사람이 판단 근거를 볼 칸이 없어진다. 기본값은 `on` 으로 둔다.
+- **인용 안내의 효과는 이 측정으로 따로 가를 수 없다.** 공백 반복은 `disable_any_whitespace` 가 이미 막고 있어 기준선에도 공백형 실패가 없다. 모든 판에서 `reason` 안에 `\"` 는 0개다. 작은따옴표를 쓴 `reason` 은 `fix13` 이 7·4개, 200 판이 9·8개다.
+- `nolimit_1` 은 `fix13` 과 코드가 인용 안내 하나만 다르다. 06 최장이 59 s 로 `fix13` 보다 짧지만 `old_nolimit_1` 은 104 s 라서, 판마다 흔들리는 범위로 본다.
+
+다시 돌리는 법. `experiments/batch_parallel.sh` 는 `CUTPLAN_SERVE_DIR` 가 있으면 `runs/vllm` 대신 그 폴더의 `ocr.env`·`reason.env` 를 읽는다. 그래서 `serve.sh --serve-dir` 로 서버 쌍을 여러 개 띄우고 쌍마다 실험을 하나씩 붙일 수 있다. 동료 서버에서 쓴 스크립트는 다음과 같다 (레포 루트, 쌍 p 는 GPU 2p·2p+1, 포트 80p0·80p1).
+
+```bash
+export PYTHONPATH=.
+VLLM=/home/hwang/yechanhwang/PBL_2026/pbl/bin/vllm
+R=runs/reader/reason1030
+for p in 0 1 2 3; do
+  ./experiments/serve.sh --vllm-bin $VLLM --serve-dir runs/vllm/reason1030_p$p \
+    --ocr-gpu $((2 * p)) --ocr-port 80${p}0 --reason-gpu $((2 * p + 1)) --reason-port 80${p}1 \
+    >runs/vllm/reason1030_p$p.serve.out 2>&1 &
+done
+until ls runs/vllm/reason1030_p{0,1,2,3}/reason.env >/dev/null 2>&1; do sleep 10; done
+# 이름 PROSE_LIMIT VIEW_REASON 데이터. 옛 데이터 판은 old_* 이름에 data_v3/synthetic.
+p=0
+for spec in "limit_1 200 on" "limit_2 200 on" "noreason_1 200 off" "nolimit_1 0 on"; do
+  set -- $spec
+  (CUTPLAN_SERVE_DIR=runs/vllm/reason1030_p$p CUTPLAN_REASON_PROSE_LIMIT=$2 CUTPLAN_REASON_VIEW_REASON=$3 \
+     experiments/batch_parallel.sh data_v3/generated $R/$1 3 \
+   && uv run python scripts/reader/score_synthetic.py $R/$1) >$R/$1.out 2>&1 &
+  p=$((p + 1))
+done
+wait %5 %6 %7 %8   # 실험 네 개. 끝나면 serve.sh 네 개를 kill %1 %2 %3 %4 로 멈춘다
+```
+
+표의 06 열은 위 3.4.5 의 집계 스크립트에 `reason` 최장과 06 합계를 더해 센 값이다.
+
+결과가 있는 곳 (동료 서버 `~/gwanwoo/pbl`, git 제외):
+
+- `runs/reader/reason1030/<실행>/`: 배치 출력. 새 데이터 판에는 `score.md`, `score.json` 이 있다. `<실행>.out` 은 걸린 시간과 채점 로그다.
+- `runs/reader/reason1030/summary06.md`: 위 06 표의 원본. `count06.py` 로 만들었다. 다시 만들려면 `uv run python runs/reader/reason1030/count06.py runs/reader/fix13/new_1 runs/reader/reason1030/limit_1 ...` 를 돌린다.
+- `runs/reader/reason1030/fix13_rescore/`: `fix13/new_*` 를 이 브랜치의 채점기로 다시 잰 `score.md`·`score.json`. 원래 `fix13/*/score.md` 는 옛 채점기 결과라서 덮어쓰지 않았다.
+- `runs/reader/reason1030/run_all.sh`: 실제로 돌린 드라이버. 위 명령과 같고, 옛 데이터 판과 서버 정리까지 들어 있다. `run_all.out` 에 시각이 남아 있다 (서버 기동 03:04, 1판 03:04–03:16, 2판 03:16–03:26).
+
+이어서 할 일 (2026-10-30 기준):
+
+1. 이 측정을 `reason-whitespace` 에 커밋하고 main 에 머지한다. 바뀐 것은 `experiments/batch_parallel.sh` 의 `CUTPLAN_SERVE_DIR`, 이 절, `docs/reader/quickstart.md` 의 한 줄이다. 결과가 바뀌면 안 되는 변경이 아니므로 전후 비교는 필요 없다. 머지할 때 4절 #13 의 상태 칸("후속 계획 있음")과 AGENTS.md 7절을 고친다.
+2. 뷰 `reason` 의 기본값을 정한다. 지금은 `on` (200자)이다. `off` 는 점수가 같고 06 이 약 20% 빠르지만 사람이 볼 판단 근거가 없어진다.
+3. 동료 서버의 `data_v3/generated` 를 현재 생성기로 다시 만들고 (`PYTHONPATH=. uv run python scripts/build_synthetic.py`), `check_data.py` 가 `OK` 인지 본다. 그 데이터에서 200 판을 돌린다. 다시 만들면 `fix13` 과 이 절의 실행과는 직접 비교할 수 없으므로, 같은 데이터에서 `PROSE_LIMIT=0` 판도 함께 돌린다. 이번 측정은 `fix13` 과 맞추려고 10-27 판으로 했다.
+4. 뷰 점수(15~16/30)가 낮은 것은 이 작업과 상관없다. 모든 실행에서 cylinder 6장, press_formed 6장, flat_0004·0006 이 틀린다. 다음 개선 대상이다.
 
 ## 4. 이상한 점
 
