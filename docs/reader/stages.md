@@ -96,6 +96,10 @@ PYTHONPATH=. uv run python cutplan_agent/reader/stages/run.py $DXF $W --to sheet
 
 `run.py` 는 `main.py --batch` 의 `--analyze-only`, `--no-unfold`, `--no-confirm`, `--with-3d`, `--units`, `--tolerance`, `--max-candidates`, `--projection` 을 그대로 받는다. 옵션으로 건너뛴 단계도 `skipped` 파일을 남긴다.
 
+`--analyze-only` 는 07 `sheet`(형상 분류)에서 멈춘다. 08–13 은 모두 `skipped` 로 남고 `reason` 은 `--analyze-only` 다. 배치는 `flat_patterns.json`·`flat_patterns.md` 를 쓰지 않고, `predictions.json` 의 `flat_pattern` 은 `null` 이다. 도면 1장 실행(`--batch` 없이)과 이미지 입력도 같이 형상 분류에서 끝난다. 형상 분류 정확도만 빨리 볼 때 쓴다.
+
+2026-10-30 전에는 08 `document` 와 11–13 만 건너뛰고 09 `unfold_params`, 10 `develop` 은 돌았다. 3D 단계는 2026-10-27 부터 기본으로 꺼져 있으므로 그때 이 옵션이 실제로 바꾸던 것은 08 을 건너뛰는 것뿐이었다. 그런데 08 이 없으면 09 가 모델에 보내는 질문에서 08 이 모은 치수 목록이 빠지고, 모델이 비운 값을 전체 치수로 채우는 폴백도 쓸 수 없다 (`unfold.py` 의 `ask_unfold_params`, `fallback_params`). 네스팅 도면 판정도 08 에서 한다. 그래서 전개도가 기본 실행보다 나쁘게 나올 수 있었고, 이름("분석만")과도 맞지 않아 형상 분류에서 멈추게 바꿨다. 바꾸기 전후로 합성 30장(`--no-vlm`)을 돌려 보면 기본 실행 출력은 같고, `--analyze-only` 실행은 `predictions.json` 의 `prediction` 이 같고 `flat_pattern` 과 전개도 집계 파일만 달라진다.
+
 ### 3.2 한 단계씩
 
 ```bash

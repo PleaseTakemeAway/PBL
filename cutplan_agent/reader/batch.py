@@ -348,6 +348,7 @@ def run_batch(
     three_d: bool = False,
 ) -> dict[str, Any]:
     """Predict every discovered DXF, reconstruct each drawing, then aggregate results."""
+    unfold = unfold and not analyze_only  # --analyze-only ends at the part class
     inputs = list(inputs)
     output_dir = Path(output_dir)
     aggregate_paths = [
@@ -436,10 +437,6 @@ def run_batch(
                     ]
                 record["prediction"] = _prediction(analysis)
                 record["status"] = "predicted"
-                if unfold:
-                    record["flat_pattern"] = run_unfold(
-                        analysis, None, reason, item_dir
-                    )
                 continue
             drawing = load_drawing(
                 path,

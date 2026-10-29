@@ -112,7 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--analyze-only",
         action="store_true",
-        help="Run OCR, view labelling and calibration, write sheet_analysis.json, skip reconstruction",
+        help="Stop at the part class: run OCR, view labelling and calibration, write "
+        "sheet_analysis.json, skip the flat pattern (전개도) and reconstruction",
     )
     parser.add_argument(
         "--no-unfold",
@@ -278,8 +279,6 @@ def main(argv: list[str] | None = None) -> int:
         for r in a["review"]:
             print(f"  review: {r}")
         print(f"outputs: {work_dir.resolve()}/sheet_analysis.json, sheet.png")
-        if not args.no_unfold:
-            _print_unfold(run_unfold(a, None, clients[1], args.output_dir))
         return 0
     try:
         artifacts = [

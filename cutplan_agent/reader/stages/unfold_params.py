@@ -1,7 +1,7 @@
 """Stage 09 unfold_params: read the development (전개) parameters of the decided part class.
 Model: reasoning (with the unfold skills); overall view dimensions fill what the model leaves empty.
 
-Without the document stage (--analyze-only) the model gets only the sheet analysis.
+Without the document stage (08 not run) the model gets only the sheet analysis.
 in : analysis/sheet_analysis.json, stages/08_document.json when it built a document
 out: stages/09_unfold_params.json (parameters with per-field source, model call incl. raw reply)
 

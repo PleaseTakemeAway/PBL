@@ -144,7 +144,7 @@ DXF/이미지 ─▶ reader: 표제란 · 뷰 분할 · 도면 종류 ─▶ 추
 | 모드 | 조건 | 흐름 |
 |---|---|---|
 | 배치 | `--batch`, 입력이 여러 개, 또는 폴더 | `batch.run_batch` (3.3). DXF 입력은 도면마다 `stages/run.py` 의 `run_drawing` |
-| 판독만 | `--analyze-only` | `analyze_dxf` 또는 `analyze_image` → `run_unfold` |
+| 판독만 | `--analyze-only` | `analyze_dxf` 또는 `analyze_image` 에서 끝난다. 형상 분류까지만 하고 전개도와 3D 복원은 하지 않는다 (2026-10-30 부터. 그 전에는 `run_unfold` 도 불렀다) |
 | 단일 (기본) | 입력 1개 | `load_drawing` → `run_unfold` → `ReconstructionPipeline.run` → `confirm_candidates` → `ReconstructionExporter` |
 
 DXF 도면 1장을 단계별로 돌리는 스크립트는 `cutplan_agent/reader/stages/` 에 있다. 명령과 단계별 산출물은 [reader/stages.md](reader/stages.md) 에 정리했다.
