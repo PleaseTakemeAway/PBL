@@ -283,3 +283,9 @@ uv run python scripts/reader/score_synthetic.py runs/reader/meeting1030/R3_gener
 7. 대화 반복 (orchestrator.py orchestrate 의 반복을 줄인 코드와 순환 그림)
 8. 도구를 알려주는 세 가지 방법 (tools · schema · Claude, schema 의 anyOf)
 9. 시연: cone_0019 실제 대화 (턴별 Qwen 의 선택과 Python 의 결과, thought)
+
+### 8.4 부록: tool calling 코드 해설 (2026-10-29)
+
+사용자 피드백: orchestrator.py 의 클래스들이 하네스 엔지니어링의 기초인데 설명이 없다. 본편에서 코드를 읽을 수는 없으니 부록에 넣는다.
+
+부록 '코드 1~8' (96~103장): 1 부품 지도 (두 파일이 나눠 맡는 일), 2 Call · Turn · Tool (세 공급자의 답을 같은 그릇에 담아 반복 코드가 하나), 3 backend 의 약속 start · next · add_results 와 세 방식 비교표, 4 OpenAISchema (anyOf 양식, finish, invalid_reply, thought), 5 system_prompt (역할 · 순서 · 의존 · 효율 · 금지 · 보고), 6 orchestrate() 와 Log (40턴 제한, 깨진 답 · 도구 에러를 결과로 돌려주기, 기록), 7 ReaderTools (_build, _stage_caller, 모델 고정, 작은 결과, 폴더 제한, call), 8 main · make_backend (명령에서 반복까지). 덱은 104장이다.
