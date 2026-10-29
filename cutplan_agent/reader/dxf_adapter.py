@@ -797,7 +797,12 @@ def label_with_vlm(
         "Higher means more likely; these are scores, not probabilities.\n"
         "3. reconstructable_from_views: true only if the orthographic views alone define the shape (false when a note says to follow 3D data, or the part is a freeform pressing).\n"
         "4. For EVERY region id give type in {front, top, bottom, right, left, back, section, detail, flat_pattern, isometric, table, other}, "
-        "a confidence 0-1 and a one-sentence reason. Exactly one region may be front; a BOM/revision/notes block is table. "
+        + (
+            "a confidence 0-1 and a one-sentence reason. "
+            if reason.config.view_reason == "on"
+            else "and a confidence 0-1. "
+        )
+        + "Exactly one region may be front; a BOM/revision/notes block is table. "
         "In third-angle projection the top view sits ABOVE the front view and the right view sits to its RIGHT; first-angle is the opposite.\n"
         "Put these decisions in the reasoning block of the shared output contract. "
         "For each view, include overall_width_mm and overall_height_mm only when readable from overall dimensions; otherwise use null."

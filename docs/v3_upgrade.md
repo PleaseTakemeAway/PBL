@@ -141,15 +141,162 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 공백형 세 장은 모두 모델이 `reason` 문장 안에서 무언가를 인용하려고 `"` 를 쓴 직후에 공백이 시작된다. 이유는 다음과 같다.
 
 1. 판단 서버는 xgrammar 로 출력을 JSON 스키마 문법에 묶는다. 문자열 안에서 이스케이프하지 않은 `"` 는 문자열을 닫는다.
-2. 모델은 인용을 시작한 셈이지만, 문법상 그 뒤에는 `,`, `}`, 공백만 올 수 있다. 모델이 이어 쓰고 싶은 글자는 모두 막힌다.
+2. 모델은 인용을 시작한 셈이지만, 문법상 그 뒤에는 `,` 와 공백만 올 수 있다 (뷰의 `reason` 뒤에는 필수 키 `overall_width_mm` 이 남아 있어 `}` 도 안 된다). 모델이 이어 쓰고 싶은 글자는 모두 막힌다.
 3. 막힌 상태에서 허용되는 토큰 중 모델이 가장 그럴듯하게 고르는 것이 공백·줄바꿈이다. 이것을 `max_tokens` 까지 반복한다. 그래서 오류가 `Expecting ',' delimiter` 다.
 
 이로부터 알 수 있는 것:
 
 - **`max_tokens` 를 늘려도 공백형은 고쳐지지 않는다.** 시간만 더 쓴다. 늘리면 효과가 있는 것은 cylinder_0017 같은 장문형뿐이다. `max_tokens` 는 서버 한도가 아니라 요청마다 보내는 값이고, `cutplan_agent/reader/vlm.py` 의 `VLMConfig.max_tokens` 기본값 1500 이다 (환경 변수로는 못 바꾼다).
-- **`disable_any_whitespace` 가 이 경우를 막는 이유:** 공백까지 막히면 `"` 뒤에 올 수 있는 것은 `,` 나 `}` 뿐이라 모델이 필드를 닫고 다음으로 넘어간다. `reason` 이 인용 앞에서 끊기지만 JSON 은 성립한다. 장문형은 이 설정으로 막을 수 없어서 짧게 다시 묻기가 따로 필요하다.
-- **하네스의 교훈:** 문법 강제는 형식을 보장하지만, 모델이 문법 밖으로 나가려 할 때 형식 안에서 쓸모없는 출력을 끝까지 내는 방식으로 실패할 수 있다. 자유 서술 필드(`reason`, `note`)가 그런 탈출이 시작되는 곳이다. 다른 단계나 다른 모델에서도 원문(`raw`)의 공백이 시작되는 지점을 먼저 본다. 프롬프트에서 `reason` 에 큰따옴표를 쓰지 말라고 하거나 `reason` 을 짧게 두는 것도 같은 문제를 줄이는 방법이지만, 아직 해 보지 않았다.
+- **`disable_any_whitespace` 가 이 경우를 막는 이유:** 공백까지 막히면 `"` 뒤에 올 수 있는 것은 `,` 뿐이라 모델이 필드를 닫고 다음으로 넘어간다. `reason` 이 인용 앞에서 끊기지만 JSON 은 성립한다. 장문형은 이 설정으로 막을 수 없어서 짧게 다시 묻기가 따로 필요하다.
+- **하네스의 교훈:** 문법 강제는 형식을 보장하지만, 모델이 문법 밖으로 나가려 할 때 형식 안에서 쓸모없는 출력을 끝까지 내는 방식으로 실패할 수 있다. 자유 서술 필드(`reason`, `note`)가 그런 탈출이 시작되는 곳이다. 다른 단계나 다른 모델에서도 원문(`raw`)의 공백이 시작되는 지점을 먼저 본다. 프롬프트에서 `reason` 에 큰따옴표를 쓰지 말라고 하거나 `reason` 을 짧게 두는 것도 같은 문제를 줄이는 방법이다. 2026-10-30 에 확인한 것과 계획은 3.4절.
 - 고친 뒤의 실행(`fix13/*`)은 동료 서버에만 있다. 그쪽에서 다시 물은 두 장(press_formed_0026, cylinder_0017)은 장문형이었다 (3.2절).
+
+### 3.4 `reason` 칸을 문법으로 짧게 묶는다: 확인과 계획 (2026-10-30)
+
+3.3절을 두고 사용자와 개선 방안을 정리했다. 아직 코드는 바꾸지 않았다. 작업 브랜치는 `reason-whitespace` 다.
+
+#### 3.4.1 `reason` 은 판단 뒤에 쓰인다
+
+06 의 답 스키마는 `cutplan_agent/reader/vlm_output.py` 의 `REASONING_SCHEMA` 와 `VIEW_SCHEMA` 다. xgrammar 는 스키마의 속성 순서대로 쓰게 하므로 답은 `projection` → `part_class` → `part_class_scores` → `reconstructable_from_views` → `views` 순서로 나온다. 뷰 하나 안에서는 `id` → `type` → `confidence` → `reason` 순서다. 그러니 `reason` 은 형상과 뷰 종류를 이미 정한 뒤에 쓰는 설명이다. 3.3절의 잘린 답에도 형상은 이미 써 있었지만, JSON 이 깨져서 함께 버려졌다. 사람이 보라고 받는 칸 하나가 이미 끝난 판단까지 날린 셈이다.
+
+다만 첫 뷰의 긴 `reason` 이 두 번째 뷰부터의 `type` 판단에 메모장 구실을 했을 수는 있다. `reason` 을 빼면 형상 점수는 그대로일 것으로 보지만, 뷰 점수는 재 봐야 안다 (3.4.5 의 3·4번).
+
+#### 3.4.2 문법 강제는 토큰마다 일어난다
+
+xgrammar 는 vLLM 이 구조화 출력(`response_format: json_schema`)에 쓰는 라이브러리다. 모델이 답을 다 쓴 뒤에 검사하는 것이 아니라, 토큰 하나를 고를 때마다 끼어든다. vLLM 0.31 기준 위치는 다음과 같다 (`~/venvs/vllm-0.31/lib/python3.12/site-packages/vllm/` 아래).
+
+1. 요청이 들어오면 스키마를 검사하고 (`sampling_params.py:1252` → `v1/structured_output/backend_xgrammar.py:395`) 문법으로 컴파일한다 (`backend_xgrammar.py:85`). 이때 `any_whitespace = not disable_any_whitespace` 가 들어간다.
+2. 매 단계 모델이 어휘 전체(Qwen 은 약 15만 개)의 점수를 낸다.
+3. xgrammar 가 지금까지 쓴 글 다음에 문법상 올 수 있는 토큰만 표시한 마스크를 만든다 (`backend_xgrammar.py:210` `fill_bitmask`). 나머지 토큰의 점수는 −∞ 가 된다 (`v1/worker/gpu_model_runner.py:4561` `apply_grammar_bitmask`).
+4. 남은 토큰 중 하나를 고른다. temperature 0 이면 가장 높은 것이다.
+5. 고른 토큰으로 문법 상태를 한 칸 옮긴다 (`backend_xgrammar.py:159` `accept_tokens`).
+
+모델은 규칙을 모른다. 고른 것이 걸러질 뿐이다.
+
+#### 3.4.3 큰따옴표의 두 역할과, 생성 뒤에 고칠 수 없는 이유
+
+같은 글자 `"` 가 두 가지 일을 한다.
+
+- **JSON:** 문자열의 시작과 끝을 표시한다. `{"reason": "left of front view"}` 의 `"` 는 인용이 아니라 칸의 경계선이다. 문자열 안에서 백슬래시 없이 나온 `"` 는 무조건 문자열의 끝이다. 글자로서의 따옴표는 `\"` 로 쓴다.
+- **영어 문장:** 인용이다. 모델이 쓰려던 문장은 `The title block says "SHELL"` 이다.
+
+모델은 문장을 쓰는 중이라 인용 부호로 `"` 를 썼다. JSON 으로는 `\"` 를 써야 했고, 문법도 `\"` 를 허용하고 있었는데 백슬래시를 빠뜨렸다.
+
+토큰 단위로 보면 다음과 같다. 모델이 쓰려던 것은 `"reason": "The title block says \"SHELL\" ..."` 이다.
+
+| 단계 | 지금까지 쓴 글 (끝부분) | 문법이 허용하는 것 | 모델이 가장 원하는 것 | 실제로 나온 것 |
+|---|---|---|---|---|
+| 1 | `"reason":"The title block says ` | 문자열 글자 아무거나, `\`, 닫는 `"` | `"` (인용 시작) | `"`. 문법은 이것을 닫기로 읽는다 |
+| 2 | `…says "` | `,` 공백 | `SHELL` | 공백·줄바꿈 |
+| 3 | `…says "⏎` | `,` 공백 | 여전히 막힌 무언가 | 공백·줄바꿈 |
+| … | `…says "⏎⏎⏎…` | 같음 | 같음 | `max_tokens` 까지 반복 |
+
+- 문법은 토큰을 바꾸지 않는다. 막힌 후보를 지울 뿐이고, 남은 후보 중 무엇을 고를지는 모델의 점수가 정한다. 2단계부터는 `"` 도 허용되지 않는다. 객체 안에서 값 뒤에는 `,` 나 `}` 만 오고, 여기서는 `}` 도 안 된다. 문법은 JSON 일반 문법이 아니라 이 스키마로 만든 것이다. `_object` (`vlm_output.py`) 가 모든 키를 `required` 로 두므로, `VIEW_SCHEMA` 의 네 번째 키 `reason` 뒤에는 `overall_width_mm`·`overall_height_mm` 이 반드시 남아 있다. 마지막 키(예: 맨 위 `notes`) 에서 같은 일이 생기면 그때는 `}` 만 허용된다.
+- 2단계에서 남은 것 중 공백이 뽑혔고, 그 공백이 다음 단계의 입력이 된다. 모델은 같은 것이 이어지는 글을 보면 같은 것을 더 잇는 쪽으로 기운다. 공백이 쌓일수록 `,` 로 빠져나올 가능성은 더 낮아진다. 이 단락은 출력 모양에서 한 추론이다. 단계마다의 점수(logit)는 기록하지 않았다.
+- `disable_any_whitespace` 를 켜면 2단계의 후보가 `,` 하나뿐이다. `,` 뒤에는 스키마 순서상 다음 키(`"overall_width_mm"`)가 와야 하므로 모델은 다시 정해진 길로 끌려 들어간다.
+
+"xgrammar 에 넣기 전에 따옴표를 바꾸면 되지 않나" 는 다음 이유로 되지 않는다.
+
+- **바꿀 완성된 글이 없다.** 3.4.2 처럼 문법은 토큰마다 끼어든다. `"` 가 나온 그 단계에서 문법은 문자열을 닫은 상태로 넘어간다. 그 다음 토큰부터 `,` 와 공백만 남는다. 망가지는 일이 생성 도중에 일어난다.
+- **그 순간에는 누구도 구별하지 못한다.** `"` 가 인용인지 닫기인지는 그 뒤에 무엇이 오느냐로 정해진다. 그런데 뒤의 토큰은 아직 없다. JSON 문법은 "백슬래시 없으면 닫기" 로 바로 정해야 한다.
+- **문법을 끄면** (`CUTPLAN_REASON_OUTPUT_FORMAT=prompt`) 답을 받은 뒤 고칠 수는 있다. 하지만 어느 `"` 가 닫기인지 추측해야 하고, 형식 보장도 잃는다. 하지 않는다.
+
+`pattern` 으로 문자열 안의 `\"` 를 막을 수는 있지만, 닫는 `"` 는 늘 허용해야 하므로 사고의 발단은 막지 못한다. 그래서 따옴표는 프롬프트로 다룬다. "쓰지 마라" 보다 "인용은 작은따옴표로 하라" 가 낫다. 모델의 인용하고 싶은 충동에 갈 길을 주기 때문이다. `'` 는 JSON 에서 아무 뜻이 없고 영어에서도 자연스러운 인용 부호다. `|` 같은 기호는 영어에서 인용에 쓰지 않아 모델이 따르지 않을 가능성이 크다. 인용 자체는 필요 없다. `reason` 은 사람이 읽는 한 문장이다.
+
+#### 3.4.4 `disable_any_whitespace` 와 `maxLength` 확인
+
+`disable_any_whitespace` 는 vLLM 의 설정이다 (`config/structured_outputs.py` 의 `StructuredOutputsConfig`). 기본값은 False 이고 xgrammar·guidance 백엔드에서만 쓸 수 있다. JSON 표준은 토큰 사이(`{`, `:`, `,` 앞뒤)에 공백·탭·줄바꿈을 얼마든지 허용한다. `{"a":1}` 과 여러 줄로 들여 쓴 같은 객체는 같은 JSON 이다. 기본값(False)에서 문법은 이 자유를 그대로 허용한다. True 면 토큰 사이 공백을 막아 한 줄로 붙여 쓰게 한다. 문자열 안의 공백은 값의 내용이라 그대로 쓸 수 있다. 이 레포에서는 3cf2274 (2026-10-28, #13 을 동료 서버에서 고칠 때) 에서 `experiments/vllm_common.sh` 가 reason 서버에 켜도록 했다. 서버를 띄울 때 정하는 값이라 그 전에 띄운 서버에는 없다.
+
+칸 하나의 길이는 `max_tokens` 로 묶을 수 없다. `max_tokens` 는 요청 전체에 걸리고, 줄이면 JSON 이 더 일찍 잘린다. 칸별 제한은 JSON 스키마의 `maxLength` 다. 단위는 토큰이 아니라 글자다.
+
+vLLM 환경의 xgrammar 0.2.7 로 직접 확인했다. 서버에 실제 요청을 보내 끝까지 확인하지는 않았다.
+
+```zsh
+~/venvs/vllm-0.31/bin/python -I - <<'PY'
+import json
+import xgrammar as xgr
+from xgrammar.testing import _is_grammar_accept_string
+
+def ok(schema, text, ws=False):
+    g = xgr.Grammar.from_json_schema(
+        json.dumps(schema), any_whitespace=ws, separators=(",", ":")
+    )
+    return _is_grammar_accept_string(g, text)
+
+def obj(prop):
+    return {"type": "object", "properties": {"r": prop}, "required": ["r"],
+            "additionalProperties": False}
+
+short = obj({"type": "string", "maxLength": 10})
+print(ok(short, '{"r":"abcdefghij"}'))       # True  (10자)
+print(ok(short, '{"r":"abcdefghijk"}'))      # False (11자)
+print(ok(short, '{"r":"가나다"}'))            # True  (한글도 글자 수)
+noquote = obj({"type": "string", "pattern": '^[^"\\\\]*$'})
+print(ok(noquote, '{"r":"say \\"hi\\""}'))   # False (안의 \" 는 막힌다)
+print(ok(short, '{"r":"ab"\n}'))             # False (공백 막음: 닫은 뒤 줄바꿈 불가)
+print(ok(short, '{"r":"ab"\n}', ws=True))    # True  (공백 허용: 3.3절의 상태)
+PY
+```
+
+- `maxLength` N 이면 N 자를 채운 뒤에 올 수 있는 것은 닫는 `"` 뿐이다. 장문형은 이것으로 막힌다. vLLM 의 `backend_xgrammar.py:288-293` 주석도 "maxLength alone lowers to {0, N} correctly" 라고 적고 있다.
+- **`pattern` 과 `maxLength` 를 한 칸에 같이 걸지 않는다.** 같은 주석에 따르면 xgrammar 가 이 경우 길이 제한을 조용히 버린다. 그래서 vLLM 은 이런 스키마를 `VLLMValidationError` 로 거절한다 (`backend_xgrammar.py:395`).
+- Claude 경로(`vlm.py` 의 `_call_anthropic`)도 같은 스키마를 `output_config` 로 보낸다. Anthropic API 가 `maxLength` 를 받는지는 아직 확인하지 않았다.
+
+#### 3.4.5 계획과 진행 (2026-10-30)
+
+| # | 할 일 | 상태 |
+|---|---|---|
+| 1 | `reason` (뷰, `candidate_confirmation`), `problems` 항목, 맨 위 `notes` 에 `maxLength` 200 을 건다. 제목 칸(`drawing_no` 등)에는 걸지 않는다. `pattern` 은 쓰지 않는다. Anthropic 구조화 출력은 `maxLength` 를 지원하지 않으므로 Claude 로 보낼 때는 스키마에서 빼고 프롬프트의 OUTPUT CONTRACT 에만 남긴다. 클라이언트 검증은 길이를 보지 않는다 (넘친 답을 버리지 않는다) | 코드 완료 (`vlm_output.py` 의 `response_schema`, `vlm.py` 의 `without_max_length`) |
+| 2 | `output_instructions` (모든 작업 공통) 에 "인용은 작은따옴표로" 를 넣었다: `To quote text inside notes, a reason or a problem, use single quotes ('SHELL').` 보장은 아니고 빈도를 줄이는 보조 수단이다 | 코드 완료 |
+| 3 | 비교용 옵션 두 개. 다른 설정처럼 `CUTPLAN_REASON_*` 환경 변수다. `CUTPLAN_REASON_PROSE_LIMIT` 은 글자 수 (기본 200, `0` 이면 제한 없음 = 이전 동작). `CUTPLAN_REASON_VIEW_REASON=off` 면 06 이 뷰마다 `reason` 을 받지 않는다 (스키마와 06 프롬프트에서 뺀다. 기본 `on`). 쓴 값은 모델 호출 기록의 `schema_shape` 에 남는다 | 코드 완료 |
+| 4 | `data_v3/generated` 30장에서 잰다. 기본값 한 판을 먼저 돌려 `fix13/new_*` (3.2절) 와 비교한다 (아래). 볼 것: 다시 묻기 횟수, 최종 잘림 수, 200자에 닿은 `reason` 수, 06 최장 시간, 점수 | 미착수. 더 빠른 GPU 서버에서 돌린다 |
+
+4 의 실행 방법. 세 판을 다 돌릴 필요는 없다. 먼저 기본값 한 판만 돌린다.
+
+- **비교 기준은 이미 있다.** 같은 코드에서 글자 수 제한·인용 안내만 없는 실행이 동료 서버의 `fix13/new_1`, `fix13/new_2` 다 (3.2절: 형상 30/30, 다시 묻기 각 1장, 06 최장 86.7·87.1 s). 그래서 동료 서버에서 돌리면 제한 없는 판(`PROSE_LIMIT=0`)을 따로 돌리지 않아도 된다. `mlic` 의 `gen1027/local_new` 는 공백 막기와 다시 묻기 전이라 기준으로 맞지 않는다.
+- **한 판으로 볼 수 있는 것:** 기록에서 직접 센다. 다시 물음과 최종 잘림이 0 이고, 200자에 닿은 `reason` 이 있으면 (= 예전 같으면 길게 썼을 답을 문법이 끊었으면) 제한이 일한 것이다. 형상·뷰·치수·전개 점수가 `fix13/new_*` 보다 떨어지지 않는지 `score_synthetic.py` 로 본다. 1장 차이는 실행마다 흔들리는 범위다.
+- **`reason` 을 아예 빼는 판(`VIEW_REASON=off`)은 그 다음에 필요하면 돌린다.** 질문이 다르다 ("이유 칸이 판단을 돕나"). 기본값 판이 괜찮으면 급하지 않다.
+
+모델 서버를 띄운 셸과 다른 셸에서, 이 브랜치를 받은 레포 루트에서 돌린다. 동료 서버라면 서버는 [server_handoff.md](server_handoff.md) 6.3절의 `serve.sh` 명령으로 띄운다.
+
+```zsh
+git fetch && git switch reason-whitespace
+export PYTHONPATH=.
+OUT=runs/reader/reason1030/limit_1
+experiments/batch_parallel.sh data_v3/generated $OUT 3
+uv run python scripts/reader/score_synthetic.py $OUT   # score.md, score.json
+```
+
+06 기록에서 다시 물음·잘림·200자에 닿은 `reason`·최장 시간을 센다 (같은 셸, `OUT` 이 설정된 상태). `mlic` 의 `gen1027/local_new` 에 돌리면 `도면 30, 다시 물음 0, 최종 잘림 0, 실패 4, 200자에 닿은 reason 6, 06 최장 140.6 s` 가 나온다 (그 실행은 다시 묻기가 없던 코드라 실패 4가 3.1절의 잘린 4장이다).
+
+```zsh
+uv run python - $OUT <<'PY'
+import json
+import sys
+from pathlib import Path
+
+drawings = retried = cut = failed = capped = 0
+slowest = 0.0
+for path in sorted(Path(sys.argv[1]).glob("shard*/*/stages/06_view_labels.json")):
+    drawings += 1
+    for rec in json.loads(path.read_text(encoding="utf-8"))["trace"]["reason"]:
+        if rec.get("task") != "view_labels":
+            continue
+        retried += "retry" in rec
+        cut += rec.get("finish_reason") == "length"
+        failed += not rec.get("ok")
+        slowest = max(slowest, rec.get("seconds") or 0)
+        views = ((rec.get("response") or {}).get("reasoning") or {}).get("views") or []
+        capped += sum(len(v.get("reason", "")) >= 200 for v in views)
+print(f"도면 {drawings}, 다시 물음 {retried}, 최종 잘림 {cut}, 실패 {failed}, "
+      f"200자에 닿은 reason {capped}, 06 최장 {slowest:.1f} s")
+PY
+```
+
+`reason` 을 빼는 판은 셸에서 `export CUTPLAN_REASON_VIEW_REASON=off` 를 하고 `OUT=runs/reader/reason1030/noreason_1` 로 같은 명령을 돌린다. 제한 없는 판은 `export CUTPLAN_REASON_PROSE_LIMIT=0` 이다. 여러 판을 동시에 돌리면 판마다 3묶음씩 서버에 동시 요청이 쌓인다. `mlic` 에서는 10개일 때 KV 캐시가 차서 느려졌다 (3.1절).
+
+- `max_tokens` 1500 과 짧게 다시 묻기는 그대로 둔다. 1 이 들어가면 다시 묻기는 거의 불리지 않아야 한다. 불리면 그것도 기록(`retry`)에 남는다.
+- 바꾼 뒤 확인한 것: 단위 테스트 129건 중 실패 11건으로 바꾸기 전 126건의 실패 목록과 같다 (새 테스트 3건은 통과). xgrammar 가 있는 vLLM 환경에서 `tests/test_vlm_output.py` 31건이 모두 통과한다 (200자 `reason` 은 받고 201자는 거부). `--batch --no-vlm` (data_v3/synthetic) 출력은 경로·시각을 빼면 `stages/` 까지 같다. smoke test 출력 전체가 바꾸기 전과 같다 (총 6132.2 kg).
 
 ## 4. 이상한 점
 
@@ -169,7 +316,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new
 | 10 | 2026-10-27 | 옆에서 본 구멍에 중심선이 없다 | 구멍이 있는 11장 | 생성기 (data/synthetic.md 5.2절) | 고침 |
 | 11 | 2026-10-27 | reader 가 원만 있는 뷰를 뷰 후보에서 놓친다 (뷰 3개 중 2개만 잡힘) | cylinder 우측면도, press 평면도. 옛·새 데이터 모두 | reader 05 `views` | 남음 |
 | 12 | 2026-10-27 | reader 표제란 정규식이 `THIRD ANGLE` 과 `PART NAME` 을 읽지 못한다 | 30장 모두. 옛·새 데이터 모두 | reader 02 `title_regex` | 남음 |
-| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (`reason` 안에서 `"` 를 써 문자열이 닫힌 뒤 공백을 수천 줄 반복하거나, `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림. 3.3절). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 판단 서버에 `disable_any_whitespace` (공백 반복 차단), `max_tokens` 에서 잘리면 짧게 한 번 다시 묻기 (`reader/vlm.py`, 2026-10-28, 3.2절) | 고침 |
+| 13 | 2026-10-27 | 06 의 모델 답이 잘려 JSON 이 깨진다 (`reason` 안에서 `"` 를 써 문자열이 닫힌 뒤 공백을 수천 줄 반복하거나, `reason` 을 길게 쓰다 `max_tokens` 1500 에 걸림. 3.3절). 형상이 None 이 돼 09·10 을 건너뛴다 | cylinder_0013·0016·0017, flat_0002 (3.1절 기준선). 동료의 29/30·27/30 과 동료 서버 재실행에서 못 맞힌 도면도 모두 이것이다 ([server_handoff.md](server_handoff.md) 6.3절) | 하네스: 판단 서버에 `disable_any_whitespace` (공백 반복 차단), `max_tokens` 에서 잘리면 짧게 한 번 다시 묻기 (`reader/vlm.py`, 2026-10-28, 3.2절). 후속으로 `reason` 에 `maxLength` 를 걸 계획 (3.4절) | 고침. 후속 계획 있음 |
 | 14 | 2026-10-27 | 09 에서 모델이 콘 대경을 외경 그대로 `large_inner_dia` 에 넣는다 (소경은 모델이 비워 fallback 이 외경 − 2t 로 맞게 채움) | cone_0019~0022 | 하네스: 외형 치수와 대조 | 남음 |
 | 15 | 2026-10-27 | 09 에서 모델이 2:1 타원형 경판을 `HEMI` 로 판단해 계수 1.414 를 쓴다. press_formed_0025 는 외경을 안지름으로 읽었다 | press_formed_0025~0028·0030 | 하네스: 높이/지름 = 1/4 이면 2:1 | 남음 |
 | 16 | 2026-10-27 | `fallback_params` 가 직선부 없는 새 경판 도면에서 타원 끝을 직선부(`side_height`) 2.4~3.6 mm 로 잰다 | press_formed 6장 | reader `unfold.py` 의 `_front_profile`·`fallback_params` | 고침 (2026-10-28): 옆선을 셀 때 타원·스플라인·원호를 나눈 조각을 뺀다. 직선부 있는 합성 6장에서 4·9·6·9·4·6 을 그대로 읽는다 (`test_reader_measures_the_straight_flange`) |

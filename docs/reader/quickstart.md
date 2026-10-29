@@ -127,6 +127,7 @@ uv run python scripts/reader/score_synthetic.py runs/reader/gen1027/local_new   
 - 묶음 수를 3 보다 늘리면 Qwen3.6-27B 서버의 KV 캐시가 차서 전체가 오히려 느려졌다 (10묶음에서 생성 속도 25 → 4.5 tok/s).
 - 동시에 돌리면 요청이 서버에서 기다리므로 기본 제한 시간 120초를 넘긴다. 그래서 스크립트가 `CUTPLAN_OCR_TIMEOUT`, `CUTPLAN_REASON_TIMEOUT` 을 900초로 둔다. 넘기면 그 모델 단계가 `done` 인데 결과가 비고, `trace` 에 `ReadTimeout` 이 남는다.
 - 모델 없이: `experiments/batch_parallel.sh data_v3/generated <출력> 3 --no-vlm` (몇 초).
+- 판단 모델 답의 자유 서술 칸(`reason`, `notes`, `problems`)은 스키마에서 200자로 묶인다. `CUTPLAN_REASON_PROSE_LIMIT=0` 이면 제한이 없고 (이전 동작), `CUTPLAN_REASON_VIEW_REASON=off` 면 06 이 뷰마다 `reason` 을 받지 않는다. 이 셸에서 export 한 뒤 `batch_parallel.sh` 를 돌리면 적용된다. 이유와 비교 방법은 [../v3_upgrade.md](../v3_upgrade.md) 3.4절.
 - `score_synthetic.py` 의 항목은 [../v3_upgrade.md](../v3_upgrade.md) 2절 기준이다. 단계(01~10 모두 `done`), 표제란(도면 번호·축척·재질·두께), 뷰 이름, 형상, 치수(09 의 전개 파라미터. 정답 외경을 안지름 = 외경 − 2t 로 바꿔 0.5 mm 또는 0.5% 안), 전개(1% 이내). 도면별 표에 틀린 이유가 나온다.
 
 ## 6. 무엇이 어디에 남나
