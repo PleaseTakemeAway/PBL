@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 .ruff_cache/
 .env
+# direnv 설정. 키가 들어갈 수 있어 올리지 않는다
+.envrc
 
 # 작업 루트 데이터 (config.ROOT 기본값 = project root)
 /Data/
