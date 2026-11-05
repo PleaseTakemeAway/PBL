@@ -12,7 +12,7 @@
 | `presentation/build_dwg_dxf.py` | "AI 는 도면을 어떻게 읽을까" 파트 (10장, 약 15분) → `dwg_dxf.pptx`. DWG 를 DXF 로 바꾸는 이유를 AI 를 모르는 청중에게 그림과 비유로 설명한다. cone_0019 그림은 빌드할 때 `data_v3/synthetic` 의 DXF 에서 그려 `presentation/build/assets/` 에 둔다 (없으면 회색 상자) |
 | `presentation/build_company_brief.py` | 회사 담당자에게 보내는 설명 자료 (12장) → `company_brief.pptx`. [company_brief.md](company_brief.md) 와 같은 내용이다. 결과 표·비교·예시 슬라이드는 빌드할 때 `runs/reader/gen1027/local_new/score.json` 과 그 실행의 `cone_0019` 그림을 읽는다 (`--score` 로 바꾼다). 이전 기준선 27/30, 11/30 은 `runs/reader/deepseek_ocr_qwen_reasoning_skills` 의 `accuracy.md`, `flat_patterns.md` |
 | `presentation/build_synthetic_changes_company.py` | 회사 검토용 합성 데이터 변경 설명 (12장) → `synthetic_changes_company.pptx`. [data/synthetic_changes_company.md](data/synthetic_changes_company.md)와 같은 범위. 콘·경판 변경 전후 모식도, 굽힘판·제도 정비, 직선부 측정과 미해결 문제, 검증 범위·회사 확인 사항. 과거 모델 점수를 최신 변경의 성능으로 인용하지 않는다 |
-| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30) 덱 두 개. `harness` → `meeting_harness.pptx` (49장): 지금 판독기가 어떻게 도는가. 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계(입력 → 처리 → 출력) → 하네스 장치와 tool calling, 부록 하네스 구조. `change` → `meeting_change.pptx` (58장): 합성 도면 판독의 전 → 후. 전(옛 합성 + 지난주까지의 판독기)의 성능 · 사례 · 문제 (회사 실제 도면은 다루지 않는다) → 고친 것 → 점수 전 → 후 · 형상별 · 남은 실패 → 실험(진행 중) → 정리, 부록 2×2 · 시험 도면. 다음 단계(v4)는 슬라이드 없이 현장에서 논의한다. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
+| `presentation/build_meeting.py` | PBL 미팅 (2026-10-30) 덱 두 개. `harness` → `meeting_harness.pptx` (39장): 지금 판독기가 어떻게 도는가. 용어 정의(예시 도면 cone_0023) → 그 도면의 판독 10단계(입력 → 처리 → 출력) → 하네스 장치(JSON 약속, 양식 강제, 다시 묻기, 기록), 부록 실행 명령. orchestrator(tool calling)는 쓴 적이 없어 뺐다. `change` → `meeting_change.pptx` (60장): 합성 도면 판독의 전 → 후. 전(옛 합성 + 지난주까지의 판독기)의 성능 · 사례 · 문제 (회사 실제 도면은 다루지 않는다) → 고친 것 → 점수 전 → 후 · 어디서 올랐나 (두 계단 · 계단마다 바뀐 도면 · AI 답이 바뀐 것, pbl_meeting.md 3.5절) · 형상별 · 남은 실패 → 실험(진행 중) → 정리, 부록 2×2 · 시험 도면. 다음 단계(v4)는 슬라이드 없이 현장에서 논의한다. 계획은 [pbl_meeting.md](pbl_meeting.md), 숫자 출처는 8절 |
 | `presentation/render.py` | pptx 를 PDF 와 슬라이드별 PNG 로 바꾼다. 배치 확인용 |
 | `presentation/*.pptx`, `presentation/build/` | 위 스크립트의 출력. 커밋하지 않는다 (`presentation/.gitignore`) |
 
@@ -144,8 +144,11 @@ PYTHONPATH=. uv run python presentation/render.py presentation/meeting_change.pp
 | 전 (지난주) | `runs/reader/deepseek_ocr_qwen_reasoning_skills` (동료 v3 253020c, 2026-10-18) | 형상 27/30 (`accuracy.md`), 전개 11/30 과 도면별 오차 (`flat_patterns.md`, 옛 정답 기준), `analysis/sheet_labeled.png`, `flat_pattern.png`. 단계 파일이 없어 다른 항목은 "안 잼" |
 | 전 (다시 잼) | `runs/reader/meeting1030/R2_synthetic_c71cca0` (c71cca0, 2026-10-30) | `score.json` (지금의 `score_synthetic.py` 로 옛 정답과 대조). 실행 조건과 결과는 [pbl_meeting.md](pbl_meeting.md) 3.1절 |
 | 후, 다시 묻기 전 | `runs/reader/gen1027/local_new` (2026-10-27) | `score.json`. 잘림 실패 7건은 단계 파일 trace 에서 셌다 ([pbl_meeting.md](pbl_meeting.md) 4.1절) |
-| 후 | `runs/reader/meeting1030/R4_generated_main` (main 60e0d26, 2026-10-30) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py), `analysis/sheet.png`. [pbl_meeting.md](pbl_meeting.md) 3.3절 |
-| 후 (10-28) | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | 같은 코드의 앞선 실행. 단계별 점수 표의 '후 (10-28)' 열과 하네스 덱 '다시 묻기' 장의 '다시 묻기 뒤' 열. 현업자 기준 식(2807e44) · 경판 직선부(f111ea8) 뒤의 코드다 (전에 "전" 이라고 적은 것은 틀렸다) |
+| 후 | `runs/reader/meeting1030/R5a_generated_cfef60a` (main cfef60a, 2026-10-30 04:31) | `score.json` (형상별 · 도면별 표), 단계 파일과 `figures/` (show_stages.py 로 이 세션에서 그림), `analysis/sheet.png`. 하네스 덱의 예시 도면 cone_0023 도 이 실행의 단계 파일. [pbl_meeting.md](pbl_meeting.md) 3.5절 |
+| 후 (한 번 더) | `runs/reader/meeting1030/R5b_generated_cfef60a` (같은 조건, 04:46) | `score.json`. 단계별 점수 표의 마지막 열, 180칸 중 같은 칸 수 |
+| 코드만 바꿈 (R1) | `runs/reader/reason1030/old_limit_1` (9830fb3 = cfef60a 와 판독 코드가 같음, 옛 합성, 동료 서버) | `score.json` 은 이 서버에서 옛 정답으로 매겼다 (prediction.json 의 source 가 동료 서버 경로라 정답을 이 clone 의 `data_v3/synthetic` 에서 읽는 래퍼, [pbl_meeting.md](pbl_meeting.md) 3.5절). '두 계단', '계단마다 바뀐 도면', 부록 2×2 |
+| 후 (10-28) | `runs/reader/company_synthetic_20261028_042351` (2026-10-28 04:23) | 하네스 덱 '다시 묻기' 장의 '다시 묻기 뒤' 열 |
+| R4 | `runs/reader/meeting1030/R4_generated_main` (main 60e0d26) | 덱의 표에는 없다. 200자 제한 전의 잘림 수(2번)와 06 최장 284초를 노트에 쓴다 |
 | 데이터 그림 | `docs/data/synthetic/*.png` | `scripts/synthetic_figures.py` |
 
 - 용어 파트의 도면 그림은 생성기가 그린 `data_v3/generated/<도면>/<도면>.png` 이다. 전 파트의 성공 사례 cylinder_0014 와 실패 사례 cylinder_0013 은 RUN1 의 그림과 `prediction.json` 의 `vlm_trace` (cylinder_0013 은 판단 AI 가 `part_class: cylinder` 로 시작했다가 이유를 반복하고 공백을 되풀이해 57.6초 만에 잘렸다).

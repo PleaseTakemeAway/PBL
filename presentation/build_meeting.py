@@ -10,9 +10,9 @@
   전: 옛 합성 30장 + 지난주까지의 판독기. 동료 v3 253020c (RUN1, 동료 2026-10-18 실행) 와,
       판독 로직은 그대로 두고 단계 파일로 나눈 c71cca0 (RUN2, 2026-10-30 다시 돌림) 는
       판독 결과가 같으므로 하나의 '전' 으로 본다 (2.1절)
-  후: 새 합성 30장 + 지금 판독기. RUN3 = R4 (main 60e0d26, 2026-10-30). RUN3_1028 은 같은 코드의
-      10-28 04:23 실행 (다시 묻기 3cf2274, 현업자 기준 식 2807e44, 경판 직선부 f111ea8 모두 뒤),
-      RUN3_PRE 는 다시 묻기 전 (10-27). RUN3 과 RUN3_1028 의 차이는 모델 답의 흔들림이다
+  후: 새 합성 30장 + 지금 판독기. RUN3 = R5a (main cfef60a, 2026-10-30), RUN3_AGAIN = R5b 는
+      같은 조건으로 바로 이어 한 번 더 돌린 것 (docs/pbl_meeting.md 3.5절). RUN3_1028 은
+      다시 묻기 뒤의 10-28 실행, RUN3_PRE 는 다시 묻기 전 (10-27). 둘은 하네스 덱의 다시 묻기 장만 쓴다
 
 그림은 빌드할 때 실행 폴더에서 읽는다 (scripts/reader/show_stages.py 가 그린 figures/,
 analysis/*.png, flat_pattern.png). 없으면 회색 상자, 점수는 '–' 가 들어간다.
@@ -63,7 +63,10 @@ ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs" / "reader"
 RUN1 = RUNS / "deepseek_ocr_qwen_reasoning_skills"
 RUN2 = RUNS / "meeting1030" / "R2_synthetic_c71cca0"
-RUN3 = RUNS / "meeting1030" / "R4_generated_main"  # 후 (docs/pbl_meeting.md 3.3절)
+RUN3 = RUNS / "meeting1030" / "R5a_generated_cfef60a"  # 후 (docs/pbl_meeting.md 3.5절)
+RUN3_AGAIN = RUNS / "meeting1030" / "R5b_generated_cfef60a"  # 같은 조건, 한 번 더
+# 코드만 바꿈 (R1): 지금 코드 · 옛 합성, 동료 서버. score.json 은 옛 정답으로 이 서버에서 매겼다
+RUN_CODE_ONLY = RUNS / "reason1030" / "old_limit_1"
 RUN3_1028 = RUNS / "company_synthetic_20261028_042351"  # 같은 코드, 10-28 실행
 RUN3_PRE = RUNS / "gen1027" / "local_new"
 FIG = ROOT / "docs" / "data" / "synthetic"
@@ -298,13 +301,13 @@ AGENDA = {
         ),
         (
             "하네스",
-            "AI 를 감싸는 장치: JSON 약속, 양식 강제, 다시 묻기, 기록, 도구 호출",
+            "AI 를 감싸는 장치: JSON 약속, 양식 강제, 다시 묻기, 기록",
         ),
     ],
     "change": [
         ("전", "지난주까지: 범위와 성능, 성공 · 실패 사례, 그리고 무엇이 문제였나"),
-        ("후", "정답 · 하네스 · 코드 · 채점을 어떻게 고쳤고, 결과가 어떻게 달라졌나"),
-        ("실험", "진행 중인 실험 두 가지: JSON 답 잘림, 모델 바꿔 끼우기"),
+        ("후", "정답 · 기준 · 코드 · 채점을 어떻게 고쳤고, 결과가 어떻게 달라졌나"),
+        ("실험", "진행 중인 실험: 하네스는 그대로 두고 모델만 바꿔 끼우기"),
     ],
 }
 
@@ -343,7 +346,7 @@ def summary_slide(d, s2, s3):
         "결과 한 장 요약",
         f"정답을 고친 뒤 다시 쟀습니다. 형상(부품 종류) {frac(count(s3, '형상'))}, 전개(펼친 크기) {frac(count(s3, '전개'))}",
         "전 = 지난주 발표 숫자 (동료 v3, runs/reader/deepseek_ocr_qwen_reasoning_skills) 와, 판독 로직이 같은 c71cca0 을"
-        " 2026-10-30 에 같은 옛 데이터로 다시 돌린 RUN2 (score_synthetic.py, 옛 정답 기준). 후 = R4 (main 60e0d26, 2026-10-30)."
+        " 2026-10-30 에 같은 옛 데이터로 다시 돌린 RUN2 (score_synthetic.py, 옛 정답 기준). 후 = R5a (main cfef60a, 2026-10-30)."
         " 전과 후는 채점에 쓴 정답이 다르다.",
     )
     cols = [
@@ -730,7 +733,9 @@ def guard_retry_slide(d, pre, s3):
         "답이 길이 제한(1,500 토큰)에서 잘리면, 이유를 한 문장으로 줄여 한 번 더 묻습니다",
         "커밋 3cf2274 (2026-10-28), reader/vlm.py SHORTER_RETRY. 숫자는 두 실행의 단계 파일 trace 에서 셌다 (docs/pbl_meeting.md 4.1절): "
         "10-27 runs/reader/gen1027/local_new 는 06 4건 · 09 3건 JSONDecodeError, 10-28 company_synthetic_20261028_042351 은 4건 잘림 모두 다시 물어 성공. "
-        "판단 서버에는 JSON 사이 공백 반복을 막는 disable_any_whitespace 도 넣었다.",
+        "판단 서버에는 JSON 사이 공백 반복을 막는 disable_any_whitespace 도 넣었다. "
+        "아래 띠: 9830fb3 (2026-10-30) 이 이유 · 메모 칸을 JSON 양식에서 200자로 묶었다 (maxLength). 그 전 main 의 R4 는 06 이 2번 잘렸고 06 최장 284초, "
+        "그 뒤 R5a · R5b 는 06 · 09 60호출씩 잘림 0, 06 최장 48 · 49초 (docs/pbl_meeting.md 3.5절).",
     )
     for i, (head, body, fill) in enumerate(
         [
@@ -784,8 +789,8 @@ def guard_retry_slide(d, pre, s3):
     band(
         s,
         5.85,
-        "아직",
-        "잘림 자체는 그대로입니다. 10-30 실행에서는 2번 잘렸고, 1번은 다시 물어도 또 잘렸습니다 → 실험 파트",
+        "지금",
+        "이유 칸을 200자로 묶어 잘림 자체를 줄였습니다. 두 번 돌려 잘림 0번, 06 최장 284초 → 48초",
         h=0.8,
         size=16,
     )
@@ -864,8 +869,8 @@ def after_section(d):
     section(
         d,
         "후: 무엇을 고쳤나",
-        "정답 · 하네스 · 코드 · 채점을 고치고 다시 쟀습니다",
-        "후 = 새 합성 30장(data_v3/generated) + 지금 판독기. 숫자는 R4 (main 60e0d26, 2026-10-30). 10-28 실행과 코드가 같다.",
+        "정답 · 기준 · 코드 · 채점을 고치고 다시 쟀습니다",
+        "후 = 새 합성 30장(data_v3/generated) + 지금 판독기. 숫자는 R5a (main cfef60a, 2026-10-30). 같은 조건으로 한 번 더 돌린 R5b 와 180칸 중 179칸이 같다.",
     )
 
 
@@ -877,6 +882,7 @@ def after_changes_slide(d):
         "단계 파일 같은 구조는 그대로 두고, 앞 장의 문제를 하나씩 풀었습니다",
         "docs/v3_upgrade.md 1.1 · 3.2 · 4 · 5.4 · 5.5절. 생성기 scripts/build_synthetic.py (docs/data/synthetic.md),"
         " 다시 묻기와 공백 반복 막기(서버 disable_any_whitespace) 3cf2274 (#13), 현업자 기준 식 2807e44 · 7005fa6,"
+        " 이유 · 메모 칸 200자 9830fb3, 기다림 900초 experiments/batch_parallel.sh,"
         " 경판 직선부 f111ea8 (#16), 3D 끔 2b09587, 단계별 채점 scripts/reader/score_synthetic.py.",
     )
     cols = [
@@ -902,9 +908,9 @@ def after_changes_slide(d):
             "하네스",
             "답이 잘렸다",
             [
+                "이유 칸은 200자까지",
                 "잘리면 이유를 줄여 한 번 더 묻기",
-                "공백 반복을 서버에서 막기",
-                "3D 단계는 실행에서 뺌 (01~10)",
+                "공백 반복은 서버에서 막고, 900초까지 기다림",
             ],
         ),
         (
@@ -1004,7 +1010,7 @@ def drafting_slide(d):
         4,
         "도면 자체도 고쳤습니다",
         "판독기가 아니라 그리는 쪽의 실수. 사람이 그린 도면이라면 나오지 않을 것들",
-        "docs/v3_upgrade.md 4절 #1, #6~#10, docs/data/synthetic.md 5.2절.",
+        "docs/v3_upgrade.md 4절 #1, #6~#10, docs/data/synthetic.md 5.2절. 표와 뒤 슬라이드의 1~6 은 문서 번호 #1, #6, #7, #8, #9, #10 의 순서다.",
     )
     rows = [
         ["#", "이상한 점", "어디서"],
@@ -1013,22 +1019,25 @@ def drafting_slide(d):
             "경판 윤곽이 직선과 만나는 곳에서 꺾임 → 2:1 반타원 + 짧은 직선부",
             "경판 6장",
         ],
-        ["6", "같은 숨은선이 두 번씩", "10장"],
-        ["7", "구멍 기호 Ø 가 깨짐 (2-Ã˜13)", "11장"],
-        ["8", "콘 안쪽 면이 바깥 면과 평행하지 않음", "콘 6장"],
-        ["9", "굽힘판 바깥 모서리가 각짐 (R + t 로 둥글어야)", "굽힘판 6장"],
-        ["10", "옆에서 본 구멍에 중심선 없음", "11장"],
+        ["2", "같은 숨은선이 두 번씩", "10장"],
+        ["3", "구멍 기호 Ø 가 깨짐 (2-Ã˜13)", "11장"],
+        ["4", "콘 안쪽 면이 바깥 면과 평행하지 않음", "콘 6장"],
+        ["5", "굽힘판 바깥 모서리가 각짐 (R + t 로 둥글어야)", "굽힘판 6장"],
+        ["6", "옆에서 본 구멍에 중심선 없음", "11장"],
     ]
     table(s, X0, 1.9, CW, 4.2, rows, [0.8, 8.9, 2.433], head_style)
 
 
-def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
+def crop_drawing(
+    data, drawing, regions, tag, *, ltscale, marks=(), lines=(), boxes=(), name="fix"
+):
     """The DXF of one drawing cut to regions (x0, y0, x1, y1), side by side, as a PNG in
-    ASSETS named by tag. marks are orange rings (x, y, r) and lines orange segments
-    ((x0, y0), (x1, y1)) drawn over the drawing. Both datasets are drawn the same way
-    (linetype scale, text) so only the drawing itself differs; the files are not changed."""
+    ASSETS named by tag. regions None = the whole sheet. marks are orange rings (x, y, r),
+    lines orange segments ((x0, y0), (x1, y1)) and boxes orange rectangles (x0, y0, x1, y1)
+    drawn over the drawing. Both datasets are drawn the same way (linetype scale, text) so
+    only the drawing itself differs; the files are not changed."""
     src = data / drawing / f"{drawing}.dxf"
-    out = ASSETS / f"fix{tag}_{data.name}_{drawing}.png"
+    out = ASSETS / f"{name}{tag}_{data.name}_{drawing}.png"
     if out.is_file() or not src.is_file():
         return out
     import ezdxf
@@ -1036,6 +1045,7 @@ def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from ezdxf import bbox
     from ezdxf.addons.drawing import Frontend, RenderContext
     from ezdxf.addons.drawing.config import (
         BackgroundPolicy,
@@ -1043,9 +1053,14 @@ def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
         Configuration,
     )
     from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
-    from matplotlib.patches import Circle
+    from matplotlib.patches import Circle, Rectangle
 
     doc = ezdxf.readfile(src)
+    if regions is None:
+        ext = bbox.extents(doc.modelspace())
+        regions = [
+            (ext.extmin.x - 2, ext.extmin.y - 2, ext.extmax.x + 2, ext.extmax.y + 2)
+        ]
     doc.header["$LTSCALE"] = ltscale  # 옛 1.0, 새 2.0 이라 같은 값으로 맞춘다
     # ezdxf 는 어느 글꼴로도 Ø 의 속을 채워 그린다. 글자는 matplotlib 으로 따로 쓴다
     texts = []
@@ -1054,10 +1069,11 @@ def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
         doc.modelspace().delete_entity(e)
     widths = [r[2] - r[0] for r in regions]
     height = max(r[3] - r[1] for r in regions)
+    per_inch = max(15, sum(widths) / 12)  # 온 도면은 12 인치 안으로
     fig, axes = plt.subplots(
         1,
         len(regions),
-        figsize=(sum(widths) / 15, height / 15),
+        figsize=(sum(widths) / per_inch, height / per_inch),
         gridspec_kw={"width_ratios": widths},
         squeeze=False,
     )
@@ -1074,6 +1090,12 @@ def crop_drawing(data, drawing, regions, tag, *, ltscale, marks=(), lines=()):
             ax.add_patch(Circle((x, y), r, fill=False, edgecolor="#E8743B", lw=3))
         for (xa, ya), (xb, yb) in lines:
             ax.plot([xa, xb], [ya, yb], color="#E8743B", lw=4, alpha=0.8)
+        for bx0, by0, bx1, by1 in boxes:
+            ax.add_patch(
+                Rectangle(
+                    (bx0, by0), bx1 - bx0, by1 - by0, fill=False, ec="#E8743B", lw=3
+                )
+            )
         ax.set_xlim(x0, x1)
         ax.set_ylim(y0, y1)
         ax.set_aspect("equal")
@@ -1114,7 +1136,7 @@ DRAWING_FIXES = [
         "같은 숨은선이 두 번",
         "구멍 두 개가 옆에서 겹쳐 보이는 자리에, 옛 도면은 같은 숨은선을 두 번씩 넣었습니다",
         "flat_0001",
-        [(305, 102, 355, 127)],
+        [(262, 100, 398, 129)],
         0.3,
         {"lines": [((323.5, 110), (323.5, 119)), ((336.5, 110), (336.5, 119))]},
         {},
@@ -1172,7 +1194,7 @@ DRAWING_FIXES = [
         "옆에서 본 구멍의 중심선",
         "제도 규칙대로, 옆에서 본 구멍의 숨은선 가운데에 중심선을 넣었습니다",
         "flat_0001",
-        [(305, 102, 355, 127)],
+        [(262, 100, 398, 129)],
         0.3,
         {"marks": [(330, 114.5, 5)]},
         {"lines": [((330, 107), (330, 122))]},
@@ -1185,7 +1207,9 @@ DRAWING_FIXES = [
 
 
 def drawing_fix_slides(d):
-    for (
+    """Per fix: the whole new drawing with the cut regions boxed, then the old and the new
+    drawing cut to those regions."""
+    for i, (
         num,
         title,
         message,
@@ -1198,14 +1222,40 @@ def drawing_fix_slides(d):
         sub_new,
         foot,
         notes,
-    ) in DRAWING_FIXES:
-        s = slide(d, 4, f"도면 고침 #{num}: {title} ({drawing})", message, notes)
-        before_after(
-            s,
-            (crop_drawing(OLD_DATA, drawing, regions, num, ltscale=lt, **old), sub_old),
-            (crop_drawing(NEW_DATA, drawing, regions, num, ltscale=lt, **new), sub_new),
-            h=3.6,
+    ) in enumerate(DRAWING_FIXES, 1):
+        n = len(DRAWING_FIXES)
+        notes = f"docs/v3_upgrade.md 4절 #{num}. 왼쪽 = 새 도면 전체, 주황 상자 = 확대한 곳. {notes}"
+        s = slide(d, 4, f"도면 고침 {i}/{n}: {title} ({drawing})", message, notes)
+        where = crop_drawing(
+            NEW_DATA, drawing, None, num, ltscale=1.0, boxes=regions, name="where"
         )
+        cols = [
+            (where, "도면 전체", "주황 상자를 확대", LIGHT, INK, 4.4),
+            (
+                crop_drawing(OLD_DATA, drawing, regions, num, ltscale=lt, **old),
+                "전",
+                sub_old,
+                LIGHT,
+                GRAY,
+                3.6,
+            ),
+            (
+                crop_drawing(NEW_DATA, drawing, regions, num, ltscale=lt, **new),
+                "후",
+                sub_new,
+                ORANGE,
+                WHITE,
+                3.6,
+            ),
+        ]
+        x = X0
+        for j, (path, head, sub, fill, color, w) in enumerate(cols):
+            caption(s, x, 1.8, w, head, fill=fill, color=color)
+            text(s, x, 2.25, w, 0.6, [sub], size=12, color=GRAY)
+            fit(s, path, x, 2.9, w, 3.0)
+            if j < 2:
+                arrow(s, x + w + 0.05, 4.24, w=0.16, h=0.32)
+            x += w + 0.266
         band(s, 6.05, "", foot, fill=LIGHT, color=TEAL, h=0.7, size=15)
 
 
@@ -1239,7 +1289,7 @@ def practitioner_slide(d):
     )
 
 
-def grid_slide(d, s2, s3):
+def grid_slide(d, s2, s1, s3):
     def cell(name, score, what):
         if score is None:
             return f"{name}: {what}\n아직 안 돌림"
@@ -1249,9 +1299,10 @@ def grid_slide(d, s2, s3):
         d,
         6,
         "부록: 코드 효과와 데이터 효과 (2×2)",
-        "전 → 후 는 코드와 정답이 같이 바뀌었습니다. 둘을 나누려면 같은 데이터로 코드만 바꿔 재야 합니다",
-        "docs/pbl_meeting.md 3절. R2 = c71cca0 · 옛 합성 (2026-10-30, 옛 정답 기준). R4 칸은 지금 main 으로 다시 돌리기 전이라"
-        " R4 = main 60e0d26 · 새 합성 (2026-10-30, docs/pbl_meeting.md 3.3절). R1 · R3 은 돌리지 않았다.",
+        "전 → 후 는 코드와 정답이 같이 바뀌었습니다. 옛 도면에 지금 판독기를 돌려(R1) 둘의 몫을 나눴습니다",
+        "docs/pbl_meeting.md 3절. R2 = c71cca0 · 옛 합성 (2026-10-30, 옛 정답 기준, mlic). "
+        "R1 = 9830fb3 (cfef60a 와 판독 코드가 같다) · 옛 합성, 동료 서버 (runs/reader/reason1030/old_limit_1, 옛 정답 기준). "
+        "R5 = main cfef60a · 새 합성 (2026-10-30, mlic, docs/pbl_meeting.md 3.5절). R3 은 돌리지 않았다.",
     )
     rows = [
         ["", "옛 합성 (옛 정답)", "새 합성 (새 정답)"],
@@ -1260,7 +1311,7 @@ def grid_slide(d, s2, s3):
             cell("R2", s2, "전"),
             cell("R3", None, "데이터만 바꿈"),
         ],
-        ["지금 판독기", cell("R1", None, "코드만 바꿈"), cell("R4", s3, "후")],
+        ["지금 판독기", cell("R1", s1, "코드만 바꿈"), cell("R5", s3, "후")],
     ]
     table(
         s,
@@ -1286,7 +1337,7 @@ def grid_slide(d, s2, s3):
         s,
         5.0,
         "읽는 법",
-        "같은 줄은 판독기가 같고, 같은 열은 데이터가 같습니다. 대각선(R2 → R4)이 이 덱의 전 → 후 입니다",
+        "같은 줄은 판독기가 같고, 같은 열은 데이터가 같습니다. R2 → R1 이 코드, R1 → R5 가 데이터 · 정답의 몫입니다 (R1 은 동료 서버)",
         fill=LIGHT,
         color=GRAY,
         h=0.9,
@@ -1294,21 +1345,26 @@ def grid_slide(d, s2, s3):
     )
 
 
-def score_compare_slide(d, s2, s1028, s3):
+def _ok(score):
+    return {r["id"]: {**r["ok"], "전부": all(r["ok"].values())} for r in score}
+
+
+def score_compare_slide(d, s2, s3, s3b):
+    a, b = _ok(s3), _ok(s3b)
+    cells = [(k, it) for k in a for it in ITEMS[:-1]]
+    same = sum(a[k][it] == b[k][it] for k, it in cells)
     s = slide(
         d,
         4,
         "단계별 점수: 전 → 후",
-        f"지난주에는 두 항목만 쟀습니다. 같은 판독기를 다시 돌려 보니 뷰 {frac(count(s2, '뷰'))}, 모두 맞은 도면 {frac(count(s2, '전부'))} 였습니다",
+        f"후는 같은 조건으로 두 번 돌렸습니다. {len(cells)}칸 (30장 × 6항목) 중 {same}칸이 같았습니다",
         "전 (지난주) = RUN1 의 accuracy.md (형상 27/30), flat_patterns.md (전개 11/30). 나머지 항목은 단계 기록이 없어 그때는 잴 수 없었다. "
-        "전 (다시 잼) = c71cca0 을 2026-10-30 에 옛 합성 30장으로 돌린 RUN2 를 지금의 score_synthetic.py 로 옛 정답과 대조. "
-        "옛 정답은 콘 · 경판 파라미터 이름이 달라 이름만 바꿔 넣었다 (docs/pbl_meeting.md 3.1절). 옛 정답의 콘 · 경판 전개 값은 틀려 있으므로"
-        " 전 (다시 잼) 의 콘 · 경판 전개 0/6 은 판독기만의 잘못이 아니다. 형상을 못 낸 3장은 06 요청이 120초 제한에 걸린 것. "
-        "후 (10-28) = runs/reader/company_synthetic_20261028_042351, 후 (10-30) = runs/reader/meeting1030/R4_generated_main (main 60e0d26) 의 score.json. "
-        "두 실행은 코드가 같다 (사이의 reader 커밋은 기본 실행을 바꾸지 않는 577cc34 하나). 바뀐 도면 4장: cone_0019 (10-30 에 맞음), "
-        "cylinder_0016 (10-30 에 06 이 다시 물어도 잘림), press_formed_0029 (10-30 에 경판 종류를 TORISPHERICAL 로), flat_0004 · 0005 (뷰가 서로 엇갈림). docs/pbl_meeting.md 3.3절.",
+        "전 (다시 잼) = R2: c71cca0 을 2026-10-30 에 옛 합성 30장으로 돌려 지금의 score_synthetic.py 로 옛 정답과 대조 "
+        "(옛 정답은 콘 · 경판 파라미터 이름만 바꿔 넣었다, docs/pbl_meeting.md 3.1절). "
+        "후 = R5a, 후 (한 번 더) = R5b: main cfef60a 를 새 합성 30장으로 이 서버(mlic)에서 04:31 · 04:46 에 이어 돌렸다 (docs/pbl_meeting.md 3.5절). "
+        "다른 1칸은 bent_sheet_0008 의 뷰 (R5b 에서 평면도를 other 로).",
     )
-    rows = [["항목", "기준", "전 (지난주)", "전 (다시 잼)", "후 (10-28)", "후 (10-30)"]]
+    rows = [["항목", "기준", "전 (지난주)", "전 (다시 잼)", "후", "후 (한 번 더)"]]
     for it in ITEMS:
         one = {"형상": "27/30", "전개": "11/30"}.get(it, "안 잼")
         rows.append(
@@ -1317,8 +1373,8 @@ def score_compare_slide(d, s2, s1028, s3):
                 ITEM_DESC[it],
                 one,
                 frac(count(s2, it)),
-                frac(count(s1028, it)),
                 frac(count(s3, it)),
+                frac(count(s3b, it)),
             ]
         )
 
@@ -1327,13 +1383,13 @@ def score_compare_slide(d, s2, s1028, s3):
             return TEAL, WHITE, True, 14, PP_ALIGN.CENTER
         return (
             LIGHT if r % 2 else WHITE,
-            ORANGE if c == 5 else (GRAY if rows[r][c] in ("안 잼", "–") else INK),
-            c in (0, 5),
+            ORANGE if c >= 4 else (GRAY if rows[r][c] in ("안 잼", "–") else INK),
+            c == 0 or c == 4,
             15,
             PP_ALIGN.LEFT if c < 2 else PP_ALIGN.CENTER,
         )
 
-    table(s, X0, 1.85, CW, 4.3, rows, [1.2, 3.533, 1.75, 1.75, 2.1, 1.8], style)
+    table(s, X0, 1.85, CW, 4.3, rows, [1.2, 3.533, 1.75, 1.75, 1.9, 2.0], style)
     text(
         s,
         X0,
@@ -1341,8 +1397,327 @@ def score_compare_slide(d, s2, s1028, s3):
         CW,
         0.5,
         [
-            "전은 옛 정답, 후는 새 정답으로 잰 숫자입니다. 후 두 열은 같은 코드를 두 번 돌린 것으로, 모델 답이 실행마다 1~2장씩 흔들립니다"
+            "전은 옛 정답, 후는 새 정답으로 잰 숫자입니다. 어디서 올랐는지는 다음 장에서 나눠 봅니다"
         ],
+        size=13,
+        color=GRAY,
+    )
+
+
+def _delta(before, after):
+    n = after - before
+    return f"{after} ({n:+d})".replace("-", "−") if n else f"{after}"
+
+
+def ladder_slide(d, s2, s1, s3):
+    steps = [
+        ("전", "지난주 (c71cca0)", "옛 도면 · 옛 정답", s2, None),
+        ("① 코드만 바꿈", "지금 (cfef60a)", "옛 도면 · 옛 정답", s1, s2),
+        ("② 데이터도 바꿈 = 후", "지금 (cfef60a)", "새 도면 · 새 정답", s3, s1),
+    ]
+    rows = [["", "판독기", "데이터"] + UP_ITEMS]
+    for head, reader, data, now, prev in steps:
+        cells = [
+            str(count(now, it))
+            if prev is None
+            else _delta(count(prev, it), count(now, it))
+            for it in UP_ITEMS
+        ]
+        rows.append([head, reader, data] + cells)
+    s = slide(
+        d,
+        4,
+        "어디서 올랐나: 두 계단",
+        "같은 옛 도면에 코드만 바꿔 한 번, 그다음 도면과 정답까지 바꿔 한 번 쟀습니다",
+        "전 = R2 (c71cca0, 옛 합성, mlic). ① = runs/reader/reason1030/old_limit_1: 동료 서버(RTX PRO 6000, 모델마다 GPU 한 장)에서 "
+        "reason-whitespace 브랜치 9830fb3 을 옛 합성 30장으로 돌린 것. 9830fb3 과 cfef60a 는 cutplan_agent 코드가 같다 (git diff --stat 비어 있음). "
+        "옛 정답 대조는 R2 와 같은 이름 바꾸기 (docs/pbl_meeting.md 3.5절). 같은 설정의 동료 서버 실행 4판(old_limit_1 · 2, old_noreason_1, old_nolimit_1)은 점수가 모두 같았다. "
+        "② = 후 = R5a (cfef60a, 새 합성, mlic). ① 만 서버가 다르다는 점에 주의.",
+    )
+
+    def style(r, c):
+        if r == 0:
+            return TEAL, WHITE, True, 14, PP_ALIGN.CENTER
+        up = "(+" in rows[r][c]
+        down = "(−" in rows[r][c]
+        return (
+            ORANGE_TINT if r == 3 else (LIGHT if r == 1 else WHITE),
+            ORANGE if up else (GRAY if down else INK),
+            c == 0 or up,
+            15 if c >= 3 else 14,
+            PP_ALIGN.LEFT if c < 3 else PP_ALIGN.CENTER,
+        )
+
+    table(s, X0, 1.85, CW, 2.4, rows, [2.6, 1.9, 2.183] + [1.09] * 5, style)
+    for i, (head, body) in enumerate(
+        [
+            (
+                "①",
+                "형상 +3: 답이 잘리거나 시간이 다 돼 형상을 못 내던 3장을 살렸습니다",
+            ),
+            (
+                "②",
+                "전개 +3: 콘 2장은 정답을 고쳐서, 경판 1장은 계산 식을 정답과 맞춰서",
+            ),
+        ]
+    ):
+        y = 4.55 + i * 0.75
+        chip(s, X0, y, 0.6, 0.6, head, fill=ORANGE, color=WHITE, size=16, bold=True)
+        text(s, X0 + 0.8, y, CW - 0.8, 0.6, [body], size=17, anchor=MSO_ANCHOR.MIDDLE)
+    text(
+        s,
+        X0,
+        6.15,
+        CW,
+        0.5,
+        ["① 은 동료 서버에서 잰 것입니다. 나머지 오르내림(뷰 · 치수)은 다다음 장"],
+        size=13,
+        color=GRAY,
+    )
+
+
+# 계단마다 맞음 · 틀림이 바뀐 도면과 항목의 원인 (docs/pbl_meeting.md 3.5절). 여기에 없는
+# 변화는 'AI 답이 바뀜' 으로 묶는다.
+CAUSES = {
+    "①": [
+        (
+            "잘린 답을 살림",
+            {
+                "cylinder_0016": ["단계", "형상"],
+                "cylinder_0017": ["단계", "형상", "치수", "전개"],
+                "flat_0001": ["단계", "형상", "치수", "전개", "전부"],
+            },
+        ),
+    ],
+    "②": [
+        ("정답을 고침", {"cone_0019": ["전개", "전부"], "cone_0023": ["전개", "전부"]}),
+        ("경판 식 = 정답 식", {"press_formed_0028": ["전개"]}),
+    ],
+}
+UP_ITEMS = ["형상", "뷰", "치수", "전개", "전부"]
+
+
+def step_causes(before, after, causes):
+    """Rows (cause, drawings, {item: (up, down)}) for one step; changes not named in causes
+    go to the last row."""
+    a, b = _ok(before), _ok(after)
+    changed = {(k, it) for k in a for it in ITEMS if k in b and a[k][it] != b[k][it]}
+    named = {(k, it) for _, m in causes for k, its in m.items() for it in its}
+    assert named <= changed, sorted(named - changed)
+
+    def tally(pairs):
+        return {
+            it: (
+                sum(b[k][i] > a[k][i] for k, i in pairs if i == it),
+                sum(b[k][i] < a[k][i] for k, i in pairs if i == it),
+            )
+            for it in UP_ITEMS
+        }
+
+    out = []
+    for head, m in causes:
+        out.append(
+            (head, list(m), tally([(k, it) for k, its in m.items() for it in its]))
+        )
+    rest = sorted(changed - named)
+    out.append(("AI 답이 바뀜", sorted({k for k, _ in rest}), tally(rest)))
+    return out
+
+
+def _updown(up, down):
+    parts = ([f"+{up}"] if up else []) + ([f"−{down}"] if down else [])
+    return " ".join(parts) or "·"
+
+
+def why_up_slide(d, s2, s1, s3):
+    rows = [["계단", "원인", "도면"] + UP_ITEMS]
+    for step, (before, after) in zip(CAUSES, [(s2, s1), (s1, s3)]):
+        for head, drawings, t in step_causes(before, after, CAUSES[step]):
+            names = " · ".join(drawings)
+            rows.append([step, head, names] + [_updown(*t[it]) for it in UP_ITEMS])
+    s = slide(
+        d,
+        4,
+        "계단마다 바뀐 도면",
+        "꾸준히 오른 것은 잘린 답 · 정답 · 계산 식. 나머지는 AI 답이 양쪽으로 바뀐 것입니다",
+        "칸은 맞게 바뀐 수(+)와 틀리게 바뀐 수(−)를 따로 센다. 숫자는 R2 · old_limit_1 · R5a 의 score.json 에서 세고, "
+        "CAUSES 에 적은 원인이 실제로 바뀐 항목인지 assert 로 확인한다. 원인은 단계 파일로 하나씩 확인했다 (docs/pbl_meeting.md 3.5절). "
+        "잘린 답: R2 에서 세 장의 06 요청이 120초 제한에 걸려 원문 없이 끝났다 (ReadTimeout). R5a · R5b 에서는 06 이 34~45초에 끝났다. "
+        "cylinder_0016 은 형상은 맞지만 길이 300 을 100 자리에 넣어 치수 · 전개가 틀린다. "
+        "정답을 고침: cone_0023 은 reader 가 세 번 다 부채꼴 81.8° 를 냈고 옛 정답이 38.17° 였다. "
+        "경판: ① 에서 reader 식이 바뀌어 0028 의 오차가 8.2% → 3.1% 가 됐지만 옛 정답 식과 달라 틀렸고, ② 에서 정답도 같은 식이 되어 맞았다.",
+    )
+
+    def style(r, c):
+        if r == 0:
+            return TEAL, WHITE, True, 14, PP_ALIGN.CENTER
+        ai = rows[r][1] == "AI 답이 바뀜"
+        cell = rows[r][c]
+        return (
+            LIGHT if ai else WHITE,
+            GRAY if ai or cell == "·" else (ORANGE if cell.startswith("+") else INK),
+            c in (0, 1) and not ai,
+            12 if c == 2 else 14,
+            PP_ALIGN.LEFT if c in (1, 2) else PP_ALIGN.CENTER,
+        )
+
+    table(s, X0, 1.85, CW, 4.1, rows, [0.75, 2.3, 4.083] + [1.0] * 5, style)
+    text(
+        s,
+        X0,
+        6.15,
+        CW,
+        0.5,
+        [
+            "+ = 맞게 바뀐 도면 수, − = 틀리게 바뀐 도면 수. 회색 줄은 개선으로 세지 않습니다 (다음 장)"
+        ],
+        size=13,
+        color=GRAY,
+    )
+
+
+def ai_change_slide(d, s2, s1, s3, s3b):
+    a, b = _ok(s3), _ok(s3b)
+    diff = sum(a[k][it] != b[k][it] for k in a for it in ITEMS[:-1])
+    total = {it: [0, 0] for it in UP_ITEMS}
+    for step, (before, after) in zip(CAUSES, [(s2, s1), (s1, s3)]):
+        _, _, t = step_causes(before, after, CAUSES[step])[-1]
+        for it in UP_ITEMS:
+            total[it][0] += t[it][0]
+            total[it][1] += t[it][1]
+    s = slide(
+        d,
+        4,
+        "AI 답이 바뀐 것은 개선으로 세지 않습니다",
+        "같은 서버 · 같은 코드면 답이 거의 같지만, 서버나 설정이 달라지면 경계에 있는 도면에서 갈립니다",
+        f"같은 서버: R5a 와 R5b 는 180칸 중 {diff}칸만 다르다. 동료 서버의 옛 합성 4판도 점수가 모두 같았다. "
+        "다른 서버: flat_0002 를 R2 (mlic) 와 동료 서버 (old_nolimit_1) 에서 비교하면, AI 가 받은 그림(sheet_labeled.png sha256), 05 뷰 정보, 규칙 문서(sha256)가 같다. "
+        "그런데 06 답이 483번째 글자에서 갈렸다 ('… 120x80 (implied by context …' 대 '(implied by side views)'). 그 뒤 R2 는 평면도를 other 로 답했다. "
+        "다른 것은 서버(GPU · 병렬 방식, 판단 서버의 disable_any_whitespace)와 코드의 답 양식(vlm_output.py, c71cca0 → 9830fb3)이다. 이 중 무엇이 갈랐는지는 나누지 못했다. "
+        "temperature 0 이어도 GPU 와 병렬 방식이 다르면 계산 끝자리가 달라 비슷한 후보 사이에서 다른 글자를 고를 수 있다. "
+        "bent_sheet_0012 는 처음부터 형상 점수가 달랐다 (bent_sheet 3.0 대 5.0).",
+    )
+    cards = [
+        (
+            "같은 서버에서 두 번",
+            [
+                f"후를 두 번 돌려 180칸 중 {180 - diff}칸이 같았습니다",
+                "동료 서버에서는 네 번 모두 같았습니다",
+            ],
+        ),
+        (
+            "같은 그림, 다른 서버 · 설정",
+            [
+                "flat_0002: 그림 · 뷰 정보 · 규칙 문서는 같고, 서버와 답 양식 설정이 다름",
+                "답이 문장 중간에서 갈려, 한쪽은 평면도를 'other' 로 답했습니다",
+            ],
+        ),
+        (
+            "이번 전 → 후 에서",
+            [
+                f"뷰 {_updown(*total['뷰'])}, 치수 {_updown(*total['치수'])}, 전개 {_updown(*total['전개'])}",
+                "양쪽으로 바뀌었고, 다시 돌리면 달라질 수 있습니다",
+            ],
+        ),
+    ]
+    w = (CW - 0.5) / 3
+    for i, (head, lines) in enumerate(cards):
+        x = X0 + i * (w + 0.25)
+        chip(s, x, 1.9, w, 0.55, head, fill=TEAL, color=WHITE, size=16, bold=True)
+        card(s, x, 2.55, w, 2.3, [], fill=LIGHT)
+        bullets(s, x + 0.2, 2.75, w - 0.4, 2.0, lines, size=16)
+    band(
+        s,
+        5.2,
+        "그래서",
+        "개선은 여러 번 · 여러 서버에서 같은 쪽으로 나온 것만 셉니다: 잘린 답, 정답, 계산 식",
+        h=0.75,
+        size=16,
+    )
+
+
+def code_up_slide(d):
+    s = slide(
+        d,
+        4,
+        "코드를 바꿔 오른 것 두 가지",
+        "잘린 답은 AI 에게 묻는 방법을, 경판은 계산 식을 바꿨습니다",
+        "왼쪽: cylinder_0017 의 06_view_labels.json trace. R2 는 ReadTimeout (read timeout=120.0), 원문 없음. "
+        "고친 것 셋: 3cf2274 (#13) 잘리면 '짧게' 를 붙여 한 번 더 묻고 서버에서 공백 반복을 막음, 9830fb3 이유 · 메모 칸을 200자로 묶음 (JSON 양식의 maxLength), "
+        "experiments/batch_parallel.sh 가 기다리는 시간을 900초로 (CUTPLAN_REASON_TIMEOUT). "
+        "200자 제한 전의 main (R4, 60e0d26) 에서는 06 이 2번 잘렸고 다시 물어 1번 살렸다 (cylinder_0016 은 또 잘림, 06 최장 284초). "
+        "R5a · R5b 는 06 · 09 모두 잘림 0, 다시 묻기 0, 06 최장 48 · 49초. "
+        "오른쪽: press_formed_0028 의 prediction.json flat_pattern.blank (R2 · R5a). 옛 reader 식은 동료가 둔 경험계수 k = 1.25~1.30 의 가운데값 1.275, "
+        "옛 정답은 옛 생성기의 1.3415 계수. 지금 식은 2807e44 (현업자 정답, docs/v3_upgrade.md 5.4절). "
+        "나머지 경판 5장은 AI 가 경판 종류를 잘못 골라 틀린다 (남은 실패 3).",
+    )
+    cards = [
+        (
+            "잘린 답 살리기 (cylinder_0017)",
+            [
+                (
+                    "전",
+                    "06 판단 요청이 120초 제한에 걸려 답이 없음\n→ 형상 없음, 09 · 10 건너뜀",
+                ),
+                (
+                    "후",
+                    "이유 칸은 200자까지, 잘리면 짧게 다시 묻기,\n900초까지 기다림 → 39초에 답, 원통",
+                ),
+            ],
+            "형상 27 → 30 (두 번 돌려 두 번 다)",
+        ),
+        (
+            "경판 원판 식 (press_formed_0028)",
+            [
+                (
+                    "전",
+                    "reader: 1.275 × 안지름 + 2 × 직선부 = 397.2\n옛 정답: 432.5 (다른 식) → 오차 8.2%",
+                ),
+                (
+                    "후",
+                    "reader: 두께 가운데 반타원 길이 + 2 × 직선부 = 375.95\n새 정답: 375.95 (같은 식) → 맞음",
+                ),
+            ],
+            "경판 전개 0/6 → 1/6",
+        ),
+    ]
+    w = 5.9
+    for i, (head, steps, result) in enumerate(cards):
+        x = X0 + i * (w + 0.333)
+        chip(s, x, 1.85, w, 0.55, head, fill=TEAL, color=WHITE, size=16, bold=True)
+        for j, (tag, body) in enumerate(steps):
+            y = 2.6 + j * 1.3
+            fill, color = (LIGHT, GRAY) if j == 0 else (ORANGE, WHITE)
+            chip(s, x, y, 0.7, 1.1, tag, fill=fill, color=color, size=15, bold=True)
+            text(
+                s,
+                x + 0.85,
+                y,
+                w - 0.85,
+                1.1,
+                body.split("\n"),
+                size=14,
+                anchor=MSO_ANCHOR.MIDDLE,
+            )
+        chip(
+            s,
+            x,
+            5.3,
+            w,
+            0.5,
+            result,
+            fill=ORANGE_TINT,
+            color=ORANGE,
+            size=15,
+            bold=True,
+        )
+    text(
+        s,
+        X0,
+        6.0,
+        CW,
+        0.5,
+        ["경판 나머지 5장은 AI 가 경판 종류(2:1 타원)를 잘못 골라 아직 틀립니다"],
         size=13,
         color=GRAY,
     )
@@ -1354,7 +1729,7 @@ def class_score_slide(d, s3):
         4,
         "형상별 점수 (후)",
         "평판은 거의 끝까지 맞고, 원통 · 경판은 뷰를, 콘 · 굽힘판은 치수를 놓칩니다",
-        "runs/reader/meeting1030/R4_generated_main/score.json 을 형상별로 셌다.",
+        "runs/reader/meeting1030/R5a_generated_cfef60a/score.json 을 형상별로 셌다.",
     )
     rows = [["항목"] + [CLASS_KR[c] for c in CLASSES] + ["전체"]]
     for it in ITEMS:
@@ -1438,7 +1813,7 @@ def fixed_slide(d):
         d,
         4,
         "고친 것",
-        "데이터 10건, 하네스 1건, 코드 1건. 남은 것은 다음 장",
+        "데이터 10건, 코드 2건, 그리고 정답의 기준. 남은 것은 다음 장",
         "docs/v3_upgrade.md 4절 표. 상태가 '고침' 인 것.",
     )
     rows = [
@@ -1448,15 +1823,15 @@ def fixed_slide(d):
             "콘 · 경판 · 굽힘판 정답 식, 경판 윤곽, 숨은선, Ø 기호, 콘 안쪽 면, 굽힘 모서리, 중심선",
             "1~10",
         ],
-        ["하네스", "잘리면 짧게 다시 묻기, 판단 서버의 공백 반복 막기", "13"],
         ["코드 (reader)", "경판 직선부를 타원 끝으로 잘못 재던 것", "16"],
+        ["코드 (reader)", "잘린 답: 이유 칸 200자, 잘리면 짧게 다시 묻기", "13"],
         [
             "기준",
             "현업자 정답 식을 생성기 · reader 에 (콘 평균지름, 경판 원판)",
             "5.4절",
         ],
     ]
-    table(s, X0, 1.9, CW, 3.6, rows, [2.8, 8.0, 1.333], head_style)
+    table(s, X0, 1.9, CW, 3.4, rows, [2.8, 8.0, 1.333], head_style)
 
 
 def failure_slide(d, title, message, notes, drawing, point, *, views=False):
@@ -1478,7 +1853,7 @@ def remaining_slides(d, s3):
         d,
         "남은 실패 1: 원만 있는 뷰를 놓침 (#11)",
         "원통의 우측면, 경판의 평면은 원만 있는 뷰라 뷰 후보로 잡히지 않습니다",
-        f"cylinder_0014 의 05_views.png. 뷰 점수 실패 13장 중 12장의 원인 (v3_upgrade.md 3.1). 채점 이유: {why.get('cylinder_0014', {}).get('뷰')}",
+        f"cylinder_0014 의 05_views.png. 뷰 점수 실패 {30 - count(s3, '뷰')}장 중 12장의 원인 (v3_upgrade.md 3.1). 나머지는 평판 평면도를 bottom 으로 (#18). 채점 이유: {why.get('cylinder_0014', {}).get('뷰')}",
         "cylinder_0014",
         "코드 05: 원 하나만 있는 덩어리도 뷰 후보로 (원통 6장, 경판 6장)",
         views=True,
@@ -1487,7 +1862,7 @@ def remaining_slides(d, s3):
         d,
         "남은 실패 2: 콘 대경을 바깥지름 그대로 (#14)",
         "AI 가 바깥지름 300 을 안지름 칸에 넣었습니다. 소경은 AI 가 비워 코드가 맞게 채웠습니다",
-        f"cone_0020. 채점 이유: {why.get('cone_0020')}. 콘 6장 중 4장 (0020 · 0021 · 0022 · 0024). cone_0019 는 10-28 실행에서 같은 실수를 했고 10-30 실행에서는 맞았다.",
+        f"cone_0020. 채점 이유: {why.get('cone_0020')}. 콘 6장 중 4장 (0020 · 0021 · 0022 · 0024). cone_0019 는 R2 · 10-28 실행에서 같은 실수를 했고 R4 · R5 에서는 AI 가 칸을 비워 코드가 맞게 채웠다.",
         "cone_0020",
         "하네스: AI 가 읽은 지름을 외형 치수와 대조 (안지름 = 바깥지름 − 2t/cos α 이어야)",
     )
@@ -1496,7 +1871,7 @@ def remaining_slides(d, s3):
         "남은 실패 3: 경판 전개 (#15)",
         "치수는 맞는데 2:1 타원 경판의 종류를 잘못 고릅니다. 이 도면에서는 FLAT FLANGED 로 읽었습니다",
         f"press_formed_0026: 09 의 head_type FLAT FLANGED (정답 2:1 타원). 채점 이유: {why.get('press_formed_0026')}. "
-        "10-30 실행의 경판 6장: 2:1 로 고른 0025 · 0028 은 정답과 0.01 mm 안에서 맞고, 나머지 넷은 종류를 잘못 골랐다 (0026 FLAT FLANGED, 0027 · 0030 hemispherical, 0029 TORISPHERICAL).",
+        "R5a 의 경판 6장: 2:1 로 고른 0028 은 정답과 0.01 mm 안에서 맞고, 나머지 다섯은 종류를 잘못 골랐다 (0025 · 0026 FLAT FLANGED, 0027 · 0029 · 0030 hemispherical). R4 에서는 0025 도 2:1 로 골라 맞았다.",
         "press_formed_0026",
         "하네스: 높이 / 지름 = 1/4 이면 2:1 타원",
     )
@@ -1512,22 +1887,42 @@ def remaining_slides(d, s3):
         d,
         4,
         "남은 것은 모델보다 하네스와 코드",
-        "형상은 30장 중 29~30장. 틀리는 곳은 '읽은 값을 검사하지 않는 곳' 입니다",
+        f"형상은 {frac(count(s3, '형상'))}. 틀리는 곳은 '읽은 값을 검사하지 않는 곳' 입니다",
         "docs/v3_upgrade.md 4절의 '남음' 항목: #11, #12, #14, #15, #17, #18.",
     )
     rows = [
         ["#", "실패", "고칠 곳", "영향"],
-        ["11", "원만 있는 뷰를 놓침", "코드 05", "뷰 12장"],
+        [
+            "11",
+            "원만 있는 뷰를 놓침",
+            "코드 05",
+            f"뷰 {12 - count(s3, '뷰', 'cylinder') - count(s3, '뷰', 'press_formed')}장",
+        ],
         [
             "12",
             "정규식이 THIRD ANGLE · PART NAME 을 못 읽음",
             "코드 02",
             "30장 (04 가 메움)",
         ],
-        ["14", "콘 대경을 바깥지름으로", "하네스: 외형 치수 대조", "콘 4장"],
-        ["15", "2:1 경판의 종류를 잘못 고름", "하네스: 높이 / 지름 검사", "경판 4장"],
-        ["17", "굽힘판 폭 · 다리, 반경", "하네스: 외형 치수 대조", "굽힘판 4장"],
-        ["18", "평면도를 bottom 으로", "모델", "평판 1장"],
+        [
+            "14",
+            "콘 대경을 바깥지름으로",
+            "하네스: 외형 치수 대조",
+            f"콘 {6 - count(s3, '치수', 'cone')}장",
+        ],
+        [
+            "15",
+            "2:1 경판의 종류를 잘못 고름",
+            "하네스: 높이 / 지름 검사",
+            f"경판 {6 - count(s3, '전개', 'press_formed')}장",
+        ],
+        [
+            "17",
+            "굽힘판 폭 · 다리, 반경",
+            "하네스: 외형 치수 대조",
+            f"굽힘판 {6 - count(s3, '치수', 'bent_sheet')}장",
+        ],
+        ["18", "평면도를 bottom 으로", "모델", f"평판 {6 - count(s3, '뷰', 'flat')}장"],
     ]
     table(s, X0, 1.9, CW, 4.2, rows, [0.8, 5.2, 3.9, 2.233], head_style)
 
@@ -1537,59 +1932,8 @@ def experiment_section(d):
     section(
         d,
         "추가 실험",
-        "답 잘림 처리 · 모델 바꿔 끼우기 (진행 중)",
-        "두 실험은 다른 세션에서 진행 중이다. 결과가 나오면 이 파트를 채운다 (docs/pbl_meeting.md 4절).",
-    )
-
-
-def truncation_slide(d):
-    s = slide(
-        d,
-        5,
-        "실험 1: JSON 답 잘림",
-        "다시 묻기로 살리고 있지만 잘림은 계속되고, 10-30 실행에서는 다시 물어도 잘린 도면이 나왔습니다",
-        "docs/pbl_meeting.md 4.1 · 3.3절. 10-28 실행: 판단 호출 60번 중 4번 잘림 (06 cylinder_0017, flat_0002 / 09 press_formed_0025 · 0027), 모두 다시 물어 성공. 10-30 실행(R4, 같은 코드): 2번 잘림 (06 cylinder_0017 · 0016), cylinder_0016 은 다시 물어도 또 잘려 (finish_reason length) 09 · 10 을 건너뛰었다. 혼잣말을 reason 칸에 길게 쓰다 한도에 걸렸다.",
-    )
-    rows = [
-        ["왜 잘리나", "예"],
-        [
-            "이유(reason) 칸에 계산을 길게 풀어 씀 (09)",
-            '"… Total = 56. Still not 59. Let\'s"',
-        ],
-        ["줄바꿈 · 공백을 반복 (06)", "flat_0002"],
-    ]
-    table(s, X0, 1.9, CW, 1.6, rows, [6.0, 6.133], head_style)
-    opts = [
-        ("답 양식 바꾸기", "결정 칸을 앞에, 이유는 맨 뒤 · 짧게. 잘려도 결정은 남음"),
-        ("이어 쓰기", "잘린 곳부터 이어 쓰게 함. 양식 제약을 다시 걸기 어려움"),
-        ("길이 제한 올리기", "1,500 → 4,096 토큰. 가장 쉽지만 공백 반복엔 시간만 더"),
-    ]
-    for i, (head, body) in enumerate(opts):
-        y = 3.8 + i * 0.8
-        chip(
-            s,
-            X0,
-            y,
-            2.8,
-            0.65,
-            head,
-            fill=ORANGE_TINT,
-            color=ORANGE,
-            size=15,
-            bold=True,
-        )
-        text(s, X0 + 3.0, y, 9.1, 0.65, [body], size=16, anchor=MSO_ANCHOR.MIDDLE)
-    text(
-        s,
-        X0,
-        6.3,
-        CW,
-        0.4,
-        [
-            "결과: 실험 뒤 채움 (같은 30장을 두 번 이상, 잘림 · 다시 묻기 횟수 · 시간 · 점수)"
-        ],
-        size=14,
-        color=GRAY,
+        "모델 바꿔 끼우기 (진행 중)",
+        "모델 바꿔 끼우기는 다른 세션에서 진행 중이다. 결과가 나오면 이 파트를 채운다 (docs/pbl_meeting.md 4.2절). 답 잘림 실험(4.1절)은 안정성 이야기라 덱에서 뺐다 (8.8절).",
     )
 
 
@@ -1597,7 +1941,7 @@ def model_swap_slide(d):
     s = slide(
         d,
         5,
-        "실험 2: 모델 바꿔 끼우기",
+        "실험: 모델 바꿔 끼우기",
         "하네스는 그대로 두고 모델 하나만 바꿔, 같은 30장 · 같은 채점기로 잽니다",
         "docs/pbl_meeting.md 4.2절. 모델은 experiments/models/<이름>.sh 프로필로 고른다. 가설: 작은 로컬 모델도 하네스가 받쳐 주면 쓸 만하다 (docs/harness_engineering.md 1절).",
     )
@@ -1695,7 +2039,7 @@ def wrapup_slide(d, s3):
             f"새 정답으로 단계 {frac(count(s3, '단계'))}, 형상 {frac(count(s3, '형상'))}, 전개 {frac(count(s3, '전개'))}",
         ),
         ("남은 것", "뷰(원만 있는 뷰), 치수 대조. 모델보다 하네스와 코드"),
-        ("다음", "답 잘림 · 모델 비교 실험을 마무리. 그다음 할 일은 오늘 함께 논의"),
+        ("다음", "모델 비교 실험을 마무리. 그다음 할 일은 오늘 함께 논의"),
     ]
     for i, (head, body) in enumerate(rows):
         y = 1.95 + i * 1.15
@@ -1715,7 +2059,7 @@ def harness_wrapup_slide(d):
         ("단계", "도면 한 장을 10단계로. AI 는 03 · 04 · 06 · 09 네 곳에서만"),
         ("약속", "AI 의 답은 정해진 JSON 양식. 서버가 양식을 강제하고 코드가 검사"),
         ("보완", "잘리면 다시 묻기, 계산은 코드, 단계마다 파일로 기록"),
-        ("도구", "AI 는 '어느 도구를 어떤 값으로' 만 답하고, 실행은 Python 이 합니다"),
+        ("채점", "단계마다 정답과 비교해, 틀린 곳을 단계 하나로 짚습니다"),
     ]
     for i, (head, body) in enumerate(rows):
         y = 1.95 + i * 1.15
@@ -1805,7 +2149,7 @@ def per_drawing_slides(d, s3):
             6,
             f"부록: 도면별 결과 ({part + 1}/2)",
             "O = 맞음, X = 틀림. 틀린 이유는 발표자 노트",
-            "runs/reader/meeting1030/R4_generated_main/score.md.\n"
+            "runs/reader/meeting1030/R5a_generated_cfef60a/score.md.\n"
             + "\n".join(f"{r['id']}: {r['why']}" for r in chunk if r["why"]),
         )
         rows = [["도면"] + ITEMS[:-1]] + [
@@ -1913,7 +2257,7 @@ def job_def_slide(d):
         "하려는 일",
         "설계 도면을 읽어, 철판을 어떤 모양으로 자를지(전개도) 자동으로 만드는 것",
         "왼쪽 data_v3/generated/cone_0023/cone_0023.png (생성기가 그린 도면), 가운데 같은 도면을 reader 가 읽어 만든 flat_pattern.png "
-        "(runs/reader/meeting1030/R4_generated_main). 커팅플랜은 모식도. 이번 범위는 가운데까지다.",
+        "(runs/reader/meeting1030/R5a_generated_cfef60a). 커팅플랜은 모식도. 이번 범위는 가운데까지다.",
     )
     w3 = workdir(RUN3, EXAMPLE)
     cols = [
@@ -2344,75 +2688,6 @@ def before_section(d):
     )
 
 
-def before_def_slide(d, s2):
-    s = slide(
-        d,
-        2,
-        "'전' 은 무엇인가",
-        "동료의 판독기와, 그것을 단계 파일로 나눈 판은 판독 결과가 같습니다. 둘을 하나의 '전' 으로 봅니다",
-        "docs/pbl_meeting.md 2.1절. 253020c → c71cca0 사이 커밋 26개를 읽었다. 단계로 나눈 6f44e7f · 4230d09 는 모의 서버로"
-        " main.py 10가지 실행의 출력이 시각만 빼고 같음을 확인했다. 바뀐 것은 단계 파일 · 기록 · DWG 변환 · orchestrator ·"
-        " GPU 배치와, 06 · 09 가 읽는 규칙 문서 두 개다. 판독 계산, 데이터, 정답, 채점은 그대로다.",
-    )
-    cols = [
-        (
-            "동료 v3 (10-18 실행)",
-            [
-                "한 번에 도는 판독기",
-                "결과는 마지막 파일 하나",
-                "형상 27/30, 전개 11/30",
-            ],
-        ),
-        (
-            "단계로 나눈 판 (10-23)",
-            [
-                "같은 판독 계산을 단계 13개로 나눔",
-                "단계마다 파일 · 모델 기록이 남음 (사람이 보기 위한 정리)",
-                f"10-30 에 다시 잼: 형상 {frac(count(s2, '형상'))}, 전개 {frac(count(s2, '전개'))}",
-            ],
-        ),
-    ]
-    for i, (head, items) in enumerate(cols):
-        x = X0 + i * 6.4
-        card(s, x, 1.85, 5.73, 2.6, [], fill=TEAL_TINT)
-        text(s, x + 0.25, 1.95, 5.3, 0.5, [head], size=20, bold=True, color=TEAL)
-        bullets(s, x + 0.25, 2.5, 5.3, 1.9, items, size=16)
-    text(s, X0 + 5.85, 2.75, 0.6, 0.6, ["="], size=34, bold=True, color=TEAL)
-    rows = [
-        [
-            "같은 것",
-            "옛 합성 30장과 그 정답, 판독 계산 코드, AI 모델, 채점(형상 · 전개 두 가지)",
-        ],
-        ["다른 것", "기록이 남는 방식과 실행 편의. 문제를 푸는 쪽은 바뀌지 않았습니다"],
-    ]
-    table(
-        s,
-        X0,
-        4.75,
-        CW,
-        1.3,
-        rows,
-        [1.8, 10.333],
-        lambda r, c: (
-            TEAL if c == 0 else LIGHT,
-            WHITE if c == 0 else INK,
-            c == 0,
-            16,
-            PP_ALIGN.CENTER if c == 0 else PP_ALIGN.LEFT,
-        ),
-    )
-    band(
-        s,
-        6.25,
-        "",
-        "그래서 이 덱의 '전' = 옛 합성 30장 + 지난주까지의 판독기",
-        fill=LIGHT,
-        color=TEAL,
-        h=0.55,
-        size=15,
-    )
-
-
 def lastweek_scope_slide(d):
     s = slide(
         d,
@@ -2465,7 +2740,7 @@ def lastweek_perf_slide(d):
         CW,
         2.2,
         [
-            "형상: 틀린 3장은 다른 형상으로 답한 게 아니라, 답을 못 냈습니다 (뒤의 실패 사례 1)",
+            "형상: 틀린 3장은 다른 형상으로 답한 게 아니라, 답을 내지 못한 경우입니다",
             "전개: 평판 · 원통은 거의 맞고, 콘 · 경판은 하나도 안 맞았습니다 (실패 사례 2)",
             "어느 단계에서 틀렸는지는 이 숫자만으로 알 수 없었습니다",
         ],
@@ -2503,7 +2778,9 @@ def lastweek_fail_shape_slide(d):
         "실패 사례 1: 형상을 답하지 못함 (cylinder_0013)",
         "AI 는 처음에 cylinder 라고 썼지만, 이유를 길게 쓰다 답이 잘려 형상 칸이 비었습니다",
         f"{w1.relative_to(ROOT)}/prediction.json 의 vlm_trace: view_labels 호출 57.6초, JSONDecodeError. 원문 앞부분에 part_class cylinder (점수 10), 뒤에 같은 문단 반복과 공백 반복. "
-        "형상이 비면 09 · 10 을 건너뛴다. 같은 실행의 cylinder_0018, flat_0005 도 같은 원인 (docs/server_handoff.md 6.3).",
+        "형상이 비면 09 · 10 을 건너뛴다. 같은 실행의 cylinder_0018, flat_0005 도 같은 원인 (docs/server_handoff.md 6.3). "
+        "같은 판독기를 이 서버(mlic)에서 다시 돌린 R2 에서는 cylinder_0016 · 0017, flat_0001 의 06 요청이 120초 제한에 걸려 답이 없었다 "
+        "(ReadTimeout). 이 서버는 초당 약 12.9 토큰이라 길이 제한까지 가는 답은 잘리기 전에 시간이 다 된다 (docs/pbl_meeting.md 3.1절).",
     )
     fit(s, w1 / "analysis" / "sheet_labeled.png", X0, 1.85, 5.0, 3.6)
     code(
@@ -2530,7 +2807,7 @@ def lastweek_fail_shape_slide(d):
         s,
         5.75,
         "문제",
-        "AI 가 형상을 몰라서가 아니라, 답의 형식이 깨져서 틀렸습니다. 실행마다 잘리는 도면이 바뀝니다",
+        "AI 가 형상을 몰라서가 아니라, 답이 끝까지 나오지 않아 틀렸습니다. 다시 돌리면 다른 3장이 걸립니다",
         h=0.85,
         size=16,
     )
@@ -2594,7 +2871,7 @@ def before_problems_slide(d):
         ),
         (
             "답이 잘렸다",
-            "형상을 못 낸 3장은 모두 AI 답이 길이 제한에서 잘려 JSON 이 깨진 경우. 실행마다 잘리는 도면이 바뀝니다",
+            "형상을 못 낸 3장은 모두 AI 답이 끝까지 나오지 않은 경우 (길이 제한에서 잘리거나 120초에 걸림). 실행마다 걸리는 도면이 바뀝니다",
         ),
     ]
     for i, (k, v) in enumerate(rows):
@@ -2615,7 +2892,7 @@ def before_problems_slide(d):
         s,
         5.95,
         "그래서",
-        "정답부터 고치고, 모든 단계를 재고, 잘린 답은 다시 묻습니다 → 후",
+        "정답부터 고치고, 기준을 하나로 맞추고, 모든 단계를 재고, 잘린 답은 살립니다 → 후",
         h=0.8,
         size=16,
     )
@@ -2626,7 +2903,7 @@ def devices_section(d):
         d,
         "하네스",
         "PBL 의 핵심 주제: AI 를 믿지 않고 받쳐 주는 장치",
-        "JSON 약속, 양식 강제, 다시 묻기, 기록, 그리고 AI 가 도구를 골라 부르는 tool calling.",
+        "JSON 약속, 양식 강제, 다시 묻기, 기록.",
     )
 
 
@@ -3289,20 +3566,7 @@ def ai_client_slide(d):
     )
 
 
-# ---------------------------------------------------------------------- 4. 하네스: JSON 과 tool calling
-DEMO = RUNS / "agent" / "orchestrator" / "20261023-021136"
-
-
-def demo_turns():
-    """The cone_0019 orchestrator run: model turns and tool results, in order."""
-    path = DEMO / "trajectory.jsonl"
-    if not path.is_file():
-        return []
-    return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+# ---------------------------------------------------------------------- 4. 하네스: JSON
 
 
 def harness_eng_slide(d):
@@ -3318,7 +3582,6 @@ def harness_eng_slide(d):
         ("JSON 약속", "AI 의 답을 정해진 칸으로 받고, 양식 밖은 못 쓰게", "다음 장"),
         ("검사 · 다시 묻기", "칸 · 범위 검사, 잘리면 짧게 다시", "장치 2"),
         ("기록", "무엇을 보여 주고 뭐라 답했는지 파일로", "장치 3"),
-        ("도구 호출 반복", "AI 가 단계를 골라 부르고, 코드가 실행", "tool calling"),
     ]
     for i, (head, body, where) in enumerate(rows):
         y = 1.9 + i * 0.85
@@ -3351,7 +3614,7 @@ def json_contract_slide(d):
         3,
         "JSON: AI 와 코드 사이의 약속",
         "AI 는 글을 씁니다. 코드는 정해진 칸만 읽습니다. 둘을 잇는 것이 JSON 입니다",
-        "JSON 은 '이름: 값' 칸으로 된 글자 형식이다. reader 의 모든 AI 답, 단계 사이 파일(stages/*.json), 도구 호출이 JSON 이다.",
+        "JSON 은 '이름: 값' 칸으로 된 글자 형식이다. reader 의 모든 AI 답과 단계 사이 파일(stages/*.json)이 JSON 이다.",
     )
     card(
         s,
@@ -3403,7 +3666,6 @@ def json_contract_slide(d):
     rows = [
         ("AI 의 답", "06 형상, 09 치수, 04 표제란: 칸이 정해진 JSON"),
         ("단계 사이", "01_read.json → 02 → … 다음 단계는 앞 JSON 만 읽음"),
-        ("도구 호출", 'AI 가 {"tool": …, "arguments": …} 로 할 일을 고름'),
     ]
     for i, (k, v) in enumerate(rows):
         y = 4.25 + i * 0.7
@@ -3538,357 +3800,6 @@ def decoding_slide(d):
     )
 
 
-def tool_idea_slide(d):
-    s = slide(
-        d,
-        3,
-        "tool calling: AI 는 함수를 실행하지 않습니다",
-        "Qwen 은 '어느 도구를, 어떤 값으로' 부를지 JSON 으로 적기만 합니다. 실행은 Python 코드가 합니다",
-        "reader/orchestrator.py (반복), reader/tools.py (도구와 실행). 개념은 docs/reader/orchestrator.md 2.1절. 그림의 JSON 은 cone_0019 시연의 실제 두 번째 답.",
-    )
-    chip(
-        s,
-        X0,
-        2.0,
-        2.3,
-        1.1,
-        '사용자\n"cone_0019 를\n전개도까지"',
-        fill=LIGHT,
-        color=INK,
-        size=13,
-    )
-    arrow(s, X0 + 2.4, 2.4, w=0.35, h=0.3)
-    chip(
-        s,
-        X0 + 2.85,
-        1.9,
-        2.0,
-        1.3,
-        "Qwen\n(고르기만)",
-        fill=ORANGE,
-        color=WHITE,
-        size=16,
-        bold=True,
-    )
-    arrow(s, X0 + 4.95, 2.4, w=0.35, h=0.3)
-    code(
-        s,
-        X0 + 5.4,
-        1.85,
-        6.73,
-        1.45,
-        [
-            '{"thought": "아직 실행된 단계가 없으므로 …",',
-            ' "tool": "run_stages",',
-            ' "arguments": {"work": "runs/reader/agent/cone_0019",',
-            '               "first": "read", "last": "develop"}}',
-        ],
-        size=12,
-    )
-    arrow(s, X0 + 8.6, 3.4, w=0.3, h=0.4, kind=MSO_SHAPE.DOWN_ARROW)
-    chip(
-        s,
-        X0 + 5.4,
-        3.9,
-        6.73,
-        1.0,
-        'Python: ReaderTools.call("run_stages", {...})\n→ 실제로 stages/read.py … develop.py 실행 (92초)',
-        fill=TEAL,
-        color=WHITE,
-        size=14,
-        bold=True,
-    )
-    arrow(s, X0 + 4.95, 4.2, w=0.35, h=0.3, kind=MSO_SHAPE.LEFT_ARROW)
-    card(
-        s,
-        X0 + 2.85,
-        3.85,
-        2.0,
-        1.1,
-        [
-            {"text": "결과 JSON 을", "size": 13},
-            {"text": "대화에 붙여", "size": 13},
-            {"text": "다시 묻기", "size": 13, "bold": True},
-        ],
-        fill=ORANGE_TINT,
-        align=PP_ALIGN.CENTER,
-        anchor=MSO_ANCHOR.MIDDLE,
-        after=0,
-    )
-    arrow(s, X0 + 3.7, 3.3, w=0.3, h=0.45, kind=MSO_SHAPE.UP_ARROW)
-    band(
-        s,
-        5.4,
-        "핵심",
-        "모델은 이름과 값을 고르고, 실행 · 검사 · 기록은 코드가 합니다. 이걸 끝날 때까지 반복합니다",
-        h=0.75,
-        size=16,
-    )
-    text(
-        s,
-        X0,
-        6.3,
-        CW,
-        0.4,
-        [
-            "ChatGPT 의 '도구 사용' 도 같은 원리입니다. 모델은 글만 쓰고, 글을 읽어 실행하는 프로그램이 따로 있습니다"
-        ],
-        size=13,
-        color=GRAY,
-    )
-
-
-def tool_list_slide(d):
-    s = slide(
-        d,
-        3,
-        "도구 목록 (tools.py)",
-        "도구 하나 = 이름 + 설명 + 인자 양식 + 실제로 부를 Python 함수. 모델에게는 앞의 셋만 보입니다",
-        "tools.py _build(): run_<단계> 는 STAGES 를 돌며 자동으로 만들고 설명은 단계 스크립트의 docstring 에서 가져온다. _stage_caller() 가 stages/<단계>.py 의 run 을 부르는 클로저라, 도구로 부르든 main.py --batch 로 돌리든 같은 파일이 생긴다. "
-        "call(): 이름으로 찾고 인자를 검사한 뒤 실행. 에러는 예외 대신 {'error': ...} 로 돌려준다. 도구 17개는 2026-10-23 기준 (3D 를 끈 뒤 3D 단계 도구는 빠졌다).",
-    )
-    code(
-        s,
-        X0,
-        1.85,
-        6.4,
-        3.9,
-        [
-            '{"name": "run_view_labels",',
-            ' "description": "Stage 06 view_labels: name every',
-            "   view cluster. Model: reasoning (with the",
-            "   part_class skills). Reads stages/01_read.json,",
-            '   stages/04_title_fields.json, stages/05_views.json.",',
-            ' "parameters": {',
-            '   "properties": {',
-            '     "work": {"type": "string"},',
-            '     "projection_default":',
-            '        {"enum": ["first", "third"]}},',
-            '   "required": ["work"]}}',
-        ],
-        size=11,
-    )
-    text(
-        s,
-        X0,
-        5.8,
-        6.4,
-        0.4,
-        ["모델에게 보이는 도구 설명 (실제 기록 command.json)"],
-        size=12,
-        color=GRAY,
-        align=PP_ALIGN.CENTER,
-    )
-    groups = [
-        ("보기", "list_drawings · stage_status · show_stage"),
-        ("단계 실행", "run_read … run_develop (단계마다 하나)"),
-        ("묶어 실행", "run_stages (처음 ~ 끝 단계)"),
-    ]
-    for i, (k, v) in enumerate(groups):
-        y = 1.9 + i * 0.85
-        chip(s, X0 + 6.7, y, 1.6, 0.68, k, fill=TEAL, color=WHITE, size=14, bold=True)
-        text(s, X0 + 8.45, y, 3.68, 0.68, [v], size=13, anchor=MSO_ANCHOR.MIDDLE)
-    card(
-        s,
-        X0 + 6.7,
-        4.55,
-        5.43,
-        1.6,
-        [
-            {
-                "text": "실행 담당 call(이름, 인자)",
-                "bold": True,
-                "size": 14,
-                "color": TEAL,
-            },
-            {"text": '없는 도구 · 틀린 인자 → {"error": …} 로 돌려줌', "size": 13},
-            {"text": "모델이 에러를 읽고 다른 방법을 고름", "size": 13},
-        ],
-        fill=TEAL_TINT,
-        after=3,
-    )
-
-
-def tool_loop_slide(d):
-    s = slide(
-        d,
-        3,
-        "대화 반복 (orchestrator.py)",
-        "묻고 → 실행하고 → 결과를 붙여 다시 묻기. 모델이 도구 없이 답하면 그게 최종 보고입니다",
-        "orchestrator.py orchestrate(). 매 턴과 도구 결과가 trajectory.jsonl, 전체 대화가 messages.json 에 남는다 (scripts/reader/show_trajectory.py 로 본다). 최대 40턴.",
-    )
-    code(
-        s,
-        X0,
-        1.9,
-        6.6,
-        3.0,
-        [
-            "for turn in range(1, 41):",
-            "  reply = backend.next()       # 1. 모델에게 묻기",
-            "  if not reply.calls:          # 도구 없이 답하면",
-            "    return reply.text          #    최종 보고",
-            "  for call in reply.calls:",
-            "    result = tools.call(call.name, call.arguments)",
-            "                               # 2. Python 실행",
-            "  backend.add_results(results) # 3. 결과 붙이기",
-        ],
-        size=12,
-    )
-    cx, cy = X0 + 9.4, 3.4
-    nodes = [
-        (cx, cy - 1.45, "1. 모델에게 묻기", ORANGE),
-        (cx + 1.6, cy, "2. 도구 실행", TEAL),
-        (cx, cy + 1.45, "3. 결과 붙이기", TEAL),
-        (cx - 1.6, cy, "끝? → 보고", GRAY),
-    ]
-    for x, y, label, c in nodes:
-        chip(
-            s,
-            x - 0.95,
-            y - 0.35,
-            1.9,
-            0.7,
-            label,
-            fill=c,
-            color=WHITE,
-            size=13,
-            bold=True,
-        )
-    for (x1, y1), (x2, y2) in [
-        ((cx + 0.6, cy - 1.1), (cx + 1.4, cy - 0.35)),
-        ((cx + 1.4, cy + 0.35), (cx + 0.6, cy + 1.1)),
-        ((cx, cy + 1.05), (cx, cy - 1.05)),
-        ((cx - 0.6, cy - 1.1), (cx - 1.4, cy - 0.35)),
-    ]:
-        connect(s, x1, y1, x2, y2, color=PALE, width=2.5)
-    band(
-        s,
-        5.4,
-        "하네스",
-        "반복 횟수 제한, 에러를 모델에게 돌려주기, 모든 턴 기록. 모델이 길을 잃어도 프로그램은 멈추지 않습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.85,
-        size=15,
-    )
-
-
-def tool_modes_slide(d):
-    s = slide(
-        d,
-        3,
-        "도구를 알려주는 세 가지 방법",
-        "같은 반복 위에서, 모델에게 도구를 알려주고 답을 꺼내는 방법만 다릅니다",
-        "orchestrator.py: OpenAITools, OpenAISchema, AnthropicTools. 시연(cone_0019)은 schema 모드. 2026-10-23 추론 서버는 --tool-call-parser 없이 떠 있어 tools 방식 요청이 400 이었다 (docs/presentation.md 6절).",
-    )
-    rows = [
-        ["방식", "도구를 알려주는 법", "모델의 선택을 꺼내는 법"],
-        [
-            "tools (OpenAI 표준)",
-            "요청의 tools 칸. vLLM 이 Qwen 이 학습한 형식으로 넣어 줌",
-            "vLLM 의 tool parser 가 꺼낸 tool_calls",
-        ],
-        [
-            "schema (시연에 씀)",
-            "도구 설명을 시스템 지시에 글로",
-            "답을 {thought, tool, arguments} JSON 으로 강제, 코드가 읽음",
-        ],
-        ["Claude", "Claude API 의 tools", "답의 tool_use 블록"],
-    ]
-    table(s, X0, 1.9, CW, 2.6, rows, [2.6, 4.8, 4.733], head_style)
-    code(
-        s,
-        X0,
-        4.75,
-        7.3,
-        1.85,
-        [
-            '"anyOf": [',
-            '  {"tool": {"const": "run_read"},    "arguments": {work, drawing}},',
-            '  {"tool": {"const": "show_stage"},  "arguments": {work, stage}},',
-            '  … 도구마다 한 줄,  {"tool": {"const": "finish"}, …}]',
-        ],
-        size=11,
-    )
-    text(
-        s,
-        X0 + 7.6,
-        4.75,
-        4.53,
-        1.85,
-        [
-            "schema 모드는 '이 도구면 이 인자' 를 모두 나열합니다. 그래서 없는 도구 이름이나 맞지 않는 인자는 처음부터 쓸 수 없습니다 (장치 1 의 제약 디코딩)"
-        ],
-        size=14,
-        anchor=MSO_ANCHOR.MIDDLE,
-    )
-
-
-def tool_demo_slide(d):
-    turns = [t for t in demo_turns() if "text" in t]
-    results = [t for t in demo_turns() if "tool" in t]
-    s = slide(
-        d,
-        3,
-        "시연: cone_0019 실제 대화",
-        '"cone_0019 도면을 전개도까지 판독하고 결과를 알려줘" → AI 판단 3번, 133초',
-        f"{DEMO.relative_to(ROOT)} 의 trajectory.jsonl (2026-10-23, schema 모드, Qwen3.6-27B, 옛 합성 도면). 보고의 작은 지름 92.0 은 모델이 읽은 값이고 정답은 100 이다. 프롬프트 토큰은 턴마다 2,318 → 2,470 → 4,328 로 늘었다 (결과가 대화에 쌓임).",
-    )
-    rows = [["턴", "시각", "Qwen 이 고른 것", "Python 이 실행한 결과"]]
-    for t in turns:
-        calls = t.get("calls") or []
-        pick = (
-            ", ".join(
-                f"{c['name']}({', '.join(f'{k}={v}' for k, v in c['arguments'].items() if k != 'work' and k != 'drawing')})"
-                for c in calls
-            )
-            or "finish (보고)"
-        )
-        res = next((r for r in results if r["turn"] == t["turn"]), None)
-        if res:
-            out = res["result"]
-            summary = f"{res['seconds']}초, " + (
-                f"status {out.get('status')}, 단계 {len(out.get('stages', []))}개"
-                if "stages" in out
-                else f"work = {out.get('drawings', [{}])[0].get('work')}"
-            )
-        else:
-            summary = "형상 원추대, 전개 R 405.65 · 252.87, 68.33°"
-        rows.append([str(t["turn"]), f"{t['seconds']}초", pick, summary])
-    table(s, X0, 1.85, CW, 2.2, rows, [0.7, 1.1, 5.0, 5.333], head_style)
-    for i, t in enumerate(turns[:2]):
-        text(
-            s,
-            X0,
-            4.3 + i * 0.6,
-            CW,
-            0.55,
-            [
-                [
-                    {
-                        "text": f"턴 {t['turn']} thought  ",
-                        "bold": True,
-                        "color": ORANGE,
-                        "size": 13,
-                    },
-                    {"text": t["text"], "size": 13},
-                ]
-            ],
-        )
-    band(
-        s,
-        5.75,
-        "보인 것",
-        "모델은 도구 이름과 인자만 골랐고, 판독 10단계는 코드가 돌렸습니다. 숫자를 지어내지 않고 단계 결과를 옮겨 보고했습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.85,
-        size=15,
-    )
-
-
-# ---------------------------------------------------------------------- 부록: 하네스 구조
 def concept_slide(d, title, message, notes):
     return slide(d, 6, title, message, notes)
 
@@ -3924,399 +3835,6 @@ def role_box(s, x, y, w, h, name, role, where, *, fill=TEAL, size=15):
     )
 
 
-def concept_parts_slide(d):
-    s = concept_slide(
-        d,
-        "부록 · 하네스 구조 1: 다섯 부품",
-        "모델은 가운데 한 부품일 뿐입니다. 나머지 넷은 모델을 둘러싼 코드입니다",
-        "orchestrator.py: orchestrate (진행), OpenAITools / OpenAISchema / AnthropicTools (연결부), "
-        "system_prompt (지시문), Log (기록). tools.py: ReaderTools, Tool (도구 상자). "
-        "실행 진입점은 main 이고, make_backend 가 연결부를 고른다.",
-    )
-    # 연결선을 먼저 그려 상자 밑으로 가게 한다
-    connect(s, 2.6, 3.65, 4.6, 3.65, color=GRAY, width=2)
-    connect(s, 7.6, 3.65, 9.4, 3.65, color=GRAY, width=2)
-    connect(s, 6.1, 3.05, 6.1, 2.85, color=GRAY, width=2)
-    connect(s, 6.1, 4.55, 6.1, 5.0, color=GRAY, width=2)
-    chip(s, X0, 3.2, 2.0, 0.9, "사용자 명령\n'cone_0019 판독해줘'", size=12)
-    role_box(
-        s,
-        4.6,
-        3.05,
-        3.0,
-        1.2,
-        "진행",
-        "묻기 → 실행 → 결과 전달을 반복",
-        "orchestrate()",
-        fill=INK,
-    )
-    role_box(
-        s,
-        4.35,
-        1.55,
-        3.5,
-        1.0,
-        "모델 (AI)",
-        "다음에 쓸 도구를 고르기만 함",
-        "backend (구조 3)",
-        fill=ORANGE,
-    )
-    role_box(
-        s,
-        9.4,
-        3.05,
-        3.33,
-        1.2,
-        "도구 상자",
-        "판독 단계를 실제로 실행",
-        "ReaderTools · Tool",
-    )
-    role_box(
-        s,
-        4.6,
-        5.0,
-        3.0,
-        0.95,
-        "기록",
-        "모든 질문 · 답 · 결과를 파일로",
-        "Log",
-        fill=GRAY,
-    )
-    role_box(
-        s,
-        X0,
-        1.55,
-        3.2,
-        1.0,
-        "지시문",
-        "역할 · 순서 · 금지 사항",
-        "system_prompt()",
-        fill=TEAL,
-    )
-    connect(s, X0 + 3.2, 2.05, 4.35, 2.05, color=GRAY, width=2)
-    card(
-        s,
-        9.4,
-        4.75,
-        3.33,
-        1.65,
-        [
-            {"text": "왜 나눴나", "bold": True, "size": 14, "color": TEAL},
-            {
-                "text": "모델을 바꿔도 도구는 그대로, 도구를 늘려도 진행은 그대로입니다. 부품마다 따로 고치고 따로 시험합니다",
-                "size": 12,
-            },
-        ],
-        fill=TEAL_TINT,
-        after=3,
-    )
-
-
-def concept_tool_slide(d):
-    s = concept_slide(
-        d,
-        "부록 · 하네스 구조 2: 도구 상자",
-        "모델에게는 도구의 이름과 설명만 보입니다. 실제 실행은 보이지 않는 코드가 합니다",
-        "tools.py 의 Tool(name, description, parameters, call): 앞 셋은 모델에게 보내는 목록, call 은 Python 함수. "
-        "ReaderTools._build 가 판독 단계 목록(STAGES)에서 run_<단계> 도구를 자동으로 만들고, 설명은 단계 스크립트의 docstring 에서 가져온다. "
-        "단계가 쓰는 OCR · 판단 모델은 명령줄에서 정해지고, 오케스트레이터는 단계와 옵션만 고른다.",
-    )
-    card(s, X0, 1.85, 5.6, 4.0, [], fill=ORANGE_TINT)
-    text(
-        s,
-        X0 + 0.2,
-        1.95,
-        5.2,
-        0.4,
-        ["모델에게 보이는 것"],
-        size=16,
-        bold=True,
-        color=ORANGE,
-    )
-    menu = [
-        ("run_view_labels", "뷰마다 정면 · 측면 이름을 붙인다"),
-        ("run_develop", "전개도 길이를 계산한다"),
-        ("run_stages", "여러 단계를 차례로 실행한다"),
-        ("show_stage", "한 단계의 결과를 본다"),
-    ]
-    for i, (k, v) in enumerate(menu):
-        y = 2.5 + i * 0.75
-        chip(s, X0 + 0.2, y, 2.3, 0.6, k, fill=ORANGE, color=WHITE, size=12, bold=True)
-        text(s, X0 + 2.65, y, 2.9, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
-    text(
-        s,
-        X0 + 0.2,
-        5.5,
-        5.2,
-        0.3,
-        ["…그리고 도구마다 받는 값(인자)의 양식"],
-        size=11,
-        color=GRAY,
-    )
-    arrow(s, X0 + 5.75, 3.65, w=0.5, h=0.4)
-    card(s, X0 + 6.4, 1.85, 5.73, 4.0, [], fill=LIGHT)
-    text(
-        s,
-        X0 + 6.6,
-        1.95,
-        5.3,
-        0.4,
-        ["보이지 않는 것 (코드가 정함)"],
-        size=16,
-        bold=True,
-        color=TEAL,
-    )
-    hidden = [
-        ("실행", "고른 도구 이름에 맞는 판독 단계를 실제로 돌림"),
-        ("사용할 AI", "단계 안의 OCR · 판단 모델은 미리 고정"),
-        ("쓸 수 있는 곳", "출력 폴더 아래에만 파일을 씀"),
-        ("돌려줄 것", "단계 파일 전체가 아니라 짧은 요약만"),
-    ]
-    for i, (k, v) in enumerate(hidden):
-        y = 2.5 + i * 0.75
-        chip(s, X0 + 6.6, y, 1.8, 0.6, k, fill=TEAL, color=WHITE, size=12, bold=True)
-        text(s, X0 + 8.55, y, 3.5, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
-    band(
-        s,
-        6.05,
-        "하네스",
-        "모델이 할 수 있는 일의 범위는 '도구 목록' 이 정합니다. 목록에 없는 일은 할 수 없습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.7,
-        size=14,
-    )
-
-
-def concept_adapter_slide(d):
-    s = concept_slide(
-        d,
-        "부록 · 하네스 구조 3: 모델 연결부",
-        "모델마다 답하는 형식이 다릅니다. 연결부가 하나의 공통 형식으로 바꿔 주므로 모델을 바꿔 끼울 수 있습니다",
-        "orchestrator.py 의 backend 세 가지(OpenAITools, OpenAISchema, AnthropicTools)는 모두 start · next · add_results 를 가진다. "
-        "공통 형식은 Turn(text, calls, stop, usage)과 Call(id, name, arguments). "
-        "schema 방식은 tool parser 가 없는 vLLM 을 위해 답 양식을 anyOf {thought, tool, arguments} 로 강제한다. 시연 cone_0019 는 이 방식이다.",
-    )
-    models = [
-        ("로컬 Qwen", "도구 호출 기능 사용", "tools"),
-        ("로컬 Qwen", "답 양식을 강제", "schema"),
-        ("Claude", "도구 호출 기능 사용", "anthropic"),
-    ]
-    for i, (k, v, mode) in enumerate(models):
-        y = 1.9 + i * 1.2
-        card(
-            s,
-            X0,
-            y,
-            3.0,
-            1.0,
-            [
-                {"text": k, "bold": True, "size": 15, "color": WHITE},
-                {"text": v, "size": 12, "color": WHITE},
-                {"text": f"--tool-mode {mode}", "size": 9, "color": WHITE},
-            ],
-            fill=ORANGE,
-            align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE,
-            after=2,
-            margin=0.1,
-        )
-        connect(s, X0 + 3.0, y + 0.5, 4.9, 3.6, color=GRAY, width=1.5)
-    role_box(
-        s,
-        4.9,
-        2.9,
-        2.6,
-        1.4,
-        "연결부",
-        "질문 보내기 · 답 받기 · 결과 붙이기",
-        "backend",
-        fill=TEAL,
-    )
-    arrow(s, 7.6, 3.4, w=0.5, h=0.4)
-    card(
-        s,
-        8.2,
-        2.55,
-        4.53,
-        2.1,
-        [
-            {"text": "공통 형식", "bold": True, "size": 15, "color": TEAL},
-            {"text": "• 모델이 쓴 생각 · 보고 글", "size": 13},
-            {"text": "• 부른 도구 이름과 인자", "size": 13},
-            {"text": "• 멈춘 이유 (끝냄 / 도구 호출)", "size": 13},
-            {"text": "• 쓴 글자 수 (토큰)", "size": 13},
-        ],
-        fill=TEAL_TINT,
-        after=4,
-    )
-    text(
-        s,
-        8.2,
-        4.7,
-        4.53,
-        0.3,
-        ["코드: Turn · Call"],
-        size=10,
-        color=GRAY,
-        align=PP_ALIGN.CENTER,
-    )
-    band(
-        s,
-        5.95,
-        "그래서",
-        "진행 · 도구 · 기록은 하나만 있으면 됩니다. 같은 일을 로컬 모델과 Claude 에 시켜 비교할 수 있습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.75,
-        size=14,
-    )
-
-
-def concept_rules_slide(d):
-    s = concept_slide(
-        d,
-        "부록 · 하네스 구조 4: 규칙을 거는 두 가지 방법",
-        "글로 부탁한 규칙은 모델이 어길 수 있습니다. 중요한 규칙은 코드 구조로 막습니다",
-        "글로 부탁: orchestrator.py system_prompt (역할, 순서, 직접 계산 금지, 결과 값만 인용, 정답 파일 금지). "
-        "구조로 강제: 도구 목록(ReaderTools._build), 인자 검사(ReaderTools.call), 폴더 제한(ReaderTools.workspace), "
-        "답 양식(OpenAISchema 의 response_format), 최대 40턴(orchestrate max_turns), 단계 모델 고정(make_clients).",
-    )
-    card(s, X0, 1.85, 5.9, 3.95, [], fill=ORANGE_TINT)
-    text(
-        s,
-        X0 + 0.2,
-        1.95,
-        5.5,
-        0.4,
-        ["글로 부탁 (지시문)"],
-        size=16,
-        bold=True,
-        color=ORANGE,
-    )
-    asks = [
-        "판독 파이프라인을 운영하는 역할이다",
-        "단계는 정해진 순서대로 돌린다",
-        "길이 · 치수를 직접 계산하지 않는다",
-        "숫자는 도구 결과에 있는 값만 옮긴다",
-        "정답 파일은 읽지 않는다",
-    ]
-    text(
-        s,
-        X0 + 0.3,
-        2.5,
-        5.4,
-        3.2,
-        [{"text": f"“{a}”", "size": 14} for a in asks],
-        after=8,
-    )
-    text(
-        s,
-        X0 + 0.3,
-        5.2,
-        5.4,
-        0.5,
-        ["모델이 대개 지키지만, 지킨다는 보장은 없습니다"],
-        size=12,
-        color=GRAY,
-    )
-    card(s, X0 + 6.23, 1.85, 5.9, 3.95, [], fill=TEAL_TINT)
-    text(
-        s,
-        X0 + 6.43,
-        1.95,
-        5.5,
-        0.4,
-        ["구조로 강제 (코드)"],
-        size=16,
-        bold=True,
-        color=TEAL,
-    )
-    forced = [
-        ("도구 목록", "목록에 없는 일은 못 함"),
-        ("인자 검사", "양식에 안 맞는 값은 실행 전에 거절"),
-        ("폴더 제한", "출력 폴더 밖에는 못 씀"),
-        ("답 양식", "정해진 JSON 밖의 글자는 못 씀"),
-        ("턴 제한", "40번 안에 못 끝내면 멈춤"),
-    ]
-    for i, (k, v) in enumerate(forced):
-        y = 2.5 + i * 0.62
-        chip(s, X0 + 6.43, y, 1.6, 0.5, k, fill=TEAL, color=WHITE, size=12, bold=True)
-        text(s, X0 + 8.18, y, 3.85, 0.5, [v], size=13, anchor=MSO_ANCHOR.MIDDLE)
-    band(
-        s,
-        6.0,
-        "하네스",
-        "모델이 똑똑해지길 기다리지 않고, 틀릴 수 있는 자리를 코드가 줄여 둡니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.7,
-        size=14,
-    )
-
-
-def concept_safety_slide(d):
-    s = concept_slide(
-        d,
-        "부록 · 하네스 구조 5: 실패해도 멈추지 않고, 모두 남긴다",
-        "모델의 실수와 도구의 실패를 '에러' 결과로 모델에게 돌려줍니다. 모델은 그걸 보고 다시 고릅니다",
-        "orchestrate(): 깨진 답(invalid_reply)은 실행하지 않고 에러를 돌려준다. ReaderTools.call 은 예외를 던지지 않고 {'error': …} 를 돌려준다. "
-        "Log 가 command.json(설정 · 도구 목록), trajectory.jsonl(턴마다 한 줄), messages.json(대화 전체, 실패해도 finally 에서), answer.json(최종 보고)을 "
-        "runs/reader/agent/orchestrator/<시각>/ 에 쓴다. scripts/reader/show_trajectory.py 로 읽는다.",
-    )
-    # 반복 고리: 모델 → 진행 → 도구 → 진행 → 모델
-    connect(s, 2.1, 3.25, 2.1, 4.35, color=GRAY, width=2)
-    connect(s, 3.35, 4.8, 5.2, 4.8, color=GRAY, width=2)
-    role_box(
-        s, X0 + 0.25, 1.9, 2.5, 1.05, "모델", "도구를 고름", "backend", fill=ORANGE
-    )
-    role_box(
-        s,
-        X0 + 0.25,
-        4.35,
-        2.5,
-        0.95,
-        "진행",
-        "골라진 도구 실행",
-        "orchestrate()",
-        fill=INK,
-    )
-    role_box(s, 5.2, 4.35, 2.0, 0.95, "도구", "판독 단계", "ReaderTools", fill=TEAL)
-    fails = [
-        ("답이 깨짐", "실행하지 않고 '양식이 아님' 을 돌려줌"),
-        ("도구 실패", "멈추지 않고 '실패: 이유' 를 돌려줌"),
-        ("앞 단계 없음", "'아직 못 함' 을 돌려줌"),
-    ]
-    text(s, 3.6, 1.85, 3.8, 0.4, ["실패하면"], size=15, bold=True, color=ORANGE)
-    for i, (k, v) in enumerate(fails):
-        y = 2.3 + i * 0.62
-        chip(s, 3.6, y, 1.5, 0.5, k, fill=ORANGE_TINT, color=ORANGE, size=11, bold=True)
-        text(s, 5.2, y, 2.4, 0.5, [v], size=11, anchor=MSO_ANCHOR.MIDDLE)
-    card(s, 8.0, 1.85, 4.73, 3.95, [], fill=LIGHT)
-    text(s, 8.2, 1.95, 4.4, 0.4, ["남기는 기록"], size=16, bold=True, color=TEAL)
-    logs = [
-        ("명령", "무엇을 시켰고 어떤 도구를 줬나"),
-        ("턴마다", "모델의 생각, 고른 도구, 걸린 시간"),
-        ("대화 전체", "실패로 끝나도 저장"),
-        ("최종 보고", "모델이 사람에게 한 답"),
-    ]
-    for i, (k, v) in enumerate(logs):
-        y = 2.5 + i * 0.78
-        chip(s, 8.2, y, 1.55, 0.6, k, fill=TEAL, color=WHITE, size=12, bold=True)
-        text(s, 9.9, y, 2.75, 0.6, [v], size=12, anchor=MSO_ANCHOR.MIDDLE)
-    band(
-        s,
-        6.0,
-        "하네스",
-        "기록이 있어야 어느 단계에서 왜 틀렸는지 사람이 찾고 고칠 수 있습니다",
-        fill=TEAL_TINT,
-        color=TEAL,
-        h=0.7,
-        size=14,
-    )
-
-
-# ---------------------------------------------------------------------- main
 def build_harness(d, pre, s3):
     title_slide(
         d,
@@ -4353,24 +3871,15 @@ def build_harness(d, pre, s3):
     rules_slide(d)
     stage_file_slide(d)
     guard_trace_slide(d)
-    tool_idea_slide(d)
-    tool_list_slide(d)
-    tool_loop_slide(d)
-    tool_modes_slide(d)
-    tool_demo_slide(d)
     harness_wrapup_slide(d)
     questions_slide(d)
     # 부록
-    appendix_section(d, "하네스 구조 · 실행 명령")
-    concept_parts_slide(d)
-    concept_tool_slide(d)
-    concept_adapter_slide(d)
-    concept_rules_slide(d)
-    concept_safety_slide(d)
+    appendix_section(d, "실행 명령")
     commands_slide(d)
 
 
 def build_change(d, s2, pre, s3):
+    s1, s3b = load_score(RUN_CODE_ONLY), load_score(RUN3_AGAIN)
     title_slide(
         d,
         "합성 도면 판독: 전 → 후",
@@ -4382,7 +3891,6 @@ def build_change(d, s2, pre, s3):
     score_def_slide(d)
     # 1. 전
     before_section(d)
-    before_def_slide(d, s2)
     lastweek_scope_slide(d)
     lastweek_perf_slide(d)
     lastweek_success_slide(d)
@@ -4415,21 +3923,24 @@ def build_change(d, s2, pre, s3):
     drawing_fix_slides(d)
     practitioner_slide(d)
     summary_slide(d, s2, s3)
-    score_compare_slide(d, s2, load_score(RUN3_1028), s3)
+    score_compare_slide(d, s2, s3, s3b)
+    ladder_slide(d, s2, s1, s3)
+    why_up_slide(d, s2, s1, s3)
+    ai_change_slide(d, s2, s1, s3, s3b)
+    code_up_slide(d)
     class_score_slide(d, s3)
     class_pair_slides(d, s3)
     fixed_slide(d)
     remaining_slides(d, s3)
     # 3. 실험
     experiment_section(d)
-    truncation_slide(d)
     model_swap_slide(d)
     candidates_slide(d)
     wrapup_slide(d, s3)
     questions_slide(d)
     # 부록
     appendix_section(d, "2×2 · 시험 도면 · 도면별 점수 · 실행 명령")
-    grid_slide(d, s2, s3)
+    grid_slide(d, s2, s1, s3)
     testset_slide(d)
     per_drawing_slides(d, s3)
     commands_slide(d)
